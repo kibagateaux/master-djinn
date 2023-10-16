@@ -1,0 +1,42 @@
+# Config files
+profiles.clj
+resources/env.edn
+
+# Java related
+pom.xml
+pom.xml.asc
+*jar
+*.class
+
+# Leiningen
+classes/
+lib/
+native/
+checkouts/
+target/
+.lein-*
+repl-port
+.nrepl-port
+.repl
+.lsp/
+
+# Temp Files
+*.orig
+*~
+.*.swp
+.*.swo
+*.tmp
+*.bak
+
+# OS X
+.DS_Store
+.vscode
+
+# Logging
+*.log
+/logs/
+
+# Builds
+out/
+build/
+
