@@ -11,6 +11,8 @@
   "for direct read queries that dont require formatting input data"
   [query]
   (fn [context args value]
+    (println "DB:resolver: ctx" context)
+    (println "DB:resolver: ctx" args)
   ;; using context:  https://lacinia.readthedocs.io/en/latest/resolve/context.html
     (neo4j/with-transaction activity-db tx
       ;; (println "DB:resolver: ctx" context)

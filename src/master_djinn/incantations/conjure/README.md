@@ -1,0 +1,1 @@
+type shit [this is lowkey genius](https://github.com/kibagateaux/djinnii-serverless/blob/master/integrations/srcES7/lib/integrationsIndex.js). Even had it set up for custom evaluation functions per data source. Code is shit tho, would look much better in clojure :P 

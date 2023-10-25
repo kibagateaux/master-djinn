@@ -8,7 +8,8 @@
 
 
 (defn provider->transmuter [provider]
-  "takes a keyword for data provider and returns function that will transform incoming player data into game actions"
+  "takes a keyword for data provider and returns a function that
+  will transform incoming player data into game actions"
  (case provider
     :AndroidHealthConnect ahc/transmute
     (fn [args]
@@ -21,10 +22,6 @@
 (defn multiplexer
     [context args value]
     (let [transmute (provider->transmuter (:data_provider args))]
-    
-    (println "Trans:multiplex: args" args)
-    (println "Trans:multiplex: value" value)
-    (println "Trans:multiplex: tranny" transmute)
     ;; TODO validate player for action here
     (neo4j/with-transaction db/activity-db tx
     ;; TODO add try block. specifically want to catch duplicate uuid invariant violation
@@ -32,12 +29,11 @@
       (->> args
           transmute
           ;; ((fn [config] (println "TRANSMUTING " config) config))
-          ;; now have normalized format of { :data-provider :player_id :actions [{:name :player_relation :data {}}]}
+          ;; now have normalized format of { :data_provider :player_id :actions [{:name :player_relation :data {}}]}
           ;; TODO add types/actions? validator
           (db/batch-create-actions tx)
           doall ;; eagerly load results before db connection closes
           first ;; doall returns list but only ever one response
-          :ids ;; extract list of :Action ids created
-          ;; (map str) ;; TODO once uuids implemented should be able to remove
-        ))))
+          :ids)))) ;; extract list of :Action uuids created
+        
     

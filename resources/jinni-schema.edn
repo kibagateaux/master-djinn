@@ -49,9 +49,7 @@
             nonce = optional value provided to player by server they are querying to prevent replay attacks   
         "
         :fields {
-            :v {:type (non-null String)}
-            :r {:type (non-null String)}
-            :s {:type (non-null String)}
+            :_raw_query {:type String } ;; just for testing
             :signature {:type (non-null String) }
             :nonce {:type String }
         }}
@@ -103,7 +101,9 @@
         }}
     :Query
         {:fields {
-            :players {:type (list :Avatar)}
+            :players {:type (list :Avatar)
+                    :args { :verification {:type :SignedRequest} } ;; non-null for now
+            }
         ;; :jinni {:type (non-null :Avatar)
         ;;     :args {:player_id {:type String}}}
         ;; ;; get all of a players jin not just their primary.

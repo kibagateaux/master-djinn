@@ -10,8 +10,6 @@
 
 (def resolver-map {
   :Query/players (fn [ctx args val]
-    (action-type->name "WALKING")
-    (action-type->name :WALKING)
     (let [results ((db/generate-resolver db/get-all-players) ctx args val)]
       (:players results)))
 
