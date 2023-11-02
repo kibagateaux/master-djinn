@@ -1,9 +1,6 @@
 (ns master-djinn.util.crypto
-    (:require [master-djinn.util.gql.schema :refer [jinni-schema]] ;; TODO needed to verify that signed query is valid in schema?
-                )
-    (:import (org.web3j.crypto ECKeyPair Sign Keys)
-            (org.web3j.utils Numeric))
-)
+    (:import  (org.web3j.crypto ECKeyPair Sign Keys)
+              (org.web3j.utils Numeric)))
 ;; ETH signing scheme specs
 ;; https://eips.ethereum.org/EIPS/eip-191
 ;; https://eips.ethereum.org/EIPS/eip-712
@@ -75,12 +72,11 @@
         zzz (println "ECRECOVER r s v: " r s v)
         signature-data (new org.web3j.crypto.Sign$SignatureData (first v) r s)
         ;; Using Sign.signedPrefixedMessageToKey for EIP-712 compliant signatures
-        pubkey (Sign/signedPrefixedMessageToKey (.getBytes original-msg) signature-data)
-        ;; TODO when does pubkey return null on invalid signatures?
-        ;; test 1. signed-hash og-msg mismatch. 2. 
-        address (Keys/toChecksumAddress (Keys/getAddress (bigint->hex pubkey)))]
-    (println "ECRECOVER addy vs expected addy: " address (:signer test-signer-good))
-    address))
+        pubkey (Sign/signedPrefixedMessageToKey (.getBytes original-msg) signature-data)]
+    ;; TODO when does pubkey return null on invalid signatures?
+    ;; test 1. signed-hash og-msg mismatch. 2. 
+    (println "ECRECOVER addy vs expected addy: " pubkey (:signer test-signer-good))
+    (if (nil? pubkey) nil (Keys/toChecksumAddress (Keys/getAddress (bigint->hex pubkey))))))
 
 (defn extract-encoded-data
     "takes a signed ethereum message (not transaction) and returns the signers address and raw data signed
@@ -90,7 +86,9 @@
     TODO 
     "
     [signed-message message]
-    (ecrecover signed-message message)) ;; TODO anything else we want to return here like metadata?
+    ;; TODO anything else we want to return here like metadata?
+    ;; if not then call ecrecover directly
+    (ecrecover signed-message message))
 
 
 (defn handle-signed-POST-query

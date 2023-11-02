@@ -1,6 +1,7 @@
 # Config files
 profiles.clj
 resources/env.edn
+*.env
 
 # Java related
 pom.xml

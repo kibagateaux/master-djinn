@@ -1,0 +1,6 @@
+# ignore all by default
+*
+
+!project.clj
+!src/
+!resources/

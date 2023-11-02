@@ -7,7 +7,6 @@
     [master-djinn.manifester.identity :as id]
     [master-djinn.util.db.core :as db]))
 
-
 (def resolver-map {
   :Query/players (fn [ctx args val]
     (let [results ((db/generate-resolver db/get-all-players) ctx args val)]
@@ -20,7 +19,7 @@
   ;; mutations
   ;; :mutations/submit_data example-resolver
   :Mutation/submit_data trans/multiplexer
-  ;; :mutations/register-jinni id/register-jinni
+  :Mutation/activate_jinni id/activate-jinni
 })
 
 (defn jinni-schema

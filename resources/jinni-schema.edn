@@ -49,9 +49,9 @@
             nonce = optional value provided to player by server they are querying to prevent replay attacks   
         "
         :fields {
-            :_raw_query {:type String } ;; just for testing
+            :_raw_query {:type String }
             :signature {:type (non-null String) }
-            :nonce {:type String }
+            ;; :nonce {:type String }
         }}
     :RawInputData
         {:description "Any unprocessed data collected from data providers. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
@@ -67,7 +67,7 @@
             :metadata {:type :RawInputMetadata}
         }}
     :RawInputMetadata
-        {:description "Info on how data was collected from data provider provider"
+        {:description "Info on how data was collected from data provider provider. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
         :fields {
             :id {:type String} ;; uuid in data provider system
             :clientRecordId {:type String} ;; uuid in data provider system
@@ -100,6 +100,7 @@
             :player {:type :Avatar} ;; Action may have multiple players? or no player if its projected?
         }}
     :Query
+        ;; TODO rename :verification to :majik-ms? So you need to imbue majik into  every request to make them work
         {:fields {
             :players {:type (list :Avatar)
                     :args { :verification {:type :SignedRequest} } ;; non-null for now
@@ -126,15 +127,14 @@
                             :data_provider {:type (non-null :DataProviders)}
                             :name {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
                             :player_id {:type (non-null String)}}  ;; 0x ETH address
-                }
-        ;; :register-jinni
-        ;;     {:type       :Avatar
-        ;;     :description "registers a new jinni using ZKP that you have received a majik card"
-        ;;     :args       {:proof {:type (non-null String)} ;; ZKP or signature that they were blessed by Maliks Majik card
-        ;;                 :address {:type (non-null String)} ;; 0x ETH address they will sign messages from
-        ;;                 :name {:type (non-null String)} ;; name of their jinni
-        ;;                 :birthday {:type (non-null String)}}  ;; humans bday
-        ;;     }
+            }
+        :activate_jinni
+            {:type       (non-null ID)
+            :description "registers a new jinni using ZKP that you have received a majik card"
+            :args       {:verification {:type :SignedRequest} ;; TODO ZKP?
+                        :majik_msg {:type (non-null String)} ;; Signed player_id by majik card
+                        :player_id {:type (non-null String)}} ;; 0x ETH address they will sign messages from
+            }
         }}
     }
 }

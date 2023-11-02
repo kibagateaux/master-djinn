@@ -2,11 +2,54 @@
   (:require [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.data.json :as json]
-            [master-djinn.util.types.core :refer [load-config]]
+            [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
             [master-djinn.util.db.identity :as id]
+            [master-djinn.util.crypto :as crypt]
             [neo4j-clj.core :as neo4j])
   (:import java.util.Base64))
 
+(defonce MALIKS_MAJIK_CARD nil) ;; TODO
+
+(defn activate-jinni
+  [ctx args val]
+  ;; TODO need to create player in activity and identity db
+  ;; How to ensure idempotency + ACID across both DBs?
+  ;; create revert queries for both DBs and use OR statement to revert one if other fails?
+  (println "activate jinn arhs:" args)
+  (let [
+        ;; djinn (crypt/ecrecover (:majik_msg args) (:player_id args))
+        djinn MALIKS_MAJIK_CARD
+        pid (:signer args)
+        ;; aaa (println "activate jinn:" djinn MALIKS_MAJIK_CARD pid)
+        jid (uuid nil)]
+        ;; TODO calc kin, archetype, tone for human + jinn bdays and add to Avatar model
+    (cond
+      ;;  TODO throw API errors. create resolver wrapper
+      ;; TODO define in specs not code here
+      ;; (nil? pid) (println "Player must give their majik to activation")
+      ;; (not= (:player_id args) pid) (println "Signer !== Registrant")
+      ;; (not= djinn MALIKS_MAJIK_CARD) (println "majik msg not from powerful enough djinn")
+      
+      ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
+
+      ;; default is succes route
+      :else (neo4j/with-transaction id/identity-db tx
+        (-> (id/create-player tx { :player {
+          :id pid
+          :uuid (avatar->uuid pid)
+          :birthday (:birthday args)
+        } :jinni {
+          :id jid
+          :uuid (avatar->uuid jid)
+          ;; they are born now
+          :birthday (-> (java.time.ZonedDateTime/now java.time.ZoneOffset/UTC)
+                       (.format java.time.format.DateTimeFormatter/ISO_INSTANT))
+        }})
+        doall
+        first
+        :jinni)))))
+
+  
 (defonce oauth-providers {
   :spotify {
     :auth-uri "https://accounts.spotify.com/authorize"
@@ -36,7 +79,7 @@
 (defn base64-encode [to-encode]
   (String. (.encode (Base64/getEncoder) (.getBytes to-encode))))
 
-(defn kebab->capital [s]
+(defn kebab->capital [s] ;; not needed anymore since i moved everything to capital case on back+frontend
   (->> (str/split s #"[ -]")
        (map str/capitalize)
        (str/join "")))
@@ -229,11 +272,3 @@
 ;; https://github.com/propan/geheimtur
 ;; https://github.com/yetanalytics/pedestal-oidc
 
-
-(defn register-jinni
-  [ctx args val]
-  ;; TODO need to create player in activity and identity db
-  ;; How to ensure idempotency + ACID across both DBs?
-  ;; create revert queries for both DBs and use OR statement to revert one if other fails?
-  (neo4j/with-transaction id/identity-db tx
-    (id/create-player tx { :player {:id "me" }})))

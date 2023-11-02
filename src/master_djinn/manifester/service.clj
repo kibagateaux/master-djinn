@@ -14,6 +14,7 @@
             ;; for manual serverr config
             [io.pedestal.interceptor :refer [interceptor]]
             [io.pedestal.http.body-params :as body-params]
+            [master-djinn.util.types.core :refer [load-config]]
 
             ;; [com.walmartlabs.lacinia :refer [execute]]
             ;; [clojure.data.json :as json]
@@ -42,7 +43,6 @@
           context)))
       }))
 
-
 (defonce gql-dev-server-options {
     :api-path "/graphql"
     :ide-path "/graphiql"
@@ -51,8 +51,11 @@
     :oauth-refresh-path "/oauth/refresh"
     :gql-asset-path "/assets/graphiql" ;; TODO figure out what thismeans
     :port 8888
-    :host (or (System/getenv "app.host") "localhost")
+    :host (:api-host (load-config))
+    ;; :host (or (System/getenv "API_HOST") "0.0.0.0")
 })
+    
+
 ;; This is an adapted service map, that can be started and stopped
 ;; From the REPL you can call server/start and server/stop on this service
 (def default-gql-service (-> (schema/jinni-schema)
@@ -84,7 +87,6 @@
         http/create-server)))
 
 (def custom-gql-service (create-gql-service (schema/jinni-schema) 8888))
-
 
 (defonce dev-server-options {
     :gql-path "/graphql"
