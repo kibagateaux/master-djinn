@@ -3,14 +3,6 @@
             [master-djinn.util.types.core :refer [load-config]])
   (:import (java.net URI)))
 
-(defonce identity-db
-    (let [{:keys [identitydb-uri identitydb-user identitydb-pw]} (load-config)]
-        (println "IDENTITYDB: " identitydb-uri identitydb-user identitydb-pw)
-        ;; (neo4j/connect (URI. identitydb-uri) identitydb-user identitydb-pw)
-        ))
-    ;; (let [{:keys [identitydb-uri identitydb-user identitydb-pw]} (load-config)]
-    ;;     (neo4j/connect (URI. identitydb-uri) identitydb-user identitydb-pw)))
-
 (neo4j/defquery define-id-constraints "
     CREATE CONSTRAINT uniq_id_per_provider IF NOT EXISTS
         FOR (id:Identity)

@@ -50,7 +50,7 @@ use `ngrok http 8888` to expose local server to internet for OAuth callback test
 1. Configure your service to accept incoming connections (edit service.clj and add  ::http/host "0.0.0.0" )
 2. Build an uberjar of your service: `lein uberjar`
 3. Build a Docker image: `sudo docker build -t master-djinn .`
-4. Run your Docker image: `docker run -p 8080:8080 master-djinn`
+4. Run your Docker image: `docker run -p 8000:8000 master-djinn`
 
 ### [OSv](http://osv.io/) unikernel support with [Capstan](http://osv.io/capstan/)
 

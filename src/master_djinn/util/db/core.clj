@@ -3,10 +3,10 @@
             [master-djinn.util.types.core :refer [load-config]])
   (:import (java.net URI)))
 
-(defonce activity-db
+(defonce connection
   (let [{:keys[ activitydb-uri activitydb-user activitydb-pw]} (load-config)]
     (println "ACTIVITYDB "activitydb-uri activitydb-user activitydb-pw)
-    ;; (neo4j/connect (URI. activitydb-uri) activitydb-user activitydb-pw)
+    (neo4j/connect (URI. activitydb-uri) activitydb-user activitydb-pw)
     ))
 
 (defn generate-resolver
@@ -16,7 +16,7 @@
     (println "DB:resolver: ctx" context)
     (println "DB:resolver: ctx" args)
   ;; using context:  https://lacinia.readthedocs.io/en/latest/resolve/context.html
-    (neo4j/with-transaction activity-db tx
+    (neo4j/with-transaction connection tx
       ;; (println "DB:resolver: ctx" context)
       (println "DB:resolver: args" args)
       (println "DB:resolver: value" value)
@@ -24,7 +24,7 @@
       (-> (query tx args) doall first))))
 
 ;; TODO figure out when to run this. Should i create a migrations type process?
-(neo4j/defquery define-invariants
+(neo4j/defquery define-action-invariants
   "CREATE CONSTRAINT unique_action_uuid FOR (a:Action) REQUIRE a.uuid IS UNIQUE")
 
 (neo4j/defquery create-player

@@ -28,9 +28,9 @@
                     :activitydb-uri (System/getenv "ACTIVITYDB_URI")
                     :activitydb-user (System/getenv "ACTIVITYDB_USER")
                     :activitydb-pw (System/getenv "ACTIVITYDB_PW")
-                    :identitydb-uri (System/getenv "IDENTITYDB_URI")
-                    :identitydb-user (System/getenv "IDENTITYDB_USER")
-                    :identitydb-pw (System/getenv "IDENTITYDB_PW")
+                    ;; :geodb-uri (System/getenv "IDENTITYDB_URI")
+                    ;; :geodb-user (System/getenv "IDENTITYDB_USER")
+                    ;; :geodb-pw (System/getenv "IDENTITYDB_PW")
                     
                     ;; :api-host (or (System/getenv "API_HOST") "0.0.0.0")
 
@@ -41,10 +41,12 @@
                     :spotify-client-secret (System/getenv "SPOTIFY_CLIENT_SECRET")}]
     
     ;; (println "LOAD CONFIG file exists? " "resources/env.edn" (.exists (io/as-file "resources/env.edn")))
-    (println "LOAD_CONFIG" (vals env-config) (env :env) (env :SPOTIFY_CLIENT_ID))
+    ;; (clojure.pprint/pprint "LOAD_CONFIG:system" env)
+    (println "LOAD_CONFIG:test" (System/getenv "activitydb-uri") (System/getenv "ACTIVITYDB_URI") (env :SPOTIFY_CLIENT_ID) (env :spotify-client-id))
     ;; prioritize server env vars over file config
     ;; only override if there are no env vars at all.
     ;; If some are missing thats fine. Depends on services that host wants to provide
+    ;; TODO return (into file-config env-config)
      (if (every? nil? (vals env-config)) file-config env-config)))
 
 

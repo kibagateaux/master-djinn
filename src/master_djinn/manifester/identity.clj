@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.data.json :as json]
             [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
+            [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as id]
             [master-djinn.util.crypto :as crypt]
             [neo4j-clj.core :as neo4j])
@@ -33,7 +34,7 @@
       ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
 
       ;; default is succes route
-      :else (neo4j/with-transaction id/identity-db tx
+      :else (neo4j/with-transaction db/connection tx
         (-> (id/create-player tx { :player {
           :id pid
           :uuid (avatar->uuid pid)
@@ -93,7 +94,7 @@
   [pid provider]
   (let [nonce (str (java.util.UUID/randomUUID))]
       (println "generating player oauth: " pid provider nonce)
-      (neo4j/with-transaction id/identity-db tx
+      (neo4j/with-transaction db/connection tx
         (->> {:pid pid
             :provider (kebab->capital provider)
             :nonce nonce}

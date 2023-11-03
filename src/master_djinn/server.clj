@@ -7,7 +7,7 @@
 (defn run-dev [& args]
   (let [gql (future (http/start services/custom-gql-service)) 
         http (future (http/start services/custom-service))]
-        [gql http]))
+        [@gql @http]))
 
 (defn -main
   "The entry-point for 'lein run'"

@@ -28,7 +28,7 @@
     (let [transmute (provider->transmuter (:data_provider args))]
     ;; TODO (spec/check-asserts true)
     ;; TODO validate player for action here
-    (neo4j/with-transaction db/activity-db tx
+    (neo4j/with-transaction db/connection tx
     ;; TODO add try block. specifically want to catch duplicate uuid invariant violation
     ;; so we know if data needs to be resubmitted or not. (also figure out if part of data sent was duplicated or all, no actions sent willbe saved since single tx)
       (->> args

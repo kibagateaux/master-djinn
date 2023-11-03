@@ -46,14 +46,13 @@ jobs:
         registry: "asia-northeast2-docker.pkg.dev" ## TODO env var
         username: oauth2accesstoken
         password: ${{ steps.auth.outputs.access_token }}
-    
+
     # TODO move to front after testing cloud auth
     - name: 'Docker build'
       run: |-
-        docker build \
-          --tag "$GAR_REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/${IMAGE}:$GITHUB_SHA" \
-          ./
-    
+        docker build ./ \
+          --tag "$GAR_REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA"
+
     - id: docker-push-tagged
       name: Tag Docker image and push to Google Artifact Registry
       uses: docker/build-push-action@v2

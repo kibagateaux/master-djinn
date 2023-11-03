@@ -1,13 +1,15 @@
-version: '3.1'
+version: '3.8'
 
 services:
-  server:
-    image: clojure:lein
-    environment:
-      
+  api:
+    image: djinn:test # GCP location
+    # image:  djinn:test-no-env   # GCP location
     ports: #make db accessible locally
       - "8888:8888"
       - "8000:8000"
+    env_file:
+      - ./.env # filepath on the host server
+
   # redis:
   #   image: redis:3.2.9
   #   ports: #make redis accessible locally

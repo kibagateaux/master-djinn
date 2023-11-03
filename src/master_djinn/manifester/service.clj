@@ -51,10 +51,8 @@
     :oauth-refresh-path "/oauth/refresh"
     :gql-asset-path "/assets/graphiql" ;; TODO figure out what thismeans
     :port 8888
-    :host (:api-host (load-config))
-    ;; :host (or (System/getenv "API_HOST") "0.0.0.0")
+    :host (or (:api-host (load-config)) "0.0.0.0") ;; jetty defaults to serving on 0.0.0.0
 })
-    
 
 ;; This is an adapted service map, that can be started and stopped
 ;; From the REPL you can call server/start and server/stop on this service
@@ -96,7 +94,7 @@
     :oauth-refresh-path "/oauth/refresh"
     :gql-asset-path "/assets/graphiql" ;; TODO figure out what thismeans
     :port 8000
-    :host (or (System/getenv "app.host") "localhost")
+    :host (or (:api-host (load-config)) "0.0.0.0") ;; jetty defaults to serving on 0.0.0.0
 })
 
 (defn ^:private create-custom-service

@@ -10,6 +10,7 @@
   :url "https://nootype.substack.com/t/jinni"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.11.1"]
                 ;; basic project dependencies
                 [environ "1.2.0"]
@@ -31,7 +32,7 @@
                 [org.slf4j/jul-to-slf4j "1.7.35"]
                 [org.slf4j/jcl-over-slf4j "1.7.35"]
                 [org.slf4j/log4j-over-slf4j "1.7.35"]]
-  :min-lein-version "2.0.0"
+  :plugins [[lein-environ "0.4.0"]]
   :resource-paths ["config", "resources"]
   :aliases {"serve" ["run" "-m" "master-djinn.server/-main"]
             "dev" ["run" "-m" "master-djinn.server/run-dev"]}
