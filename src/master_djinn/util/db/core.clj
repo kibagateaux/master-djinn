@@ -5,7 +5,9 @@
 
 (defonce activity-db
   (let [{:keys[ activitydb-uri activitydb-user activitydb-pw]} (load-config)]
-    (neo4j/connect (URI. activitydb-uri) activitydb-user activitydb-pw)))
+    (println "ACTIVITYDB "activitydb-uri activitydb-user activitydb-pw)
+    ;; (neo4j/connect (URI. activitydb-uri) activitydb-user activitydb-pw)
+    ))
 
 (defn generate-resolver
   "for direct read queries that dont require formatting input data"

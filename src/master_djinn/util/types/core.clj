@@ -3,6 +3,7 @@
             [clojure.edn :as edn]
             [clojure.spec.alpha :as spec]
             [clojure.spec.test.alpha :as spec-test]
+            [environ.core :refer [env]]
             [clj-uuid :as --uuid]))
 
 (def types (-> "jinni-schema.edn"
@@ -10,10 +11,15 @@
             slurp
             edn/read-string))
 
-(def local-config (-> "env.edn"
-                  io/resource
-                  slurp
-                  edn/read-string))
+;; prevent compile fail c no file. check file exists if no, empty map, else parse file.
+;; (def local-config {})
+(def local-config 
+ (if (.exists (io/as-file "resources/env.edn"))
+    (-> "env.edn"
+        io/resource
+        slurp
+        edn/read-string)
+      {}))
 
 (defn load-config []
   (let [file-config local-config
@@ -33,6 +39,9 @@
                     :strava-client-secret (System/getenv "STRAVA_CLIENT_SECRET")
                     :spotify-client-id (System/getenv "SPOTIFY_CLIENT_ID")
                     :spotify-client-secret (System/getenv "SPOTIFY_CLIENT_SECRET")}]
+    
+    ;; (println "LOAD CONFIG file exists? " "resources/env.edn" (.exists (io/as-file "resources/env.edn")))
+    (println "LOAD_CONFIG" (vals env-config) (env :env) (env :SPOTIFY_CLIENT_ID))
     ;; prioritize server env vars over file config
     ;; only override if there are no env vars at all.
     ;; If some are missing thats fine. Depends on services that host wants to provide
