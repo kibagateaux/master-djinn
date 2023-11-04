@@ -6,6 +6,7 @@
             [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as id]
             [master-djinn.util.crypto :as crypt]
+            [master-djinn.util.types.core :as types]
             [neo4j-clj.core :as neo4j])
   (:import java.util.Base64))
 
@@ -73,7 +74,7 @@
 })
 
 (defn get-redirect-uri [provider]
-  (str (or (System/getenv "app.host") "https://e877-95-14-82-25.ngrok.io")
+  (str (or (:api-host (load-config)) "api.cryptonative.ai")
                             "/oauth/callback"
                             "?provider=" provider))
 
@@ -158,7 +159,8 @@
   [provider oauth-config code]
   (let [base-config (get-oauth-api-request-config provider oauth-config)
         request-config (assoc-in base-config
-                                [:form-params] ;; TODO :body or :form-params or :query-params?
+                                [:body] ;; TODO :body or :form-params or :query-params?
+                                ;; [:form-params] ;; TODO :body or :form-params or :query-params?
                                 (json/write-str {
                                   :redirect_uri (get-redirect-uri provider)
                                   :grant_type "authorization_code"
@@ -169,7 +171,7 @@
         ;;                                                   json/write-str))]
         ;; request-config (update-in base-config [:body] #(merge % {:grant_type "authorization_code" :code code}))]
       ;; (println "generate oauth req" provider (:client-id config) )
-      (println "request" request-config)
+    (println "request" request-config)
     (println "requesting " provider " server" (:token-uri oauth-config))
     
     ;; (client/post (:token-uri config)  (assoc request-config :body (json/write-str request-config))
@@ -214,28 +216,14 @@
         ;; TODO match state->identity-> player_id to signed request player id
                 
           ;; (println request)
-          ;; (println qs provider (:token-uri config) code)
+    (println "OAUTH callback" qs provider (:token-uri config) code)
     (cond
       (clojure.string/blank? provider)    {:status 400 :body "must include oauth provider"}
       (nil? config)                       {:status 400 :body "oauth provider not supported"}
       (= error "access_denied")           {:status 400 :body "user rejected access"}
       (not (clojure.string/blank? error)) {:status 400 :body error} ; catch all error last
       (clojure.string/blank? code)        {:status 400 :body "no code provided for oauth flow"}
-      :else                               (request-access-token provider config code))
-      ;; figure out how to request token to app
-      ;; reconstruct oauth provider map on frontend
-      ;; need - authorize uri, token uri, client id, client secret
-  
-  
-
-  ;; if not provider - throw invalid oauth request
-  ;; if (cond error 
-  ;;    "access_denied" user rejected access
-  ;;    "error on oauth provider")
-  ;; POST `/api/token` 
-  ;; (-> service-map
-  ;;   (http/default-interceptors))
-))
+      :else                               (request-access-token provider config code))))
 
 
 

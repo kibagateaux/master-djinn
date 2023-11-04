@@ -31,8 +31,13 @@ jobs:
 
     - name: Get tag
       id: get-tag
-      run: echo "Docker image tag - Docker image tag - $IMAGE to $GAR_REGION. {{ step.emit-uri.outputs.docker_uri}}" 
-
+      run: echo ::set-output name=tag::${GITHUB_SHA}
+      
+    - name: Get repo
+      id: get-repo
+      run: echo ::set-output name=repo::"${GAR_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}"
+      # run: echo ::set-output name=repo::"$GAR_REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE"
+        
     - id: auth
       name: 'Authenticate to Google Cloud'
       uses: 'google-github-actions/auth@v0.6.0'
@@ -59,9 +64,12 @@ jobs:
       with:
         push: true
         tags: |
-            $GAR_REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
-            $GAR_REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest
+          ${{ steps.get-repo.outputs.repo }}:${{ steps.get-tag.outputs.tag }}
+          ${{ steps.get-repo.outputs.repo }}:latest
       
+      # ${GAR_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}
+      # ${GAR_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:latest
+
       # TODO run tests. If master/staging branch then tag as prod/test and deploy to replace images
       # access Compute Registry to reboot server or whatever based of container
       # should just be ssh into VM instance. Add compute engine roles to ci/cd service account

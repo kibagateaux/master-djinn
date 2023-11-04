@@ -4,10 +4,12 @@
   (:import (java.net URI)))
 
 (defonce connection
-  (let [{:keys[ activitydb-uri activitydb-user activitydb-pw]} (load-config)]
-    (println "ACTIVITYDB "activitydb-uri activitydb-user activitydb-pw)
-    (neo4j/connect (URI. activitydb-uri) activitydb-user activitydb-pw)
-    ))
+  (let [{:keys [activitydb-uri activitydb-user activitydb-pw]} (load-config)]
+      (if (nil? activitydb-uri)
+        (println "ACTIVITYDB no config :(")
+        (neo4j/connect (URI. activitydb-uri) activitydb-user activitydb-pw)
+      )
+  ))
 
 (defn generate-resolver
   "for direct read queries that dont require formatting input data"

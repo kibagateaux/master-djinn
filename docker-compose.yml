@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   api:
-    image: djinn:test # GCP location
-    # image:  djinn:test-no-env   # GCP location
+    # image: djinn:test # GCP location
+    image:  djinn:test-no-env   # GCP location
     ports: #make db accessible locally
       - "8888:8888"
       - "8000:8000"
