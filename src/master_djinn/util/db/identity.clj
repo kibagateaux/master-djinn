@@ -34,6 +34,14 @@
     CALL apoc.create.addLabels(id, [$provider]) YIELD node
     RETURN ID(node) as identity
 ")
+(neo4j/defquery add-identity-credentials "
+    MATCH (p:Avatar { pid: $pid })-[:HAS]->(id:Identity {provider: $provider})
+    SET id.access_token = $access_token
+    SET id.refresh_token = $refresh_token
+    SET id.scope = $scope
+    
+    RETURN ID(id) as id
+")
 
 (neo4j/defquery match-nonce-to-avatar "
     MATCH (p:Avatar)-[:HAS]->(id:Identity {nonce: $nonce})

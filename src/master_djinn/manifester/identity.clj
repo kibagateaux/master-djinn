@@ -74,10 +74,11 @@
 })
 
 (defn get-redirect-uri [provider]
-  (str (or (:api-host (load-config)) "api.cryptonative.ai")
-                            "/oauth/callback"
-                            "?provider=" provider))
-
+  (str "https://"
+        (or (:api-domain (load-config)) "scry.cryptonative.ai")
+        "/oauth/callback"
+        "?provider=" provider))
+(println "redirect x" (get-redirect-uri "spotify"))
 (defn base64-encode [to-encode]
   (String. (.encode (Base64/getEncoder) (.getBytes to-encode))))
 
@@ -138,7 +139,8 @@
   returns - clj-http request map
   "
   [provider config]
-  {:as :json ;; clj-http config to auto tranform to/from json
+  {
+    ;; :as :json ;; clj-http config to auto tranform to/from json
   ;; :coerce :always
   :async? false ;; TODO bottleneck but not important with minimal users
   ;; :content-type :application/json
@@ -158,31 +160,59 @@
   "
   [provider oauth-config code]
   (let [base-config (get-oauth-api-request-config provider oauth-config)
-        request-config (assoc-in base-config
-                                [:body] ;; TODO :body or :form-params or :query-params?
-                                ;; [:form-params] ;; TODO :body or :form-params or :query-params?
-                                (json/write-str {
-                                  :redirect_uri (get-redirect-uri provider)
+        request-config (assoc base-config
+                                :form-params
+                                {:redirect_uri (get-redirect-uri provider)
                                   :grant_type "authorization_code"
-                                  :code code}))]
+                                  :code code})
+        response (client/post (:token-uri oauth-config) request-config)]
         ;; request-config (update-in base-config [:form-params] #(-> %
         ;;                                                   (merge {
         ;;                                                     :redirect_uri(get-in base-config [:body :redirect_uri]) :grant_type "authorization_code" :code code})
         ;;                                                   json/write-str))]
         ;; request-config (update-in base-config [:body] #(merge % {:grant_type "authorization_code" :code code}))]
       ;; (println "generate oauth req" provider (:client-id config) )
-    (println "request" request-config)
-    (println "requesting " provider " server" (:token-uri oauth-config))
+    (println "requesting " provider " server: " (:token-uri oauth-config) "to callback to : " (get-redirect-uri provider) )
+      (println "oauth token response" (json/read-str (:body response) :key-fn keyword))
+    (if (and (not (nil? response)) (:body response))
+      (let [body (json/read-str (:body response) :key-fn keyword)]
+        ((fn []
+          ;; (println "oauth token response" (:body response))
+          ;; (println "oauth token" (str/split (:scope body) #" ") (:access_token body))
+          (neo4j/with-transaction db/connection tx
+
+            (-> (id/add-identity-credentials tx {
+              :pid "me" ;; TODO pass in pid as func param with code after validating OAuth state param
+              :provider provider
+              :access_token (:access_token body)
+              :refresh_token (:refresh_token body)
+              :scope (str/split (:scope body) #" ") ;; TODO spotify returns string w/ space separated. idk if that is spec of not 
+            })
+            doall
+            ((fn [result] (println "create ID result" result) result))
+            first
+            :id
+            ;; TODO redirect to jinnihealth://inventory/provider
+            ((fn [id] {:status 200 :body (json/write-str {
+              :id id
+              :msg (str provider "Item Successfully Equipped!")}
+              )}))
+            ))
+          )))
+        ((fn []
+          (println "ERROR on oauth token response" response)
+          {:status 400 :body "Error on OAuth provider issuing access token"}))
+    )
     
     ;; (client/post (:token-uri config)  (assoc request-config :body (json/write-str request-config))
-    (client/post (:token-uri oauth-config) request-config
-      (fn [response]
-        (println "oauth token response" response)
-        {:status 200 :body (str provider " Item Successfully Equipped!")})
-      (fn [exception]
-        (println "oauth error is: " (ex-cause exception) (ex-message exception))
-        (println "Full Excetion " exception)
-        {:status 400 :body "1 Error on OAuth provider issuing access token"}))
+    ;; (client/post (:token-uri oauth-config) request-config
+    ;;   (fn [response]
+    ;;     (println "oauth token response" response)
+    ;;     {:status 200 :body (str provider " Item Successfully Equipped!")})
+    ;;   (fn [exception]
+    ;;     (println "oauth error is: " (ex-cause exception) (ex-message exception))
+    ;;     (println "Full Excetion " exception)
+    ;;     {:status 400 :body "1 Error on OAuth provider issuing access token"}))
   ))
 
 
