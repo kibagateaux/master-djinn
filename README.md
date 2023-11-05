@@ -10,12 +10,16 @@ Manifester/ - anything with side effects or direct user interactions, namely sav
 Incantations/ - Spells for different user actions
    1. Conjure - Initiate data ingestion from this server from a given source
    2. Transmute - Normalize data sent by user requests or conjure requests to game values for database
-   3. Runes - Player habits thats are run on a schedule e.g. Did they complete their quests this week?
+   3. Evoke - Player abilities with side effects in/outside of our system
+   3. Divination - Ways of reading player data and augmenting avatar images based on activity
+   3. Rituals - Player habits thats are run on a schedule e.g. Did they complete their quests this week?
+   3. Illusion - ZK stuffs TBD
+
 
 #### Evnironment Variables
 Currently accept 2 ways to add environment variables to the project for repl and uberjar for local and production builds
 1. resources/env.edn (local support)
-2. export MY_ENV_VAR=myvat (local & prod support)
+2. export MY_ENV_VAR=myvar (local & prod support)
 *Important* -- `environ` will not pick up configuration settings from the project.clj when called from a compiled uberjar. So for any compiled code you produce with lein uberjar, you will want to set your configuration values via shell environment and/or system properties. 
 
 ## Clojure Cookbook

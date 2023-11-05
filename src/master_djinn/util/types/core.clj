@@ -32,7 +32,8 @@
                     ;; :geodb-user (System/getenv "IDENTITYDB_USER")
                     ;; :geodb-pw (System/getenv "IDENTITYDB_PW")
                     
-                    ;; :api-host (or (System/getenv "API_HOST") "0.0.0.0")
+                    :api-host (or (System/getenv "API_HOST") "0.0.0.0")
+                    :api-domain (or (System/getenv "API_DOMAIN") "scry.cryptonative.ai")
 
 
                     :strava-client-id (System/getenv "STRAVA_CLIENT_ID")
@@ -42,12 +43,13 @@
     
     ;; (println "LOAD CONFIG file exists? " "resources/env.edn" (.exists (io/as-file "resources/env.edn")))
     ;; (clojure.pprint/pprint "LOAD_CONFIG:system" env)
-    (println "LOAD_CONFIG:test" (System/getenv "activitydb-uri") (System/getenv "ACTIVITYDB_URI") (env :SPOTIFY_CLIENT_ID) (env :spotify-client-id))
+    (println "LOAD_CONFIG:test" (every? nil? (vals env-config)) (:api-domain file-config) file-config)
+    (println "LOAD_CONFIG:test" (System/getenv "API_DOMAIN") (env :api-domain) (env :spotify-client-id))
     ;; prioritize server env vars over file config
     ;; only override if there are no env vars at all.
     ;; If some are missing thats fine. Depends on services that host wants to provide
     ;; TODO return (into file-config env-config)
-     (if (every? nil? (vals env-config)) file-config env-config)))
+     (if (empty? file-config) env-config file-config)))
 
 
 ;; (defmacro get-func-version
