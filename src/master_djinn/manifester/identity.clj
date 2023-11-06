@@ -22,15 +22,14 @@
         ;; djinn (crypt/ecrecover (:majik_msg args) (:player_id args))
         djinn MALIKS_MAJIK_CARD
         pid (:signer args)
-        ;; aaa (println "activate jinn:" djinn MALIKS_MAJIK_CARD pid)
         jid (uuid nil)]
         ;; TODO calc kin, archetype, tone for human + jinn bdays and add to Avatar model
     (cond
       ;;  TODO throw API errors. create resolver wrapper
       ;; TODO define in specs not code here
-      ;; (nil? pid) (println "Player must give their majik to activation")
-      ;; (not= (:player_id args) pid) (println "Signer !== Registrant")
-      ;; (not= djinn MALIKS_MAJIK_CARD) (println "majik msg not from powerful enough djinn")
+      (nil? pid) (println "Player must give their majik to activation")
+      (not= (:player_id args) pid) (println "Signer !== Registrant")
+      (not= djinn MALIKS_MAJIK_CARD) (println "majik msg not from powerful enough djinn")
       
       ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
 

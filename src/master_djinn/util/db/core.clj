@@ -15,8 +15,8 @@
   "for direct read queries that dont require formatting input data"
   [query]
   (fn [context args value]
-    (println "DB:resolver: ctx" context)
-    (println "DB:resolver: ctx" args)
+    ;; (println "DB:resolver: ctx" context)
+    ;; (println "DB:resolver: ctx" args)
   ;; using context:  https://lacinia.readthedocs.io/en/latest/resolve/context.html
     (neo4j/with-transaction connection tx
       ;; (println "DB:resolver: ctx" context)
@@ -57,8 +57,9 @@
   CALL apoc.create.addLabels(a, [action.name]) YIELD node
   CALL apoc.refactor.setType(rp, action.player_relation) YIELD output AS relation
 
-  RETURN COLLECT(action.data.uuid) as ids
-")
+  RETURN COLLECT(a.uuid) as ids
+") ;; FIX this returns all actions on a player with UUID. If there are duplicate UUIDs then
+;; Should be fixed by having constraints set but nice to not have it returned just in case
 
 (neo4j/defquery get-player-actions"
   MATCH  (u:Avatar { id: $player_id })-[]->(a:Action)
