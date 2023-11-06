@@ -14,7 +14,7 @@
   TODO should we generate relations here and return Action + relations?
   OR just Action type and then db/create-actions query creates relations from that data?
   "
-  (println "google:transmute:Step" pid provider)
+  ;; (println "google:transmute:Step" pid provider)
   (let [transmuter-version "0.0.1"
         action-name (action-type->name :Walking)
         start_time (:startTime input)

@@ -32,10 +32,12 @@
    returns an error if signed query does not match raw query
    With or without signed query, GQL resolvers handle authorization on individual data resources"
   (interceptor
-    {:name ::mj:signed-request
-    ;;  :error internal/on-error-error-response}
+    {:name ::parse-signed-request
+    ;;  :error lp-internal/on-error-error-response
     :enter (fn [context]
-      (let [vars (get-in context [:request :graphql-vars])]
+      (let [vars (get-in context [:request :graphql-vars :verification])]
+        ;; (println "service.signed-request : "  (:signature vars) (:_raw_query vars))
+
         (if (and (:signature vars) (:_raw_query vars))
           ;; if signed query sent handle
           (handle-signed-POST-query context)
@@ -66,66 +68,28 @@
       (inject signed-request-interceptor :after ::p2/graphql-data)))
 
 (defn create-gql-service
-  [compiled-schema port]
+  [compiled-schema options]
   (let [interceptors (gql-interceptors compiled-schema)
+        {:keys [port host oauth-init-path oauth-cb-path oauth-refresh-path]} options
         ;; aaaa (println "custom gql" interceptors)
         routes (into #{["/graphql" :post interceptors :route-name ::graphql-api]
-                      ["/graphiql" :get (p2/graphiql-ide-handler gql-dev-server-options) :route-name ::graphql-ide]}
+                      ["/graphiql" :get (p2/graphiql-ide-handler gql-dev-server-options) :route-name ::graphql-ide]
+                      [oauth-init-path :get (conj [(body-params/body-params)] id/oauth-init-handler) :route-name ::oauth-init]
+                      [oauth-cb-path :post (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-post]
+                      [oauth-cb-path :get (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-get]
+                      [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
+                      }
                   (p2/graphiql-asset-routes (:gql-asset-path gql-dev-server-options)))]
     ;; (println "custom gql" gql-dev-server-options)
     ;; (println "custom gql" (:host gql-dev-server-options))
     (-> {:env :dev
          ::http/routes routes
-         ::http/port (:port gql-dev-server-options)
-         ::http/host (:host gql-dev-server-options)
+         ::http/port port
+         ::http/host host
          ::http/type :jetty
          ::http/join? false}
          p2/enable-graphiql
         (p2/enable-subscriptions compiled-schema gql-dev-server-options)
         http/create-server)))
 
-(def custom-gql-service (create-gql-service (schema/jinni-schema) 8888))
-
-(defonce dev-server-options {
-    :gql-path "/graphql"
-    :ide-path "/graphigql"
-    :oauth-init-path "/oauth/init"
-    :oauth-cb-path "/oauth/callback"
-    :oauth-refresh-path "/oauth/refresh"
-    :gql-asset-path "/assets/graphiql" ;; TODO figure out what thismeans
-    :port 8000
-    :host (or (:api-host (load-config)) "0.0.0.0") ;; jetty defaults to serving on 0.0.0.0
-})
-
-(defn ^:private create-custom-service
-  "
-  https://lacinia-pedestal.readthedocs.io/en/latest/interceptors.html
-  TODO graphql/graphiql routes arent working for some reason but auth ones are.
-  Even though its a 'bug' i actually like it because it basically makes them 2 different micro services on the same server
-  they use same codebase (kinda not really, just db.core) and makes it more modular for the future.
-  Can theoretically host same codebase on two diff servers to separate social from database secrets  
-  "
-  [compiled-schema options]
-  ;; (println "compiled structured schema")
-  (clojure.pprint/pprint  compiled-schema)
-  (clojure.pprint/pprint  (get-in compiled-schema [:objects]))
-  (clojure.pprint/pprint  (get-in compiled-schema [:objects :Query]))
-
-  (let [{:keys [port oauth-init-path oauth-cb-path oauth-refresh-path]} options
-        routes #{[oauth-init-path :get (conj [(body-params/body-params)] id/oauth-init-handler) :route-name ::oauth-init]
-                [oauth-cb-path :post (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-post]
-                [oauth-cb-path :get (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-get]
-                [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
-                }]
-    (->  {:env :dev
-          ::http/routes routes
-          ::http/port port
-          ;;  ::http/allowed-origins ["http://localhost:8080"]
-          ::http/type :jetty
-          ::http/join? false})))
-
-;; I think i might need to run two servers. One for GQL and one normal one since GQL interceptors prevent default pedestal ones from being created and they block any request without a :query
-(defonce custom-service
-  (-> (schema/jinni-schema)
-      (create-custom-service dev-server-options)
-      http/create-server))
+(def custom-gql-service (create-gql-service (schema/jinni-schema) gql-dev-server-options))

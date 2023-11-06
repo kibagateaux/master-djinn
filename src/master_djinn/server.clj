@@ -5,14 +5,11 @@
             [master-djinn.manifester.service :as services]))
 
 (defn run-dev [& args]
-  (let [gql (future (http/start services/custom-gql-service)) 
-        http (future (http/start services/custom-service))]
-        [@gql @http]))
+  (let [gql (future (http/start services/custom-gql-service)) ]
+        [@gql]))
 
 (defn -main
   "The entry-point for 'lein run'"
   [& args]
   (println "\nCreating your server...")
-  ;; (http/start services/default-gql-service) ;; default-service
-  (http/start services/custom-gql-service)
-  (http/start services/custom-service))
+  (http/start services/custom-gql-service))

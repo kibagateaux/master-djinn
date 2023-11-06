@@ -30,8 +30,9 @@
                 ;; tbh no idea where these came from. pretty sure part of pedestal template. Look at other projects to see if we can delete
                 [ch.qos.logback/logback-classic "1.2.10" :exclusions [org.slf4j/slf4j-api]]
                 [org.slf4j/jul-to-slf4j "1.7.35"]
-                [org.slf4j/jcl-over-slf4j "1.7.35"]
-                [org.slf4j/log4j-over-slf4j "1.7.35"]]
+                ;; [org.slf4j/jcl-over-slf4j "1.7.35"]
+                [org.slf4j/log4j-over-slf4j "1.7.35"]
+                ]
   :plugins [[lein-environ "0.4.0"]]
   :resource-paths ["config", "resources"]
   :aliases {"serve" ["run" "-m" "master-djinn.server/-main"]
