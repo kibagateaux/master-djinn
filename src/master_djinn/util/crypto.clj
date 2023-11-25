@@ -4,17 +4,11 @@
 ;; ETH signing scheme specs
 ;; https://eips.ethereum.org/EIPS/eip-191
 ;; https://eips.ethereum.org/EIPS/eip-712
+;; https://solidity-by-example.org/signature/
 
 ;; Java original sources
-;; 1. https://gist.github.com/djma/386c2dcf91fefc004b14e5044facd3a9
-;; 2. https://gist.github.com/megamattron/94c05789e5ff410296e74dad3b528613
-
-;; Java uses UTF16 encoding, so each character is 2 bytes
-;; so this equals 0x19 0x00 for personal messages
-;; TODO not needed if using Sign.signPrefixedMessage
-;; TODO does etherjs also add this prefix?
-(defonce GETH_SIGN_PREFIX "\u0019Ethereum Signed Message:\n")
-(defonce PREFIX_BYTE_LENGTH (.getBytes GETH_SIGN_PREFIX))
+;; ref - https://gist.github.com/megamattron/94c05789e5ff410296e74dad3b528613?permalink_comment_id=4350599#gistcomment-4350599
+;; og - https://gist.github.com/djma/386c2dcf91fefc004b14e5044facd3a9
 
 (defn hex->bytes
     "convert a hex string to an array of bytes in native Java
@@ -40,17 +34,23 @@
     (Integer/toString i 16))
 ;; TODO defmulti
 (defn bigint->hex
-    "@DEV: for >256 bytes if too big of Java Long"
+    "@DEV: for >256 bytes if too big for Java Long"
     [i]
     (.toString i 16))
 
-;; MM dev samples
+;; examples
 (def test-signer-good {:signer "0x0AdC54d8113237e452b614169469b99931cF094e"
     :query "query get_players{\n  players {\n    id\n  }\n}}"
-    ;; etherscan + MM
-    ;; :signature "0xffe2c2bc51477bc5c5389df59a19bd30744d6e517c4029eb0bc9f60b925c8521035934ba4fb91855656b4b82227fc2468777404c66cf81ae751264cb958b98d61c"
     ;; MEW + MM
-    :signature "0x7175657279206765745f706c61796572737b5c6e2020706c6179657273207b5c6e2020202069645c6e20207d5c6e7d7d"})
+    ;; :signature "0x7175657279206765745f706c61796572737b5c6e2020706c6179657273207b5c6e2020202069645c6e20207d5c6e7d7d"})
+    :signature "0xf67454814ba74310d2ed31451c8db378c2f8417d5b00aac6920d95c04c4d78fe604e8ffd8c9e9889d270a2c9a4be525ce64ff935e8a5961a57be02e75284354b1b"})
+    
+(def test-signer-good2 {:signer "0x08628f1fbcae43e0926459d2fbbd0d01702fbeea"
+    :query "query get_players{\n  players {\n    id\n  }\n}}"
+    ;; MEW + MM
+    ;; :signature "0x7175657279206765745f706c61796572737b5c6e2020706c6179657273207b5c6e2020202069645c6e20207d5c6e7d7d"})
+    :signature "77a11304fbe22046d4ecf29b2b864baa64e981e065e1c0a56f5b39407f4aa95f58616c26eb868def223942d05d2a67b75c652d700afa230c74a7585e81f8286a1c"})
+
 (def test-signer-bad {:signer "0x0AdC54d8113237e452b614169469b99931cF094e"
     :query "Hark! This is an example signed message but an invalid query that should fail!!!"
     ;; etherscan + MM
@@ -59,7 +59,11 @@
 (defn ecrecover
     "original-msg is human readable string that signer was shown
     signed-msg-hash is hexstring bytecode output of rpc/wallet signing function
-    returns checksummed ethereum address that signed msg-hash"
+    returns checksummed ethereum address that signed msg-hash
+    @DEV: Assumes signed-msg-hash is EIP-712 compliant with prefix '\x19Ethereum Signed Message:\n{msg-length}'
+    @DEV: Always returns an address even if invalid data. Must check against expected signer (def a bug, not how solidity ecrecover works, potential attack vector since not entirely based on cryptography)
+        Open issue on web3j repo - https://github.com/web3j/web3j/issues/1989
+    "
     [signed-msg-hash original-msg]
     (let [raw-hex-str (if (clojure.string/starts-with? signed-msg-hash "0x")
                         (subs signed-msg-hash 2)
@@ -67,29 +71,17 @@
         r (hex->bytes (subs raw-hex-str 0 64))
         s (hex->bytes (subs raw-hex-str 64 128))
         _v (subs raw-hex-str 128 130) ;; could be 0/1 or 27/28
-        ;; TODO cleanup and can def optimize this by just manipulating bytes manually but cant be fucked doing that with java atm
         v (hex->bytes (if (< (hex->int _v) 27) (int->hex (+ (hex->int _v) 27)) _v)) ;; so coerce to ETH native 27/28
-        zzz (println "ECRECOVER r s v: " r s v)
         signature-data (new org.web3j.crypto.Sign$SignatureData (first v) r s)
+        hashed-msg (.getBytes original-msg)
+        ;; this really shouldnt be necessary. Error in type conversions? 
+        ;; byte mismatch consistenet with "/n" count and locations roughly.
+        fixed-hashed-msg (hex->bytes (clojure.string/replace (bytes->hex hashed-msg) #"0a" "5c6e"))
+        ;; eee (println "ECRECOVER hashed msg: " (bytes->hex hashed-msg) (bytes->hex fixed-hashed-msg) )
         ;; Using Sign.signedPrefixedMessageToKey for EIP-712 compliant signatures
-        pubkey (Sign/signedPrefixedMessageToKey (.getBytes original-msg) signature-data)]
-    ;; TODO when does pubkey return null on invalid signatures?
-    ;; test 1. signed-hash og-msg mismatch. 2. 
-    (println "ECRECOVER addy vs expected addy: " pubkey (:signer test-signer-good))
-    (if (nil? pubkey) nil (Keys/toChecksumAddress (Keys/getAddress (bigint->hex pubkey))))))
-
-(defn extract-encoded-data
-    "takes a signed ethereum message (not transaction) and returns the signers address and raw data signed
-    You cant get the raw data directly from the signed message, can only recreate input and hash it, and check that it matches signed message
-    So in practice we can only accept defined GQL queries, not arbitrary ones.
-
-    TODO 
-    "
-    [signed-message message]
-    ;; TODO anything else we want to return here like metadata?
-    ;; if not then call ecrecover directly
-    (ecrecover signed-message message))
-
+        pubkey (Sign/signedPrefixedMessageToKey fixed-hashed-msg signature-data)
+        address (if (nil? pubkey) nil (Keys/toChecksumAddress (Keys/getAddress (bigint->hex pubkey))))]
+    address))
 
 (defn handle-signed-POST-query
     "Takes Lacinia app context including a signed gql request (query or mutation), gets the ETH signer, 
@@ -98,23 +90,25 @@
     @DEV: MUST come after ::graphql-data interceptor and before ::graphql-parser interceptor from Lacinia
     @DEV: `variables` could include vars that arent needed for query
 
-
     SHOULD include a query name so we can verify against queries in schema
     returns - Pedestal request context with verified query and player address to be injected into Lacinia GQL data
     "
     [context]
-    (let  [request (:request context)
-            {sig :signature
-            q :_raw_query} (:graphql-vars request)
-            signer (extract-encoded-data sig q)
+    (let  [{sig :signature q :_raw_query} (get-in context [:request
+                                                            :graphql-vars
+                                                            :verification])
+            ;; aaa (println "util.crypto/prase-signed-query: " sig q)
+            signer (ecrecover sig q)
+            ;; aaa (println "parse-signed-POST-query with sig: " signer)
             ;; add signer to app context for use in resolvers
             with-signer (assoc-in context [:request :graphql-vars :signer] signer)
-            ;; aaa (println "parse-signed-POST-query with sig: " (get-in with-signer [:request :graphql-vars] ))
             ;; replace original query sent with signed query for lacinia to execute secure query
             with-query (assoc-in with-signer [:request :graphql-query] q)
             ;; aaa (println "parse-signed-POST-query with sig: " (get-in with-query [:request :graphql-query] ))
             ]
+        ;; MAJOR SECURITY BUG: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
         ;; @DEV: TODO FIXES
+        ;; 1. fix security bug!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 
         ;; 1. if signature/_raw_query on in POST variables even if they aren't required for the query sent
         ;; then we will still go through this code path even if we dont need to
         ;; 2. if you do `mutation submit_data(...) but define mutation/query some_other_name{...}
@@ -128,23 +122,5 @@
         ;; this requires having shared types/lib between frontend and backend without duplicating code which is a longer-term lift
 
         (if (and sig (not signer))
-            ;; else return error
             (throw (Exception. "Signature does not match the right signer"))
             with-query)))
-
-;; TODO GET not supported by lacinia2 but no reason it shouldnt be so implement on our own
-;; (defn parse-signed-GET-query
-;;     "
-;;     Takes a signed http request 
-;;     http://myapi/graphql?query={me{name}} OR with variables
-;;     http://myapi/graphql?query=myQuery($name: string){me(where: (id: $name)){name}}&variables='{\"name\":\"myname\"}'
-    
-;;     @DEV: `variables` could include vars that arent needed for query
-
-;;     SHOULD include a query name so we can verify against queries in schema
-;;     returns - GQL context with verified query and player address to be injected into lacinia-app-context
-;;     "
-;;     [request]
-;;     (let []
-;;     )
-;; )
