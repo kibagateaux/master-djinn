@@ -23,18 +23,13 @@
 
 (defn load-config []
   (let [file-config local-config
-        env-config {
+        env-config {:api-host (or (System/getenv "API_HOST") "0.0.0.0")
+                    :api-domain (or (System/getenv "API_DOMAIN") "scry.cryptonative.ai")
 
                     :activitydb-uri (System/getenv "ACTIVITYDB_URI")
                     :activitydb-user (System/getenv "ACTIVITYDB_USER")
-                    :activitydb-pw (System/getenv "ACTIVITYDB_PW")
-                    ;; :geodb-uri (System/getenv "IDENTITYDB_URI")
-                    ;; :geodb-user (System/getenv "IDENTITYDB_USER")
-                    ;; :geodb-pw (System/getenv "IDENTITYDB_PW")
+                    :activitydb-pw (System/getenv "ACTIVITYDB_PW")                    
                     
-                    :api-host (or (System/getenv "API_HOST") "0.0.0.0")
-                    :api-domain (or (System/getenv "API_DOMAIN") "scry.cryptonative.ai")
-
                     :strava-client-id (System/getenv "STRAVA_CLIENT_ID")
                     :strava-client-secret (System/getenv "STRAVA_CLIENT_SECRET")
                     :spotify-client-id (System/getenv "SPOTIFY_CLIENT_ID")

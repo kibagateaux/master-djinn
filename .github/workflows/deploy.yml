@@ -25,10 +25,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Emit Docker URI
-      id: emit-uri
-      run: echo ::set-output name=docker_uri::${GAR_REGION}-docker.pkg.dev
-
     - name: Get tag
       id: get-tag
       run: echo ::set-output name=tag::${GITHUB_SHA}
@@ -67,9 +63,6 @@ jobs:
           ${{ steps.get-repo.outputs.repo }}:${{ steps.get-tag.outputs.tag }}
           ${{ steps.get-repo.outputs.repo }}:latest
       
-      # ${GAR_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${GITHUB_SHA}
-      # ${GAR_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:latest
-
       # TODO run tests. If master/staging branch then tag as prod/test and deploy to replace images
       # access Compute Registry to reboot server or whatever based of container
-      # should just be ssh into VM instance. Add compute engine roles to ci/cd service account
+      # gcloud compute instances update-container

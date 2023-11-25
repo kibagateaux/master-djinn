@@ -10,7 +10,7 @@
   :url "https://nootype.substack.com/t/jinni"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :min-lein-version "2.0.0"
+  :min-lein-version "2.10.0"
   :dependencies [[org.clojure/clojure "1.11.1"]
                 ;; basic project dependencies
                 [environ "1.2.0"]
