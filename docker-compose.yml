@@ -1,17 +1,9 @@
 version: '3.8'
 
-# ;; nginx for another port?
-# VIRTUAL_PROTO=https
 services:
   api:
-    image: djinn:test # GCP location
-    # image:  djinn:test-no-env   # GCP location
-    ports: #make db accessible locally
+    # image: djinn:test # local image
+    image: asia-northeast2-docker.pkg.dev/jinni-api-microservices/master-djinn-test/master:latest # GCP prod instance
+    ports:
       - "8888:8888"
-      - "8000:8000"
-    env_file: .env
-
-  # redis:
-  #   image: redis:3.2.9
-  #   ports: #make redis accessible locally
-  #     - "127.0.0.1:6379:6379"
+    env_file: ./.env
