@@ -21,7 +21,7 @@
 
 ;; @DEV: is defmulti/defmethod more semantic/terse? I prefer current format personally
 (defn multiplexer
-;; TODO technically should just be (transmute args) and rest should be handled in manifester handler to keep this no side effects
+;; TODO technically should just be (transmute args) and rest should be handled in portal handler to keep this no side effects
     [context args value]
     ;;  {:pre  [spec/valid? types/::action-source-data args] ;; TODO predicate for valid submit_data arg
     ;;   :post [(map string? %)]}
@@ -33,7 +33,7 @@
     ;; so we know if data needs to be resubmitted or not. (also figure out if part of data sent was duplicated or all, no actions sent willbe saved since single tx)
       (->> args
           transmute
-          ;; ((fn [config] (println "TRANSMUTING " config) config))
+          ((fn [config] (println "TRANSMUTING " config) config))
           ;; now have normalized format of { :data_provider :player_id :actions [{:name :player_relation :data {}}]}
           (db/batch-create-actions tx)
           ;; spec/assert ::Action

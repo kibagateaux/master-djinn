@@ -1,54 +1,14 @@
-(ns master-djinn.manifester.identity
+(ns master-djinn.portal.identity
   (:require [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.data.json :as json]
-            [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
+            [master-djinn.util.types.core :refer [load-config uuid]]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as id]
             [master-djinn.util.crypto :as crypt]
             [master-djinn.util.types.core :as types]
             [neo4j-clj.core :as neo4j])
   (:import java.util.Base64))
-
-(defonce MALIKS_MAJIK_CARD nil) ;; TODO
-
-(defn activate-jinni
-  [ctx args val]
-  ;; TODO need to create player in activity and identity db
-  ;; How to ensure idempotency + ACID across both DBs?
-  ;; create revert queries for both DBs and use OR statement to revert one if other fails?
-  (println "activate jinn arhs:" args)
-  (let [
-        ;; djinn (crypt/ecrecover (:majik_msg args) (:player_id args))
-        djinn MALIKS_MAJIK_CARD
-        pid (:signer args)
-        jid (uuid nil)]
-        ;; TODO calc kin, archetype, tone for human + jinn bdays and add to Avatar model
-    (cond
-      ;;  TODO throw API errors. create resolver wrapper
-      ;; TODO define in specs not code here
-      (nil? pid) (println "Player must give their majik to activation")
-      (not= (:player_id args) pid) (println "Signer !== Registrant")
-      (not= djinn MALIKS_MAJIK_CARD) (println "majik msg not from powerful enough djinn")
-      
-      ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
-
-      ;; default is succes route
-      :else (neo4j/with-transaction db/connection tx
-        (-> (id/create-player tx { :player {
-          :id pid
-          :uuid (avatar->uuid pid)
-          :birthday (:birthday args)
-        } :jinni {
-          :id jid
-          :uuid (avatar->uuid jid)
-          ;; they are born now
-          :birthday (-> (java.time.ZonedDateTime/now java.time.ZoneOffset/UTC)
-                       (.format java.time.format.DateTimeFormatter/ISO_INSTANT))
-        }})
-        doall
-        first
-        :jinni)))))
 
   
 (defonce oauth-providers {
@@ -59,9 +19,9 @@
     :client-secret (:spotify-client-secret (load-config))
     ;; :client-id (or (System/getenv "spotify.client-id") "NO SPOTIFY ENV VARS")
     ;; :client-secret (or (System/getenv "spotify.client-secret") "NO SPOTIFY ENV VARS")
-    ;; :scope              "user:email"
+    ;; :scope SEE FRONTEND
     ;; :user-info-parser #(-> % :body (parse-string true))
-    :user-info-uri      "https://api.github.com/user"}
+    :user-info-uri      "https://api.spotify.com/v1/me"}
   :github {
     :auth-uri           "https://github.com/login/oauth/authorize"
     :token-uri          "https://github.com/login/oauth/access_token"
@@ -78,8 +38,15 @@
         "/oauth/callback"
         "?provider=" provider))
 (println "redirect x" (get-redirect-uri "spotify"))
+
 (defn base64-encode [to-encode]
   (String. (.encode (Base64/getEncoder) (.getBytes to-encode))))
+
+(defn get-provider-auth-token
+  [provider]
+  (str "Basic " (base64-encode (str
+    (:client-id ((keyword provider) oauth-providers)) ":"
+    (:client-secret ((keyword provider) oauth-providers))))))
 
 (defn kebab->capital [s] ;; not needed anymore since i moved everything to capital case on back+frontend
   (->> (str/split s #"[ -]")
@@ -127,8 +94,7 @@
       :else (try
         {:status 200 :body (json/write-str {:state (init-oauth-identity player_id provider)})}
         (catch Exception e {:status 400 :body (json/write-str {:error (ex-message e)})}))
-    )
-))
+    )))
 
 ;;; Step #1 & #2 - Provider response handling
 (defn get-oauth-api-request-config
@@ -139,11 +105,13 @@
   "
   [provider config]
   {
-    ;; :as :json ;; clj-http config to auto tranform to/from json
+  ;; :as :json ;; clj-http config to auto tranform to/from json
   ;; :coerce :always
   :async? false ;; TODO bottleneck but not important with minimal users
   ;; :content-type :application/json
-  :headers  {"Authorization" (str "Basic " (base64-encode (str (:client-id config) ":" (:client-secret config))))
+  ;; :headers  {"Authorization" (str "Basic " (base64-encode (str (:client-id config) ":" (:client-secret config))))
+  ;;             "Content-Type" "application/x-www-form-urlencoded"}})
+  :headers  {"Authorization" (get-provider-auth-token provider)
               "Content-Type" "application/x-www-form-urlencoded"}})
 
 
@@ -158,20 +126,13 @@
   returns - pedestal response map
   "
   [provider oauth-config code]
+  (println "requesting " provider " server: " (:token-uri oauth-config) "to callback to : " (get-redirect-uri provider) )
   (let [base-config (get-oauth-api-request-config provider oauth-config)
-        request-config (assoc base-config
-                                :form-params
-                                {:redirect_uri (get-redirect-uri provider)
-                                  :grant_type "authorization_code"
-                                  :code code})
+        request-config (assoc base-config :form-params
+                          {:redirect_uri (get-redirect-uri provider)
+                            :grant_type "authorization_code"
+                            :code code})
         response (client/post (:token-uri oauth-config) request-config)]
-        ;; request-config (update-in base-config [:form-params] #(-> %
-        ;;                                                   (merge {
-        ;;                                                     :redirect_uri(get-in base-config [:body :redirect_uri]) :grant_type "authorization_code" :code code})
-        ;;                                                   json/write-str))]
-        ;; request-config (update-in base-config [:body] #(merge % {:grant_type "authorization_code" :code code}))]
-      ;; (println "generate oauth req" provider (:client-id config) )
-    (println "requesting " provider " server: " (:token-uri oauth-config) "to callback to : " (get-redirect-uri provider) )
       (println "oauth token response" (json/read-str (:body response) :key-fn keyword))
     (if (and (not (nil? response)) (:body response))
       (let [body (json/read-str (:body response) :key-fn keyword)]
@@ -179,23 +140,25 @@
           ;; (println "oauth token response" (:body response))
           ;; (println "oauth token" (str/split (:scope body) #" ") (:access_token body))
           (neo4j/with-transaction db/connection tx
-
-            (-> (id/add-identity-credentials tx {
-              :pid "me" ;; TODO pass in pid as func param with code after validating OAuth state param
+            (-> (id/set-identity-credentials tx {
+              :pid "me" ;; TODO pass in pid as func param after using OAuth state param to verify user in handler
               :provider provider
               :access_token (:access_token body)
               :refresh_token (:refresh_token body)
-              :scope (str/split (:scope body) #" ") ;; TODO spotify returns string w/ space separated. idk if that is spec of not 
+              ;; TODO spotify returns string w/ space separated. idk if that is spec of not 
+              ;; TODO necessary? If so move to another query separate from token updates
+              ;; :scope (str/split (:scope body) #" ")
             })
             doall
             ((fn [result] (println "create ID result" result) result))
             first
             :id
-            ;; TODO redirect to jinnihealth://inventory/provider
-            ((fn [id] {:status 200 :body (json/write-str {
-              :id id
-              :msg (str provider "Item Successfully Equipped!")}
-              )}))
+            ((fn [id] {:status 301
+                      :headers {"Location" (str "jinnihealth://inventory/" provider)} ;; redirect with deeplink
+                      :body (json/write-str {
+                        :id id
+                        :msg (str provider "Item Successfully Equipped!")}
+                      )}))
             ))
           )))
         ((fn []
@@ -245,7 +208,7 @@
         ;; TODO match state->identity-> player_id to signed request player id
                 
           ;; (println request)
-    (println "OAUTH callback" qs provider (:token-uri config) code)
+    (println "OAUTH callback" qs)
     (cond
       (clojure.string/blank? provider)    {:status 400 :body "must include oauth provider"}
       (nil? config)                       {:status 400 :body "oauth provider not supported"}
@@ -254,25 +217,32 @@
       (clojure.string/blank? code)        {:status 400 :body "no code provided for oauth flow"}
       :else                               (request-access-token provider config code))))
 
-
-
-(defn oauth-refresh-token-handler
+(defn refresh-access-token
   "Part #3 of OAuth2 flow
   After access token expires, return a refresh token to get a new access token
   
   returns - pedestal response map
   "
-  [provider config token]
-  (let [base-config (get-oauth-api-request-config provider config)
-        request-config (update-in base-config
-                                  [:body] 
-                                  #(-> %
-                                    (merge {:grant_type "authorization_code" :refresh_token token})
-                                    json/write-str))]
-  )
-)
-
-
+  [player_id provider]
+  (println "refreshing access token for "  player_id " on " provider)
+  (let [id (id/getid player_id provider)
+          provider-config ((keyword provider) oauth-providers)
+          base-config (get-oauth-api-request-config provider provider-config)
+          request-config (assoc base-config :body (json/write-str{ ;; (json/write-str ?
+                          :grant_type "authorization_code"
+                          :refresh_token (:refresh_token id)
+                          :client_id (:client-id provider-config)}))
+          ;; response (client/post (:token-uri provider-config) request-config)
+          ]
+    (try (let [response (client/post (:token-uri provider-config) request-config)]
+      (println "refresh token response " response)
+      ;; todo read response, update tokens in db
+      )
+    (catch Exception err
+        (println (str "Error refreshing token on *" provider "*: "))
+        (.getMessage err))
+    )
+))
 
 
 ;; TODO OAuth providers return a new access token on each request

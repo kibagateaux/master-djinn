@@ -1,9 +1,9 @@
 
-(ns master-djinn.manifester.service
+(ns master-djinn.portal.service
   (:require [io.pedestal.http :as http]
             [io.pedestal.http.route :as route]
             [master-djinn.util.gql.schema :as schema]
-            [master-djinn.manifester.identity :as id]
+            [master-djinn.portal.identity :as id]
             [master-djinn.util.crypto :refer [handle-signed-POST-query]]
 
             ;; for default lacinia config
@@ -33,7 +33,7 @@
    With or without signed query, GQL resolvers handle authorization on individual data resources"
   (interceptor
     {:name ::parse-signed-request
-    ;;  :error lp-internal/on-error-error-response
+     :error lp-internal/on-error-error-response
     :enter (fn [context]
       (let [vars (get-in context [:request :graphql-vars :verification])]
         ;; (println "service.signed-request : "  (:signature vars) (:_raw_query vars))
@@ -77,7 +77,7 @@
                       [oauth-init-path :get (conj [(body-params/body-params)] id/oauth-init-handler) :route-name ::oauth-init]
                       [oauth-cb-path :post (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-post]
                       [oauth-cb-path :get (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-get]
-                      [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
+                      ;; [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
                       }
                   (p2/graphiql-asset-routes (:gql-asset-path gql-dev-server-options)))]
     ;; (println "custom gql" gql-dev-server-options)
