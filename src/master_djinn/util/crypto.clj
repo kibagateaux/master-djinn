@@ -3,8 +3,8 @@
               (org.web3j.utils Numeric)))
 
 (defonce MALIKS_MAJIK_CARD nil) ;; TODO
-(defonce TEST_SIGNER nil) ;; TODO
-(defonce MASTER_DJINN_ADDY (set [
+(defonce TEST_SIGNER "0x0AdC54d8113237e452b614169469b99931cF094e")
+(defonce MASTER_DJINNS (set [
     MALIKS_MAJIK_CARD
     TEST_SIGNER
 ]))
