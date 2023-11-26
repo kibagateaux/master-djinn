@@ -45,6 +45,7 @@
   (let [provider (name (:data_provider data)) ;; @DEV: remove keyword prefix ":" for neo4j tag
         action_name (:name data)
         pid (:player_id data)
+        aaa (println "player id   " pid)
         ;; TODO cleaner if vars above are in action data themselves
         ;; BUT also nice that :data is straight from providers and our data is separate
         inputs (:data data)]

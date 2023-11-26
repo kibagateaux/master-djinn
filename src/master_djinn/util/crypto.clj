@@ -1,6 +1,14 @@
 (ns master-djinn.util.crypto
     (:import  (org.web3j.crypto ECKeyPair Sign Keys)
               (org.web3j.utils Numeric)))
+
+(defonce MALIKS_MAJIK_CARD nil) ;; TODO
+(defonce TEST_SIGNER nil) ;; TODO
+(defonce MASTER_DJINN_ADDY (set [
+    MALIKS_MAJIK_CARD
+    TEST_SIGNER
+]))
+
 ;; ETH signing scheme specs
 ;; https://eips.ethereum.org/EIPS/eip-191
 ;; https://eips.ethereum.org/EIPS/eip-712
@@ -60,7 +68,7 @@
     "original-msg is human readable string that signer was shown
     signed-msg-hash is hexstring bytecode output of rpc/wallet signing function
     returns checksummed ethereum address that signed msg-hash
-    @DEV: Assumes signed-msg-hash is EIP-712 compliant with prefix '\x19Ethereum Signed Message:\n{msg-length}'
+    @DEV: Assumes signed-msg-hash is EIP-712 compliant with prefix '\\x19Ethereum Signed Message:\\n{msg-length}'
     @DEV: Always returns an address even if invalid data. Must check against expected signer (def a bug, not how solidity ecrecover works, potential attack vector since not entirely based on cryptography)
         Open issue on web3j repo - https://github.com/web3j/web3j/issues/1989
     "
@@ -97,15 +105,17 @@
     (let  [{sig :signature q :_raw_query} (get-in context [:request
                                                             :graphql-vars
                                                             :verification])
-            ;; aaa (println "util.crypto/prase-signed-query: " sig q)
+            aaa (println "util.crypto/prase-signed-query: " sig q)
             signer (ecrecover sig q)
-            ;; aaa (println "parse-signed-POST-query with sig: " signer)
+            aaa (println "parse-signed-POST-query with sig: " signer)
             ;; add signer to app context for use in resolvers
             with-signer (assoc-in context [:request :graphql-vars :signer] signer)
             ;; replace original query sent with signed query for lacinia to execute secure query
             with-query (assoc-in with-signer [:request :graphql-query] q)
-            ;; aaa (println "parse-signed-POST-query with sig: " (get-in with-query [:request :graphql-query] ))
+            ;; aaa (println "parse-signed-POST-query with sig: " (get-in with-query [:request :graphql-query]))
             ]
+        ;; (clojure.pprint/pprint (:request context))
+
         ;; MAJOR SECURITY BUG: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
         ;; @DEV: TODO FIXES
         ;; 1. fix security bug!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 

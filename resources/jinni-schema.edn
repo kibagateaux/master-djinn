@@ -135,6 +135,12 @@
                         :majik_msg {:type (non-null String)} ;; Signed player_id by majik card
                         :player_id {:type (non-null String)}} ;; 0x ETH address they will sign messages from
             }
+        :sync_provider_id
+            {:type       String
+            :description "adds a players username on a OAuth platform to their :Identity in our DB after granting access"
+            :args       {:provider {:type (non-null String)}
+                        :player_id {:type (non-null String)}} ;; 0x ETH address
+            }
         }}
     }
 }

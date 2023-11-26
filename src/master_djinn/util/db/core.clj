@@ -11,13 +11,20 @@
       )
   ))
 
+(defonce MASTER_DJINN_DATA_PROVIDER "MasterDjinn")
+(defonce MOBILE_APP_DATA_SOURCE "JinniMobileApp")
+
+(defn call [query args]
+  (neo4j/with-transaction connection tx
+    (-> (query tx args) doall first)))
+
 (defn generate-resolver
   "for direct read queries that dont require formatting input data"
   [query]
   (fn [context args value]
     ;; (println "DB:resolver: ctx" context)
     ;; (println "DB:resolver: ctx" args)
-  ;; using context:  https://lacinia.readthedocs.io/en/latest/resolve/context.html
+    ;; using context:  https://lacinia.readthedocs.io/en/latest/resolve/context.html
     (neo4j/with-transaction connection tx
       ;; (println "DB:resolver: ctx" context)
       (println "DB:resolver: args" args)
@@ -28,9 +35,6 @@
 ;; TODO figure out when to run this. Should i create a migrations type process?
 (neo4j/defquery define-action-invariants
   "CREATE CONSTRAINT unique_action_uuid FOR (a:Action) REQUIRE a.uuid IS UNIQUE")
-
-(neo4j/defquery create-player
-  "CREATE (u:Avatar $player)")
 
 (neo4j/defquery get-all-players
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
@@ -65,4 +69,17 @@
   MATCH  (u:Avatar { id: $player_id })-[]->(a:Action)
   WHERE  a.startTime >= $starttime AND a.endTime <= $endtime
   RETURN a as actions
+")
+
+(neo4j/defquery create-action-with-resources "
+    MERGE (p:Avatar     {id: action.player_id})
+    MERGE (d:DataProvider {id: action.data_provider})
+    CREATE p-[rp:ACTS]->(a:Action)
+    SET a = action.data
+    CALL apoc.refactor.setType(rp, action.player_relation) YIELD output AS relation
+    CREATE (d)-[rd:ATTESTS]->(a)
+    
+    WITH a, p
+    UNWIND $resources AS resource
+    MERGE (r:Resource {uuid: $resource.uuid})
 ")

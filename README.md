@@ -6,11 +6,11 @@ Djinn are the elite of the jinn world. They are the most powerful.
 
 ## Project Setup
 
-Manifester/ - anything with side effects or direct user interactions, namely saving to database
+Portal/ - anything that allows interactions with outside world with the game. aka API 
 Incantations/ - Spells for different user actions
    1. Conjure - Initiate data ingestion from this server from a given source
    2. Transmute - Normalize data sent by user requests or conjure requests to game values for database
-   3. Evoke - Player abilities with side effects in/outside of our system
+   3. Evoke - Player abilities with side effects in/outside of our system e.g. saving to database
    3. Divination - Ways of reading player data and augmenting avatar images based on activity
    3. Rituals - Player habits thats are run on a schedule e.g. Did they complete their quests this week?
    3. Illusion - ZK stuffs TBD

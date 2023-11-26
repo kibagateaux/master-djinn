@@ -72,7 +72,7 @@
   Use PLAYGROUND_UUID instead of uuid/+null+ because different avatars in different spaces/games should generate new ids
   "
   [player]
-    (uuid player PLAYGROUND_UUID GAME_NAME))
+    (uuid PLAYGROUND_UUID GAME_NAME player))
 
 (defn action->uuid
   "UUID namespace hierarchy:
@@ -83,6 +83,7 @@
   provider and source MAY be the same
   start-time MUST be local UTC format 2023-09-07T09:44:16.818Z
   "
+  ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
   [player provider source action-name start-time version]
     (uuid --uuid/+null+ player provider source action-name start-time version))
   

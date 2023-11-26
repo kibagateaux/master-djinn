@@ -1,7 +1,7 @@
 (ns master-djinn.util.db.identity
   (:require [neo4j-clj.core :as neo4j]
-            [master-djinn.util.types.core :refer [load-config]])
-  (:import (java.net URI)))
+            [master-djinn.util.db.core :as db]
+            [master-djinn.util.types.core :refer [load-config]]))
 
 (neo4j/defquery define-id-constraints "
     CREATE CONSTRAINT uniq_id_per_provider IF NOT EXISTS
@@ -34,11 +34,13 @@
     CALL apoc.create.addLabels(id, [$provider]) YIELD node
     RETURN ID(node) as identity
 ")
-(neo4j/defquery add-identity-credentials "
+
+;; set attributes individually to not erase other identity data e.g. username
+;; TODO should add scope to identity? diff function so we dont override when refreshing tokens
+(neo4j/defquery set-identity-credentials "
     MATCH (p:Avatar { pid: $pid })-[:HAS]->(id:Identity {provider: $provider})
     SET id.access_token = $access_token
     SET id.refresh_token = $refresh_token
-    SET id.scope = $scope
     
     RETURN ID(id) as id
 ")
@@ -47,3 +49,22 @@
     MATCH (p:Avatar)-[:HAS]->(id:Identity {nonce: $nonce})
     RETURN p as player
 ")
+
+
+(neo4j/defquery add-username "
+    MATCH (p:Avatar)-[:HAS]->(id:Identity {provider: $provider})
+    SET id.provider_id = $id
+")
+
+(neo4j/defquery get-identity "
+    MATCH (p:Avatar {uuid: $pid})-[:HAS]->(id:Identity {provider: $provider})
+    RETURN id as id
+")
+
+(neo4j/defquery sync-provider-id "
+    MATCH (p:Avatar {uuid: $pid})-[:HAS]->(id:Identity {provider: $provider})
+    SET id.provider_id = $provider_id
+")
+
+(defn getid [player_id provider]
+    (:id (db/call get-identity {:pid player_id :provider provider})))
