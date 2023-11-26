@@ -39,6 +39,12 @@
 (neo4j/defquery get-all-players
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
+(neo4j/defquery get-player-actions"
+  MATCH  (u:Avatar { id: $player_id })-[]->(a:Action)
+  WHERE  a.startTime >= $starttime AND a.endTime <= $endtime
+  RETURN COLLECT(a) as actions
+")
+
 ;; TODO Ideally CREATE in unind could be a merge for automatic dedupe but cant get that query to work with putting object in directly to create
 ;; if we want multiple data providers/sources to attest to an action, will need to rethink data model and will cause issues with autoMERGEing
 ;; @DEV: relationships can only ahve 1 type. refactor.setType *overrides*. Create multiple relations if want to express :WANTS and :DID 
@@ -65,11 +71,7 @@
 ") ;; FIX this returns all actions on a player with UUID. If there are duplicate UUIDs then
 ;; Should be fixed by having constraints set but nice to not have it returned just in case
 
-(neo4j/defquery get-player-actions"
-  MATCH  (u:Avatar { id: $player_id })-[]->(a:Action)
-  WHERE  a.startTime >= $starttime AND a.endTime <= $endtime
-  RETURN a as actions
-")
+
 
 (neo4j/defquery create-action-with-resources "
     MERGE (p:Avatar     {id: action.player_id})

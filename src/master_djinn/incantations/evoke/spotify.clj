@@ -3,96 +3,56 @@
             [master-djinn.util.types.core :refer [action->uuid action-type->name]]
             [master-djinn.portal.identity :refer [refresh-access-token get-provider-auth-token]]
             [master-djinn.util.db.core :as db]
+            [master-djinn.util.types.core :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
 ;; TODO function to construct Auth headers. probs in protal.identity since thats most abstract atm
 ;; just use neo4j/execute not defquery bc they wont be reused anywhere else
-;; Figure out where these spells are accessed. This should just be logic and then they are wrapped in resolvers in gql.schema?
 
 ;; Also figure out best way to use clj-http. ideally async bc then everything is in tail but had issues with that 
 ;; creating response in (let) then accessing is ok but not concurrent and i could see how it might not handle errors great
 (defonce API_URL "https://api.spotify.com/v1")
 (defonce PROVIDER "spotify")
 
-;; (defn get-user-profile
-;;     [url player_id]
-;;     (let [response @(client/get url {:accept :json :async? true
-;;                                     "Authorization" (get-provider-auth-token PROVIDER)
-;;                                     "Content-Type" "application/json"}
-;;                         :handler (fn [res] (cond
-;;                             (= 200 (:status (ex-data res))) (db/call iddb/sync-provider-id {
-;;                                 :pid player_id
-;;                                 :provider PROVIDER
-;;                                 :provider_id (:id res)})
-;;                             (= 401 (:status (ex-data res))) (do 
-;;                                 (println "refresh token response" (refresh-access-token player_id PROVIDER))
-;;                                 (get-user-profile url player_id) ;; refetch profile after updating tokens
-;;                             )
-;;                             :else (do 
-;;                                     (println (str "Error syncing provider id on *" PROVIDER "*: "))
-;;                                     (.getMessage res))))
-;;                         ;; for some reason this doesnt get called on failed calls
-;;                         ;; :error-handler (fn [err] (cond
-;;                         ;;     (= 401 (:status (ex-data err))) (refresh-access-token player_id PROVIDER)
-;;                         ;;     :else (do 
-;;                         ;;             (println (str "Error syncing provider id on *" PROVIDER "*: "))
-;;                         ;;             (.getMessage err))
-;;                         ;;     ))
-;;     )]
-;;     ;; this returns before callback is called. or at least callback prints after this
-;;     ;; (println "get user profile response" response)
-;;     response))
-
 (defn get-user-profile
-    [url player_id]
+    [url player_id token]
     (try (let [res (client/get url {:accept :json :async? false
-                                    "Authorization" (get-provider-auth-token PROVIDER)
-                                    "Content-Type" "application/json"})]
+                                    :headers {"Authorization" (str "Bearer "token) ;; (get-provider-auth-token PROVIDER);; (str "Bearer "token)
+                                        "Content-Type" "application/json"}})]
         (cond
-            (= 200 (:status (ex-data res))) (db/call iddb/sync-provider-id {
-                :pid player_id
+            (not (nil? (:body res))) (db/call iddb/sync-provider-id {
+                :pid player_id ;; TODO player_id once init-auth-handler fixed
                 :provider PROVIDER
-                :provider_id (:id res)})
-            (= 401 (:status (ex-data res))) (do 
-                (println "refresh token response" (refresh-access-token player_id PROVIDER))
-                (get-user-profile url player_id) ;; refetch profile after updating tokens
-            )
-            :else (do 
-                    (println (str "Error syncing provider id on *" PROVIDER "*: "))
-                    (.getMessage res))))
-    (catch Exception err  (cond
-        (= 401 (:status (ex-data err))) (refresh-access-token player_id PROVIDER)
-        :else (do 
-                (println (str "Error syncing provider id on *" PROVIDER "*: "))
-                (.getMessage err))
-        ))
+                :provider_id (:id (json->map (:body res)))})
+            (= 401 (:status (ex-data res)))
+                (try (refresh-access-token player_id PROVIDER)
+                    (get-user-profile url player_id)
+                    (catch Exception err
+                        (println (str "Error fetching profile with refreshed token for *" PROVIDER "*: ") (ex-message err) (ex-data err))))
+            :else  (println (str "Error syncing provider id on *" PROVIDER "*: ") (.getMessage res))))
+    ;; 4/500 codes are going thru success path so this isnt neccessary but here just in case
+    (catch Exception err
+        (println "get spotify profile fail" (ex-data err))
+        (cond
+            (= 401 (:status (ex-data err)))
+                (try (refresh-access-token player_id PROVIDER)
+                    (get-user-profile url player_id)
+                    (catch Exception err
+                        (println (str "Error fetching profile with refreshed token for *" PROVIDER "*: ") (ex-message err) (ex-data err))))
+            :else (println (str "Error syncing provider id on *" PROVIDER "*: ") (ex-message err) (ex-data err))))
     )
-    ;; this returns before callback is called. or at least callback prints after this
-    ;; (println "get user profile response" response)
-    )
+)
 
 ;; TODO abstract to use non-hardcoded provider vals. add base API url to oauth-providers in id
 (defn sync-provider-id
     [player_id]
     (let [id (iddb/getid player_id PROVIDER)
           url (str API_URL "/me")]
-        (println "sync provider id " player_id id)
-        (println "provider bearer token" (get-provider-auth-token PROVIDER))
         (cond
             (not id) {:error "no id provider identity"}
             (not (:access_token id)) {:error "no id provider access token"}
             (not (nil? (:provider_id id))) {:error "already synced id from provider"} ;; already added synced id
-            :else (get-user-profile url player_id)
-    ;; get access_token and refresh_token from db
-    ;; check if username already on :Idnetity bc can't change it so no reason to update
-    ;; if no tokens then revert 403 (not 401, they could be authenticated but cant access resource)
-    ;; (if we have access token then we can access basic profile data)
-    ;; make request to spotify for username
-
-    ;; if request returns error "X" then (portal/identity/refresh-access-tokens player_id "Spotify" refresh_token)
-    ;; if no error then parse response data
-    ;; if id is returned then add to identity id (id is not display name)
-        )))
+            :else (get-user-profile url player_id (:access_token id)))))
 
 (defn create-playlist
     "DOCS: https://developer.spotify.com/documentation/web-api/reference/create-playlist"
