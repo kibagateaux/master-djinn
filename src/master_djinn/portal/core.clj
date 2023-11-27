@@ -1,4 +1,4 @@
-(ns master-djinn.portal.identity
+(ns master-djinn.portal.core
   (:require [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.data.json :as json]
@@ -10,17 +10,21 @@
             [neo4j-clj.core :as neo4j])
   (:import java.util.Base64))
 
-  
+;; TODO rename "integrations" or somethig more general
+
 (defonce oauth-providers {
   :spotify {
+    :provider-id "spotify"
     :auth-uri "https://accounts.spotify.com/authorize"
     :token-uri "https://accounts.spotify.com/api/token"
+    :api-uri "https://api.spotify.com/v1"
     :client-id (:spotify-client-id (load-config))
     :client-secret (:spotify-client-secret (load-config))
     ;; :scope SEE FRONTEND
     ;; :user-info-parser #(-> % :body (parse-string true))
     :user-info-uri      "https://api.spotify.com/v1/me"}
   :github {
+    :provider-id "github"
     :auth-uri           "https://github.com/login/oauth/authorize"
     :token-uri          "https://github.com/login/oauth/access_token"
     :client-id          (:github-client-id (load-config))
@@ -93,7 +97,7 @@
     )))
 
 ;;; Step #1 & #2 - Provider response handling
-(defn get-oauth-api-request-config
+(defn get-oauth-login-request-config
   "@DEV: :body must be stringified before sent in request.
   We return as a map so can easily add new data to base config.
 
@@ -118,7 +122,7 @@
   "
   [provider oauth-config code]
   (println "requesting " provider " server: " (:token-uri oauth-config) "to callback to : " (get-redirect-uri provider) )
-  (let [base-config (get-oauth-api-request-config provider oauth-config)
+  (let [base-config (get-oauth-login-request-config provider oauth-config)
         request-config (assoc base-config :form-params
                           {:redirect_uri (get-redirect-uri provider)
                             :grant_type "authorization_code"
@@ -206,26 +210,37 @@
   (println "refreshing access token for "  player_id " on " provider)
   (let [id (id/getid player_id provider)
         provider-config ((keyword provider) oauth-providers)
-        base-config (get-oauth-api-request-config provider provider-config)
+        base-config (get-oauth-login-request-config provider provider-config)
         request-config (assoc base-config :form-params { ;; (json/write-str ?
                         :grant_type "refresh_token"
                         :refresh_token (:refresh_token id)
                         :client_id (:client-id provider-config)})]
     (try (let [response (client/post (:token-uri provider-config) request-config)
-              body (json->map (:body response))]
+              new_token (:access_token (json->map (:body response)))]
       ;; (println "refresh token response " (json/read-str (:body response) :key-fn keyword))
       (db/call id/set-identity-credentials {
         :pid crypt/TEST_SIGNER ;; TODO player_id when fixed in init-oauth-handler
         :provider provider
-        :access_token (:access_token body)
-        :refresh_token (:refresh_token id)
+        :access_token new_token
+        :refresh_token (:refresh_token id) ;; so we dont overwrite with null
       })
-    )
+    new_token)
     (catch Exception err
         (println (str "Error refreshing token on *" provider "*: ") (ex-message err) (ex-data err))
     ))
 ))
 
+(defn oauthed-request-config
+  "@DEV: :body must be stringified before sent in request.
+  We return as a map so can easily add new data to base config.
+
+  returns - clj-http request map
+  "
+  [access-token]
+  {:accept :json
+  :async? false ;; TODO bottleneck but not important with minimal users
+  :headers  {"Authorization" (str "Bearer " access-token)
+              "Content-Type" "application/json"}})
 
 ;; TODO OAuth providers return a new access token on each request
 ;; Create a helper function that updates :Identity in DB with new access token

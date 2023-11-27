@@ -72,7 +72,10 @@
 ;; Should be fixed by having constraints set but nice to not have it returned just in case
 
 
-
+;; TODO batch-create-action-resources {:actions [{:resources {:relation "Consumed" "Curated" "Created" }}]}
+;; doesnt create actions, make that initial step in batch-create-actions
+;; this just creates resources and relations with actions
+;; resources must have actions???
 (neo4j/defquery create-action-with-resources "
     MERGE (p:Avatar     {id: action.player_id})
     MERGE (d:DataProvider {id: action.data_provider})

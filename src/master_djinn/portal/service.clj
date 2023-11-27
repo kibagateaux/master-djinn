@@ -3,7 +3,7 @@
   (:require [io.pedestal.http :as http]
             [io.pedestal.http.route :as route]
             [master-djinn.util.gql.schema :as schema]
-            [master-djinn.portal.identity :as id]
+            [master-djinn.portal.core :as id]
             [master-djinn.util.crypto :refer [handle-signed-POST-query]]
 
             ;; for default lacinia config
