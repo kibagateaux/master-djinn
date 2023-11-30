@@ -1,8 +1,11 @@
 (ns master-djinn.util.core
-    (:require [clj-time.core :as t]
-            [clj-time.format :as f]))
+  (:require [master-djinn.util.crypto :refer [TEST_SIGNER]]))
 
 (defn now []
-  (-> (t/now)
-      (t/to-time-zone (t/time-zone-for-id "UTC"))
-      (f/unparse (f/formatters :date-time))))
+  (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")
+        utc (java.time.ZoneId/of "UTC")
+        now (java.time.ZonedDateTime/now utc)]
+    (.format formatter now)))
+
+(defn get-signer [gql-ctx]
+  (or (get-in gql-ctx [:request :signer]) TEST_SIGNER))

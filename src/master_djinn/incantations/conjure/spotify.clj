@@ -51,23 +51,23 @@
             ;; TODO should move state updates into this func and make this just fetching profile data
             :else (get-user-profile player-id (:access_token id)))))
 
-(defn get-top-tracks
+(defn top-tracks
     "DOCS: https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks
-    player-id"
+    TODO: (priorty mega-low) add tracks as :Resources to DB so we can map players with similar music tastes
+    "
     [player-id target-player-id]
-    ;; get access_token for target_player
     (let [version "0.0.1" start-time (now) limit 20
-        id (iddb/getid target-player-id) ;; can only get top items as self.
+        id (iddb/getid target-player-id PROVIDER) ;; can only get top items as self.
         range "short_term" ;; short_term = 4 weeks medium_term = 6 months})
         url (str API_URL "/me/top/tracks?limit="limit"&time_range="range)]
     (try (let [res (client/get url (portal/oauthed-request-config (:access_token id)))]
+        (println "get top track response" (:status res) )
         (cond
-            ;; create action recording they visited their profile?
-        ;; This will be tracked in frontend already via segment
-        ;; however fits with playground model of multiple apps and selfhosted  data access
-            (= 200 (:status (ex-data res))) (do
-                ;; log action in db on completion
-                (db/call db/batch-create-actions [{
+            ;; create action recording they visited their profile
+            ;; This will be tracked in frontend already via segment
+            ;; But fits with playground model of multiple apps and selfhosted data access
+            (= 200 (:status res)) (do
+                (db/call db/batch-create-actions {:actions [{
                     :name  (action-type->name :Perceiving)
                     :data_provider db/MASTER_DJINN_DATA_PROVIDER
                     :player_id player-id
@@ -80,17 +80,31 @@
                         :end_time start-time
                         :data_source db/MOBILE_APP_DATA_SOURCE
                     }
-                }])
-            ;; (map #() (:items response))
-            ;; is_local, name, href, (map :name (:artis %))
+                }]})
+                ;; TODO should this be a transmute into :Resource?
+                (doall (map (fn [track]
+                    (let [{:keys [name id preview_url href artists]} track
+                            by (map #({:id (:id %) :name (:name %) :href (:href %)}) artists)
+                            ]
+                        {:name name :id id :href href :image preview_url :creators by}))
+                (:items (json->map (:body res)))))
             )
-            (= 401 (:status (ex-data res))) (try
+            (= 401 (:status res)) (try
                     (portal/refresh-access-token player-id PROVIDER) 
-                    (get-top-tracks player-id target-player-id)
+                    (top-tracks player-id target-player-id)
                     (catch Exception err (println
-                        (str "Evoke:Spotify:Follow ERROR following with refreshed token")
+                        (str "Conjure:Spotify:TopTracks ERROR #1 retrieving with refreshed token")
                         (ex-message err) (ex-data err))))
-            :else  (println (str "Error syncing provider id on *" PROVIDER "*: ") (.getMessage res)))
-    ))
-    )
-)
+            :else  (println (str "Error requesting top tracks on *" PROVIDER "*: ") res)))
+    (catch Exception err
+        (println (str "Error gettign top tracks on *" PROVIDER "*: ") (ex-data err)) 
+        (cond 
+            (= 401 (:status (ex-data err))) (try
+                        (portal/refresh-access-token player-id PROVIDER) 
+                        (top-tracks player-id target-player-id)
+                        (catch Exception err (println
+                            (str "Conjure:Spotify:TopTracks ERROR #2 retrieving with refreshed token")
+                            (ex-message err) (ex-data err))))
+            :else  (println (str "Error processing top tracks on *" PROVIDER "*: ") (ex-data err))
+    )))
+))

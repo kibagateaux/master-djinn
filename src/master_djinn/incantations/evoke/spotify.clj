@@ -20,35 +20,37 @@
     [player-id target-players]
     (let [version "0.0.1" start-time (now)
             id (iddb/getid player-id PROVIDER) ;; TODO checjk if null
-            targets (map #(:provider_id %) (filter nil? (map #(iddb/getid % PROVIDER)) target-players))
+            targets (map #(:provider_id %) (filter some? (map #(iddb/getid % PROVIDER) target-players)))
             url (str (:api-uri CONFIG)
                     "/me/following?type=user&ids="
-                    (clojure.string/join targets ","))]
-        (try (let [res (client/put url (portal/oauthed-request-config (:acces_token id)))]    
-            (println "follow response" (ex-data res))
+                    (clojure.string/join "," targets))]
+        (try (let [res (client/put url (portal/oauthed-request-config (:access_token id)))]    
             (cond
-                (= 204 (:status (ex-data res))) (db/call db/batch-create-actions [{
-                    :name  (action-type->name :Socializing)
+                (= 204 (:status res)) (db/call db/batch-create-actions {:actions [{
+                    :name (action-type->name :Socializing)
                     :data_provider db/MASTER_DJINN_DATA_PROVIDER
                     :player_id player-id
                     :player_relation "DID"
                     :data {
-                        :players [target-players]
+                        :players  (clojure.string/join "," target-players)
                         :uuid (action->uuid player-id db/MASTER_DJINN_DATA_PROVIDER db/MOBILE_APP_DATA_SOURCE (action-type->name :Socializing) start-time version)
                         :start_time start-time
                         :end_time start-time
                         :data_source db/MOBILE_APP_DATA_SOURCE
                     }
-                }])
-                (= 401 (:status (ex-data res))) (try
-                        (portal/refresh-access-token player-id PROVIDER) 
-                        (follow-players player-id target-players)
-                        (catch Exception err (println
-                            (str "Evoke:Spotify:Follow ERROR following with refreshed token")
-                            (ex-message err) (ex-data err))))
-                :else  (println (str "Error syncing provider id on *" PROVIDER "*: ") (.getMessage res))))  
+                }]})
+                :else  (println (str "Error requesting following players on *" PROVIDER "*: ") res)))  
         (catch Exception err
-                (println (str "Error syncing provider id on *" PROVIDER "*: ") (ex-message err) (ex-data err))
+            (println (str "Error following players on *" PROVIDER "*: ") (ex-data err)) 
+            (cond
+                (= 400 (:status (ex-data err))) (println (str "Malformed request on *" PROVIDER "*: "))
+                (= 401 (:status (ex-data err))) (try
+                            (portal/refresh-access-token player-id PROVIDER) 
+                            (follow-players player-id target-players)
+                            (catch Exception err (println
+                                (str "Evoke:Spotify:Follow ERROR following with refreshed token")
+                                (ex-message err) (ex-data err))))
+                :else (println (str "Error processing response following players on *" PROVIDER "*: ") (ex-data err) err))
         ))
 ))
 
@@ -59,7 +61,8 @@
         TODO would be dope to somehow get the jam share url and target player sto join jam from inside Jinni"
     [player-id playlist-id]
     (let [version "0.0.1" start-time (now)]
-        (db/call db/batch-create-actions [{
+        (println "spotify create silent disco" player-id playlist-id)
+        (db/call db/batch-create-actions {:actions [{
             :name  (action-type->name :Partying)
             :data_provider db/MASTER_DJINN_DATA_PROVIDER
             :player_id player-id
@@ -71,7 +74,7 @@
                 :end_time start-time ;; TODO ideally webhook when jam ends to log
                 :data_source db/MOBILE_APP_DATA_SOURCE
             }
-        }])
+        }]})
 ))
 
 (defn create-playlist
