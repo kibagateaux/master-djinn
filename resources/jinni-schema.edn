@@ -1,99 +1,86 @@
 {:enums
 ;; TODO super annoying that these are clojure keywords and not strings as they come thru the API
 ;; not that thats an issue on the backend but makes it non-interoperable with String values
- {:ActionTypes
-  {:description "General categories for actions"
-   :values [:Exercise :Socialize :Internalize]}
+    {:ActionTypes
+        {:description "General categories for actions"
+        :values [:Exercise :Socialize :Internalize]}
 
-   :ActionNames
-  {:description "General categories for actions"
-   :values [
-    :Walking
-    :Running
-    :Dancing
-    :Biking
-    :Talking
-    :Calling
-    :Facetiming
-    :Socializing
-    :Partying
-    :Messaging
-    :Eating
-   ]}
-   
-   :DataProviders
-   {:description "
-        Valid Data Providers. Unique game items that players can equip.
-        Possible that a data provider can also be a data source. Or a data source could appear in multiple data providers.
-    "
-    :values [
-        :IphoneHealthKit
-        :IwatchHealthKit
-        :AndroidHealthConnect
-    ]}
-
-    ;; :ArbitraryDataInput
-    ;;     {:description "Action input data types. To be handled independentlyby data provider transmuteres"
-    ;;     :values [Int String]} ;implictly has null as option   
-    }
-;; :unions
-;;     {:ArbitraryDataInput
-;;         {:description "Action input data types. To be handled independentlyby data provider transmuteres"
-;;         :members [Int String]} ;implictly has null as option
-;;     }
-
-
-:input-objects 
-    {:SignedRequest
-        {:description "Cryprographic signature and data to verify that the GQL query sent was signed by player.
-            variable values aren't included in query so shouldnt cause recursion issue with different hashes.
-            signature = eth_signMessage(query)
-            nonce = optional value provided to player by server they are querying to prevent replay attacks   
-        "
-        :fields {
-            :_raw_query {:type String }
-            :signature {:type (non-null String) }
-            ;; :nonce {:type String }
-        }}
-    :RawInputData
-        {:description "Any unprocessed data collected from data providers. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
-        :fields {
-            :id {:type String} ;; uuid in data provider system
-            :count {:type String} ;; uuid in data provider system
-            :timestamp {:type String} ;; exact time action occured
-            ;; timespan that action occured over
-            :startTime {:type String}
-            :endTime {:type String}
-            :startDate {:type String}
-            :endDate {:type String}
-            :metadata {:type :RawInputMetadata}
-        }}
-    :RawInputMetadata
-        {:description "Info on how data was collected from data provider provider. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
-        :fields {
-            :id {:type String} ;; uuid in data provider system
-            :clientRecordId {:type String} ;; uuid in data provider system
-            :clientRecordVersion {:type String} ;; exact time action occured
-            :device {:type String} ;; exact time action occured
-            ;; timespan that action occured over
-            :lastModifiedTime {:type String}
-            :dataOrigin {:type String}
-            :recordingMethod {:type String}
-        }}
+    :ActionNames
+        {:description "General categories for actions"
+        :values [
+            :Perceiving
+            :Walking
+            :Running
+            :Dancing
+            :Biking
+            :Talking
+            :Calling
+            :Facetiming
+            :Socializing
+            :Partying
+            :Messaging
+            :Eating
+        ]}
+    
+    :DataProviders
+        {:description "Valid Data Providers. 
+                Unique game items that players can equip.
+                Possible that a data provider can also be a data source. Or a data source could appear in multiple data providers."
+        :values [
+            :IphoneHealthKit
+            :IwatchHealthKit
+            :AndroidHealthConnect
+        ]}
     }
 
-:objects
-    {:Avatar
-        {:fields {
+    :input-objects 
+        {:SignedRequest
+            {:description "Cryprographic signature and data to verify that the GQL query sent was signed by player.
+                variable values aren't included in query so shouldnt cause recursion issue with different hashes.
+                signature = eth_signMessage(query)
+                nonce = optional value provided to player by server they are querying to prevent replay attacks"
+            :fields {
+                :_raw_query {:type String }
+                :signature {:type (non-null String) }
+                ;; :nonce {:type String }
+            }}
+        :RawInputData
+            {:description "Any unprocessed data collected from data providers. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
+            :fields {
+                :id {:type String} ;; uuid in data provider system
+                :count {:type String} ;; uuid in data provider system
+                :timestamp {:type String} ;; exact time action occured
+                ;; timespan that action occured over
+                :startTime {:type String}
+                :endTime {:type String}
+                :startDate {:type String}
+                :endDate {:type String}
+                :metadata {:type :RawInputMetadata}
+            }}
+        :RawInputMetadata
+            {:description "Info on how data was collected from data provider provider. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
+            :fields {
+                :id {:type String} ;; uuid in data provider system
+                :clientRecordId {:type String} ;; uuid in data provider system
+                :clientRecordVersion {:type String} ;; exact time action occured
+                :device {:type String} ;; exact time action occured
+                ;; timespan that action occured over
+                :lastModifiedTime {:type String}
+                :dataOrigin {:type String}
+                :recordingMethod {:type String}
+            }}
+    }
+    :objects
+        {:Avatar {:fields {
             :id {:type (non-null String)}
             :name {:type String}
             :birthday {:type String}
             :homies {:type (list :Avatar)}
         }}
-    :Action
-        ;; make interface if we need abstract for incipient/consequential
-        ;; :implements [:Action]
-        {:fields {
+        :Action {:fields {
+            ;; make interface if we need abstract for incipient/consequential
+            ;; :implements [:Action]
+            
             :id {:type (non-null String)}
             :name {:type (non-null String)}
             :startTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
@@ -101,26 +88,32 @@
             :data_provider {:type (non-null :DataProviders)}
             :player {:type :Avatar} ;; Action may have multiple players? or no player if its projected?
         }}
-    :Query
-        ;; TODO rename :verification to :majik-ms? So you need to imbue majik into  every request to make them work
-        {:fields {
+        :Resource {:fields {
+            ;; make interface if we need abstract for incipient/consequential
+            ;; :implements [:Action]
+            
+            :id {:type (non-null String)}
+            :name {:type (non-null String)}
+            :image {:type String}
+            :href {:type String} ;; link to view data on resource
+            :creators {:type (list Avatar)}
+        }}
+        :Query {:fields {
             :players {:type (list :Avatar)
                     :args { :verification {:type :SignedRequest} } ;; non-null for now
             }
-        ;; :jinni {:type (non-null :Avatar)
-        ;;     :args {:player_id {:type String}}}
-        ;; ;; get all of a players jin not just their primary.
-        ;; ;; Here to remind me that i want people to bond to multiple jinn so i dont fuck up architecture
-        ;; :my-jinn {:type (list :Avatar)
-        ;;     :args {:player_id {:type String}}}
-        
-        ;; :player-actions {:type (list :Action)}
-        ;;     :args {:player_id {:type (non-null String)
-        ;;             :type (:type String)}
-        }
-    }
-    :Mutation
-        {:fields  {
+            ;; :jinni {:type (non-null :Avatar)
+            ;;     :args {:player_id {:type String}}}
+            ;; ;; get all of a players jin not just their primary.
+            ;; ;; Here to remind me that i want people to bond to multiple jinn so i dont fuck up architecture
+            ;; :my-jinn {:type (list :Avatar)
+            ;;     :args {:player_id {:type String}}}
+            
+            ;; :player-actions {:type (list :Action)}
+            ;;     :args {:player_id {:type (non-null String)
+            ;;             :type (:type String)}
+        }}
+        :Mutation {:fields  {
             :submit_data
                 {:type        (list ID)
                 :description "Submit new game action data from players and return :Action UUIDs created"
@@ -128,21 +121,33 @@
                             :data {:type (list :RawInputData)}
                             :data_provider {:type (non-null :DataProviders)}
                             :name {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
-                            :player_id {:type (non-null String)}}  ;; 0x ETH address
-            }
-        :activate_jinni
-            {:type       (non-null ID)
-            :description "registers a new jinni using ZKP that you have received a majik card"
-            :args       {:verification {:type :SignedRequest} ;; TODO ZKP?
-                        :majik_msg {:type (non-null String)} ;; Signed player_id by majik card
-                        :player_id {:type (non-null String)}} ;; 0x ETH address they will sign messages from
-            }
-        :sync_provider_id
-            {:type       String
-            :description "adds a players username on a OAuth platform to their :Identity in our DB after granting access"
-            :args       {:provider {:type (non-null String)}
-                        :player_id {:type (non-null String)}} ;; 0x ETH address
-            }
-        }}
+                            :player_id {:type (non-null String)}}}  ;; 0x ETH address
+            
+            :activate_jinni
+                {:type       (non-null ID)
+                :description "registers a new jinni using ZKP that you have received a majik card"
+                :args       {:verification {:type :SignedRequest} ;; TODO ZKP?
+                            :majik_msg {:type (non-null String)} ;; Signed player_id by majik card
+                            :player_id {:type (non-null String)}}} ;; 0x ETH address they will sign messages from
+                
+            :sync_provider_id
+                {:type       String
+                :description "adds a players username on a OAuth platform to their :Identity in our DB after granting access"
+                :args       {:provider {:type (non-null String)}
+                            :player_id {:type (non-null String)}}} ;; 0x ETH address
+                
+            :spotify_follow
+                {:type       String
+                :description "follows other players from current players spotify account"
+                :args       {:target_players {:type (list (non-null String))}}}
+            :spotify_disco
+                {:type       String
+                :description "creates a local silent disco"
+                :args       {:playlist_id {:type (non-null String)}}}
+            :spotify_top_tracks
+                {:type       (list Resource)
+                :description "gets top tracks on spotify for a player"
+                :args       {:target_player {:type (non-null String)}}}
+            }}
     }
 }

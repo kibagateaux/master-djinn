@@ -231,11 +231,8 @@
 ))
 
 (defn oauthed-request-config
-  "@DEV: :body must be stringified before sent in request.
-  We return as a map so can easily add new data to base config.
-
-  returns - clj-http request map
-  "
+  "For sending requests on behalf of a user to an OAuth2 server
+  User must have completed oauth flow and have:Identity in db already"
   [access-token]
   {:accept :json
   :async? false ;; TODO bottleneck but not important with minimal users

@@ -4,15 +4,17 @@
             [master-djinn.incantations.evoke.spotify :as spotify-e]
             [master-djinn.incantations.conjure.spotify :as spotify-c]
             [master-djinn.portal.core :as portal]
+            [master-djinn.util.core :refer [get-signer]]
             [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
             [master-djinn.util.crypto :refer [ecrecover MASTER_DJINNS]]))
 (defonce providers portal/oauth-providers)
+
 (defn activate-jinni
     ;; TODO clojure.spec inputs and outputs
   [ctx args val]
   (println "activate jinn arhs:" args val)
   (let [djinn (ecrecover (:majik_msg args) (:player_id args))
-        pid (get-in ctx [:request :graphql-vars :signer])
+        pid (get-signer ctx)
         jid (uuid nil pid (str (java.util.UUID/randomUUID)))]
     (println djinn (MASTER_DJINNS djinn))
     (println pid jid)
@@ -36,3 +38,19 @@
         (= provider (:id (:spotify providers))) (spotify-c/sync-provider-id player_id)
         ;; (= provider github/PROVIDER) (github/sync-provider-id player_id)
         :else (println "invalid provider to sync id with"))))
+
+(defn spotify-follow
+    [ctx args val]
+    (let [pid (get-signer ctx)]
+        (spotify-e/follow-players pid (:target_players args))))
+
+(defn spotify-disco
+    [ctx args val]
+    (let [pid (get-signer ctx)]
+        (spotify-e/create-silent-disco pid (:playlist_id args))))
+
+(defn spotify-top-tracks
+    [ctx args val]
+    (let [pid (get-signer ctx)]
+        (spotify-c/top-tracks pid (:target_player args))))
+        

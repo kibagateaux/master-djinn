@@ -9,6 +9,7 @@
 
 (def resolver-map {
   :Query/players (fn [ctx args val]
+  ;; TODO add parse results fn to generate_resulver for cleaner code
     (let [results ((db/generate-resolver db/get-all-players) ctx args val)]
       (:players results)))
 
@@ -23,7 +24,9 @@
   
   ;; spotify
   :Mutation/sync_provider_id i/sync-provider-id
-  ;; :Mutation/spotify_follow i/spotify-follow
+  :Mutation/spotify_follow i/spotify-follow
+  :Mutation/spotify_disco i/spotify-disco
+  :Mutation/spotify_top_tracks i/spotify-top-tracks
   ;; :Mutation/spotify_create_playlist i/spotify-create-playlist
 })
 
