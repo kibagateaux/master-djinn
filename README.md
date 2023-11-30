@@ -24,6 +24,7 @@ Currently accept 2 ways to add environment variables to the project for repl and
 
 ## Clojure Cookbook
 - [Destructuring](https://gist.github.com/john2x/e1dca953548bfdfb9844)
+
 ## Getting Started
 
 
