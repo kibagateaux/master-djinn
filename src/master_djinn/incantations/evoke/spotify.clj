@@ -7,11 +7,6 @@
             [master-djinn.util.types.core :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
-;; TODO function to construct Auth headers. probs in protal.identity since thats most abstract atm
-;; just use neo4j/execute not defquery bc they wont be reused anywhere else
-
-;; Also figure out best way to use clj-http. ideally async bc then everything is in tail but had issues with that 
-;; creating response in (let) then accessing is ok but not concurrent and i could see how it might not handle errors great
 (defonce PROVIDER "spotify")
 (defonce CONFIG ((keyword PROVIDER) portal/oauth-providers))
 

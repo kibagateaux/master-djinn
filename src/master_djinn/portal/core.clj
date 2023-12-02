@@ -14,24 +14,24 @@
 
 (defonce oauth-providers {
   :spotify {
-    :provider-id "spotify"
+    :id "spotify"
     :auth-uri "https://accounts.spotify.com/authorize"
     :token-uri "https://accounts.spotify.com/api/token"
     :api-uri "https://api.spotify.com/v1"
     :client-id (:spotify-client-id (load-config))
     :client-secret (:spotify-client-secret (load-config))
     ;; :scope SEE FRONTEND
-    ;; :user-info-parser #(-> % :body (parse-string true))
+    :user-info-parser #(-> % :body json->map :id)
     :user-info-uri      "https://api.spotify.com/v1/me"}
   :github {
-    :provider-id "github"
+    :id "github"
     :auth-uri           "https://github.com/login/oauth/authorize"
     :token-uri          "https://github.com/login/oauth/access_token"
     :client-id          (:github-client-id (load-config))
     :client-secret      (:github-client-secret (load-config))
     ;; :scope             SEE FRONTEND
-    ;; :user-info-parser #(-> % :body (parse-string true))
-    :user-info-uri      "https://api.github.com/user"}
+    :user-info-parser #(-> % :body json->map :login)
+    :user-info-uri      "https://api.github.com/user"} ; https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28
 })
 
 (defn get-redirect-uri [provider]
@@ -48,6 +48,17 @@
   (str "Basic " (base64-encode (str
     (:client-id ((keyword provider) oauth-providers)) ":"
     (:client-secret ((keyword provider) oauth-providers))))))
+
+(defn get-oauth-login-request-config
+  "@DEV: :body must be stringified before sent in request.
+  We return as a map so can easily add new data to base config.
+
+  returns - clj-http request map
+  "
+  [provider config]
+  {:accept :json :async? false ;; TODO bottleneck but not important with minimal users
+  :headers  {"Authorization" (get-provider-auth-token provider)
+              "Content-Type" "application/x-www-form-urlencoded"}})
 
 (defn kebab->capital [s] ;; not needed anymore since i moved everything to capital case on back+frontend
   (->> (str/split s #"[ -]")
@@ -97,19 +108,6 @@
     )))
 
 ;;; Step #1 & #2 - Provider response handling
-(defn get-oauth-login-request-config
-  "@DEV: :body must be stringified before sent in request.
-  We return as a map so can easily add new data to base config.
-
-  returns - clj-http request map
-  "
-  [provider config]
-  {
-  :async? false ;; TODO bottleneck but not important with minimal users
-  :headers  {"Authorization" (get-provider-auth-token provider)
-              "Content-Type" "application/x-www-form-urlencoded"}})
-
-
 (defn request-access-token
   "Part #2 of OAuth2 flow
 
@@ -126,7 +124,11 @@
         request-config (assoc base-config :form-params
                           {:redirect_uri (get-redirect-uri provider)
                             :grant_type "authorization_code"
-                            :code code})
+                            :code code
+                            ;; only needed on - github, 
+                            :client_id (:client-id oauth-config)
+                            :client_secret (:client-secret oauth-config)
+                            })
         response (client/post (:token-uri oauth-config) request-config)]
       ;; (println "oauth token response" (json/read-str (:body response) :key-fn keyword))
     (if (get-in response [:body])
@@ -206,9 +208,9 @@
   
   returns - pedestal response map
   "
-  [player_id provider]
-  (println "refreshing access token for "  player_id " on " provider)
-  (let [id (id/getid player_id provider)
+  [player-id provider]
+  (println "refreshing access token for "  player-id " on " provider)
+  (let [id (id/getid player-id provider)
         provider-config ((keyword provider) oauth-providers)
         base-config (get-oauth-login-request-config provider provider-config)
         request-config (assoc base-config :form-params { ;; (json/write-str ?
@@ -219,7 +221,7 @@
               new_token (:access_token (json->map (:body response)))]
       ;; (println "refresh token response " (json/read-str (:body response) :key-fn keyword))
       (db/call id/set-identity-credentials {
-        :pid crypt/TEST_SIGNER ;; TODO player_id when fixed in init-oauth-handler
+        :pid player-id ;; TODO player-id when fixed in init-oauth-handler
         :provider provider
         :access_token new_token
         :refresh_token (:refresh_token id) ;; so we dont overwrite with null
@@ -234,8 +236,7 @@
   "For sending requests on behalf of a user to an OAuth2 server
   User must have completed oauth flow and have:Identity in db already"
   [access-token]
-  {:accept :json
-  :async? false ;; TODO bottleneck but not important with minimal users
+  {:accept :json :async? false ;; TODO bottleneck but not important with minimal users
   :headers  {"Authorization" (str "Bearer " access-token)
               "Content-Type" "application/json"}})
 

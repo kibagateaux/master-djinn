@@ -7,49 +7,9 @@
             [master-djinn.util.types.core :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
-;; TODO function to construct Auth headers. probs in protal.identity since thats most abstract atm
-;; just use neo4j/execute not defquery bc they wont be reused anywhere else
 
-;; Also figure out best way to use clj-http. ideally async bc then everything is in tail but had issues with that 
-;; creating response in (let) then accessing is ok but not concurrent and i could see how it might not handle errors great
-(defonce API_URL "https://api.spotify.com/v1")
 (defonce PROVIDER "spotify")
-
-;; TODO this should be in conjure im pretty sure
-(defn get-user-profile
-    "DOCS: https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile"
-    [player-id token]
-    (try (let [url (str API_URL "/me")
-                res (client/get url (portal/oauthed-request-config token))]
-        (cond
-;; TODO abstract into helper on portal? (make-request url method token player_id provider onData retryFunc)
-            (not (nil? (:body res))) (db/call iddb/sync-provider-id {
-                :pid player-id ;; TODO player_id once init-auth-handler fixed
-                :provider PROVIDER
-                :provider_id (:id (json->map (:body res)))})
-            (= 401 (:status (ex-data res)))
-            ;; returns 403 if cant authenticate at all so no chance of endless recursion if user hasnt authorized us
-                (try (get-user-profile player-id (portal/refresh-access-token player-id PROVIDER))
-                    (catch Exception err (println
-                        (str "Evoke:Spotify:GetPofile ERROR fetching profile with refreshed token")
-                        (ex-message err) (ex-data err))))
-            :else  (println (str "Error syncing provider id on *" PROVIDER "*: ") (.getMessage res))))
-    ;; 4/500 codes are going thru success path so this isnt neccessary but here just in case
-    (catch Exception err
-         (println (str "Error syncing provider id on *" PROVIDER "*: ") (ex-message err) (ex-data err))
-    ))
-)
-
-;; TODO abstract to use non-hardcoded provider vals. add base API url to oauth-providers in id
-(defn sync-provider-id
-    [player-id]
-    (let [id (iddb/getid player-id PROVIDER)]
-        (cond
-            (not id) {:error "no id provider identity"}
-            (not (:access_token id)) {:error "no id provider access token"}
-            (not (nil? (:provider_id id))) {:error "already synced id from provider"} ;; already added synced id
-            ;; TODO should move state updates into this func and make this just fetching profile data
-            :else (get-user-profile player-id (:access_token id)))))
+(defonce CONFIG ((keyword PROVIDER) portal/oauth-providers))
 
 (defn top-tracks
     "DOCS: https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks
@@ -59,7 +19,7 @@
     (let [version "0.0.1" start-time (now) limit 20
         id (iddb/getid target-player-id PROVIDER) ;; can only get top items as self.
         range "short_term" ;; short_term = 4 weeks medium_term = 6 months})
-        url (str API_URL "/me/top/tracks?limit="limit"&time_range="range)]
+        url (str (:api-uri CONFIG) "/me/top/tracks?limit="limit"&time_range="range)]
     (try (let [res (client/get url (portal/oauthed-request-config (:access_token id)))]
         (println "get top track response" (:status res) )
         (cond
