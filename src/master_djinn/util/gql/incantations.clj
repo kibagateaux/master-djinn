@@ -1,12 +1,14 @@
 ;; GQL resolvers wrapper around spells that return data or http errors
 (ns master-djinn.util.gql.incantations
-    (:require [master-djinn.incantations.evoke.jinn :as j]
+    (:require [master-djinn.incantations.evoke.jinni :as j]
             [master-djinn.incantations.evoke.spotify :as spotify-e]
             [master-djinn.incantations.conjure.spotify :as spotify-c]
+            [master-djinn.incantations.conjure.core :as c]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.core :refer [get-signer]]
             [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
             [master-djinn.util.crypto :refer [ecrecover MASTER_DJINNS]]))
+
 (defonce providers portal/oauth-providers)
 
 (defn activate-jinni
@@ -33,11 +35,11 @@
     [ctx args val]
     (let [{:keys [provider player_id]} args]
         (cond
-        (nil? player_id) (println "Must input player to sync id with")
-        (nil? provider) (println "Must input provider to sync id with")
-        (= provider (:id (:spotify providers))) (spotify-c/sync-provider-id player_id)
-        ;; (= provider github/PROVIDER) (github/sync-provider-id player_id)
-        :else (println "invalid provider to sync id with"))))
+            (nil? player_id) {:error "Must input player to sync id with"}
+            (nil? provider) {:error "Must input provider to sync id with"}
+            ((set (keys providers)) (keyword provider))
+                (c/sync-provider-id player_id provider)
+            :else {:error "invalid provider to sync id with"})))
 
 (defn spotify-follow
     [ctx args val]
