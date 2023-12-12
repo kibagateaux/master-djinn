@@ -21,7 +21,22 @@
             :Messaging
             :Eating
         ]}
-    
+
+    :ResourceNames
+        {:description "General categories for resources"
+        :values [
+            :Software
+            :Music
+        ]}
+    :ResourceAccessibility
+        {:description "How resources can be consumed"
+        :values [
+            :Public ;; anyone can see and use
+            :Permissioned ;; publically viewable but requires access rights
+            :Private ;; can only be seen and used with access rights
+            :Secret ;; can only be seen and used with access rights
+        ]}
+
     :DataProviders
         {:description "Valid Data Providers. 
                 Unique game items that players can equip.
@@ -30,6 +45,8 @@
             :IphoneHealthKit
             :IwatchHealthKit
             :AndroidHealthConnect
+            :Github
+            :Spotify
         ]}
     }
 
@@ -80,7 +97,7 @@
         :Action {:fields {
             ;; make interface if we need abstract for incipient/consequential
             ;; :implements [:Action]
-            
+            ;; TODO snake_case before frontend integration
             :id {:type (non-null String)}
             :name {:type (non-null String)}
             :startTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
@@ -88,15 +105,21 @@
             :data_provider {:type (non-null :DataProviders)}
             :player {:type :Avatar} ;; Action may have multiple players? or no player if its projected?
         }}
+        ;; :ResourceMetadata {:fields {
+        ;;     :created-at {:type String}
+        ;;     :updated-at {:type String}
+        ;;     :last-used {:type String}
+        ;; }}
         :Resource {:fields {
-            ;; make interface if we need abstract for incipient/consequential
-            ;; :implements [:Action]
-            
-            :id {:type (non-null String)}
+            :id {:type String :description "Non-null if only conjured and not yet saved to Jinni DB"}
             :name {:type (non-null String)}
+            :data_provider {:type (non-null :DataProviders)}
+            :provider_id {:type String :description "Non-null if created within Jinni game"}
             :image {:type String}
             :href {:type String} ;; link to view data on resource
+            :accessibility {:type (non-null :ResourceAccessibility)}
             :creators {:type (list Avatar)}
+            ;; :metadata {:type :ResourceMetadata}
         }}
         :Query {:fields {
             :players {:type (list :Avatar)
@@ -118,10 +141,9 @@
                 {:type        (list ID)
                 :description "Submit new game action data from players and return :Action UUIDs created"
                 :args       {:verification {:type :SignedRequest} ;; non-null for now
-                            :data {:type (list :RawInputData)}
+                            :data {:type (non-null (list :RawInputData))}
                             :data_provider {:type (non-null :DataProviders)}
-                            :name {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
-                            :player_id {:type (non-null String)}}}  ;; 0x ETH address
+                            :name {:type (non-null String)}}} ;; Non-normalized action name from data provider. e.g. Step for android health
             
             :activate_jinni
                 {:type       (non-null ID)
@@ -148,6 +170,16 @@
                 {:type       (list Resource)
                 :description "gets top tracks on spotify for a player"
                 :args       {:target_player {:type (non-null String)}}}
+            :spotify_top_playlists
+                {:type       (list Resource)
+                :description "gets top tracks on spotify for a player"
+                :args       {:target_player {:type (non-null String)}}}
+            
+            :github_sync_repos
+                {:type       (list Resource)
+                :description "gets repos contributed to by user"}
+
             }}
+
     }
 }

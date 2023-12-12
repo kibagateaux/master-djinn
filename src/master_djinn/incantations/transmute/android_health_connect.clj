@@ -39,19 +39,18 @@
     
 
 (defn transmute
-  [data]
+  [player_id data]
   ;; {:pre  [spec/valid? types/::action-source-data args] ;; TODO predicate for valid submit_data arg
   ;;     :post [(map string? %)]}
   (let [provider (name (:data_provider data)) ;; @DEV: remove keyword prefix ":" for neo4j tag
         action_name (:name data)
-        pid (:player_id data)
-        aaa (println "player id   " pid)
+        aaa (println "player id   " player_id)
         ;; TODO cleaner if vars above are in action data themselves
         ;; BUT also nice that :data is straight from providers and our data is separate
         inputs (:data data)]
   (if (not= provider transmuter-data-provider)
     (throw (Exception. "Trans:AndroidHealthConnect: Invalid data provider" provider))
     {:actions (case action_name
-      "Step" (map #(Step->Action pid provider %) inputs)
+      "Step" (map #(Step->Action player_id provider %) inputs)
       "default" [])})))
   

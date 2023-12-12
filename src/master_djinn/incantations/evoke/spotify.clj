@@ -7,7 +7,7 @@
             [master-djinn.util.types.core :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
-(defonce PROVIDER "spotify")
+(defonce PROVIDER "Spotify")
 (defonce CONFIG ((keyword PROVIDER) portal/oauth-providers))
 
 (defn follow-players

@@ -116,9 +116,12 @@
             ]
         ;; (clojure.pprint/pprint (:request context))
 
-        ;; MAJOR SECURITY BUG: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
+        ;; MAJOR SECURITY BUG #1: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
+        ;; MAJOR SECURITY BUG #2: replay attack if query uses variables someone can get a users query and replace with any variables that they didnt approve
+
         ;; @DEV: TODO FIXES
-        ;; 1. fix security bug!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 
+        ;; 1. fix security bug #1!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 
+        ;; 1. fix security bug #2!!!  sign variables and add in verification as well, ecrecover those and replace like query
         ;; 1. if signature/_raw_query on in POST variables even if they aren't required for the query sent
         ;; then we will still go through this code path even if we dont need to
         ;; 2. if you do `mutation submit_data(...) but define mutation/query some_other_name{...}

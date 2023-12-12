@@ -15,7 +15,8 @@
     (try (let [config ((keyword provider) portal/oauth-providers)
                 url (:user-info-uri config)
                 res (client/get url (portal/oauthed-request-config token))]
-        (println "C:GetProfile:" provider ":Response - status, body - " (:status res) (:body res))
+        (println "C:GetProfile:" provider ":Response - status, body - " (:status res))
+        (clojure.pprint/pprint (json->map (:body res)))
         (if (some? (:body res))
             ((:user-info-parser config) res)
             (do 

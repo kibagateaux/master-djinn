@@ -1,15 +1,28 @@
 ;; GQL resolvers wrapper around spells that return data or http errors
 (ns master-djinn.util.gql.incantations
-    (:require [master-djinn.incantations.evoke.jinni :as j]
-            [master-djinn.incantations.evoke.spotify :as spotify-e]
-            [master-djinn.incantations.conjure.spotify :as spotify-c]
-            [master-djinn.incantations.conjure.core :as c]
-            [master-djinn.portal.core :as portal]
+    (:require [master-djinn.portal.core :as portal]
             [master-djinn.util.core :refer [get-signer]]
-            [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
-            [master-djinn.util.crypto :refer [ecrecover MASTER_DJINNS]]))
+            [master-djinn.util.types.core :refer [uuid avatar->uuid]]
+            [master-djinn.util.crypto :refer [ecrecover MASTER_DJINNS]]
+
+            [master-djinn.incantations.evoke.jinni :as j]
+            [master-djinn.incantations.evoke.spotify :as spotify-e]
+            
+            [master-djinn.incantations.conjure.core :as c]
+            [master-djinn.incantations.conjure.spotify :as spotify-c]
+            [master-djinn.incantations.conjure.github :as github-c]))
 
 (defonce providers portal/oauth-providers)
+
+;; TODO create wrapper for incantations.
+;; takes i
+;; executes
+;; if returns :error then throw http 400 error
+;; else return i response
+;; wrap all schema defs in it
+
+
+;; Mutations
 
 (defn activate-jinni
     ;; TODO clojure.spec inputs and outputs
@@ -18,8 +31,8 @@
   (let [djinn (ecrecover (:majik_msg args) (:player_id args))
         pid (get-signer ctx)
         jid (uuid nil pid (str (java.util.UUID/randomUUID)))]
-    (println djinn (MASTER_DJINNS djinn))
-    (println pid jid)
+    ;; (println djinn (MASTER_DJINNS djinn))
+    ;; (println pid jid)
         ;; TODO calc kin, archetype, tone for human + jinn bdays and add to Avatar model
     (cond
       ;; TODO throw API errors. create resolver wrapper
@@ -55,4 +68,13 @@
     [ctx args val]
     (let [pid (get-signer ctx)]
         (spotify-c/top-tracks pid (:target_player args))))
-        
+
+(defn spotify-top-playlists
+    [ctx args val]
+    (let [pid (get-signer ctx)]
+        (spotify-c/top-playlists pid (:target_player args))))
+
+(defn github-sync-repos
+    [ctx args val]
+    (let [pid (get-signer ctx)]
+        (github-c/sync-repos pid)))

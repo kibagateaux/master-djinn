@@ -13,25 +13,26 @@
 ;; TODO rename "integrations" or somethig more general
 
 (defonce oauth-providers {
-  :spotify {
-    :id "spotify"
-    :auth-uri "https://accounts.spotify.com/authorize"
-    :token-uri "https://accounts.spotify.com/api/token"
-    :api-uri "https://api.spotify.com/v1"
-    :client-id (:spotify-client-id (load-config))
-    :client-secret (:spotify-client-secret (load-config))
+  :Spotify {
+    :id                 "Spotify"
+    :auth-uri           "https://accounts.spotify.com/authorize"
+    :token-uri          "https://accounts.spotify.com/api/token"
+    :api-uri            "https://api.spotify.com/v1"
+    :client-id          (:spotify-client-id (load-config))
+    :client-secret      (:spotify-client-secret (load-config))
     ;; :scope SEE FRONTEND
-    :user-info-parser #(-> % :body json->map :id)
+    :user-info-parser   #(-> % :body json->map :id)
     :user-info-uri      "https://api.spotify.com/v1/me"}
-  :github {
-    :id "github"
+  :Github {
+    :id                 "Github"
     :auth-uri           "https://github.com/login/oauth/authorize"
     :token-uri          "https://github.com/login/oauth/access_token"
+    :api-uri            "https://api.github.com/graphql" ;; https://docs.github.com/en/graphql/overview/explorer
     :client-id          (:github-client-id (load-config))
     :client-secret      (:github-client-secret (load-config))
     ;; :scope             SEE FRONTEND
     :user-info-parser #(-> % :body json->map :login)
-    :user-info-uri      "https://api.github.com/user"} ; https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28
+    :user-info-uri      "https://api.github.com/user"} ;; https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28
 })
 
 (defn get-redirect-uri [provider]
@@ -192,7 +193,7 @@
         {:keys [provider code error state]} qs
         config ((keyword provider) oauth-providers)]
         ;; TODO match state->identity-> player_id to signed request player id
-                
+        ;; then delete nonce on identity to prevent replay attack
     (println "OAUTH callback" qs)
     (cond
       (clojure.string/blank? provider)    {:status 400 :body "must include oauth provider"}
@@ -216,17 +217,22 @@
         request-config (assoc base-config :form-params { ;; (json/write-str ?
                         :grant_type "refresh_token"
                         :refresh_token (:refresh_token id)
-                        :client_id (:client-id provider-config)})]
+                        :client_id (:client-id provider-config)
+                        :client_secret (:client-secret provider-config)})]
     (try (let [response (client/post (:token-uri provider-config) request-config)
-              new_token (:access_token (json->map (:body response)))]
-      ;; (println "refresh token response " (json/read-str (:body response) :key-fn keyword))
-      (db/call id/set-identity-credentials {
-        :pid player-id ;; TODO player-id when fixed in init-oauth-handler
-        :provider provider
-        :access_token new_token
-        :refresh_token (:refresh_token id) ;; so we dont overwrite with null
-      })
-    new_token)
+              data (json->map (:body response))
+              token (:access_token data)]
+      (println "refresh token response - " token data)
+      (cond
+        (some? (:error data)) (:error data)
+        (some? token) (do
+          (db/call id/set-identity-credentials {
+            :pid player-id ;; TODO player-id when fixed in init-oauth-handler
+            :provider provider
+            :access_token token
+            :refresh_token (:refresh_token id) ;; so we dont overwrite with null
+          })
+          token)))
     (catch Exception err
         (println (str "Error refreshing token on *" provider "*: ") (ex-message err) (ex-data err))
     ))

@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as spec]
     [master-djinn.util.db.core :as db]
+    [master-djinn.util.core :refer [get-signer]]
     [master-djinn.util.types.core :as types]
     [neo4j-clj.core :as neo4j]
     [master-djinn.incantations.transmute.android-health-connect :as ahc]
@@ -22,17 +23,18 @@
 ;; @DEV: is defmulti/defmethod more semantic/terse? I prefer current format personally
 (defn multiplexer
 ;; TODO technically should just be (transmute args) and rest should be handled in portal handler to keep this no side effects
-    [context args value]
+    [ctx args value]
     ;;  {:pre  [spec/valid? types/::action-source-data args] ;; TODO predicate for valid submit_data arg
     ;;   :post [(map string? %)]}
-    (let [transmute (provider->transmuter (:data_provider args))]
+    (let [transmute (provider->transmuter (:data_provider args))
+          player_id (get-signer ctx)]
     ;; TODO (spec/check-asserts true)
     ;; TODO validate player for action here
     (neo4j/with-transaction db/connection tx
     ;; TODO add try block. specifically want to catch duplicate uuid invariant violation
     ;; so we know if data needs to be resubmitted or not. (also figure out if part of data sent was duplicated or all, no actions sent willbe saved since single tx)
       (->> args
-          transmute
+          (transmute player_id)
           ((fn [config] (println "TRANSMUTING " config) config))
           ;; now have normalized format of { :data_provider :player_id :actions [{:name :player_relation :data {}}]}
           (db/batch-create-actions tx)

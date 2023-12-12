@@ -13,6 +13,7 @@
             edn/read-string))
 
 (defn json->map [j] (json/read-str j :key-fn keyword))
+(defn map->json [m] (json/write-str m))
 
 ;; prevent compile fail c no file. check file exists if no, empty map, else parse file.
 ;; (def local-config {})
@@ -69,10 +70,11 @@
 ;; Not relevant until people start making new games which is very far in the future
 (defonce PLAYGROUND_UUID (--uuid/v5 --uuid/+namespace-url+ "https://cryptonative.ai/"))
 (defonce GAME_NAME "Jinni")
+
 (defn avatar->uuid
   "UUID namespace hierarchy:
   player-id -> playground -> game
-  Use PLAYGROUND_UUID instead of uuid/+null+ because different avatars in different spaces/games should generate new ids
+  Use PLAYGROUND_UUID instead of uuid/+null+ because different avatars in different spaces/games should generate new ids for privacy
   "
   [player]
     (uuid PLAYGROUND_UUID GAME_NAME player))
@@ -80,8 +82,6 @@
 (defn action->uuid
   "UUID namespace hierarchy:
   player-id -> data provider -> data origin -> action-name -> action-start-time -> transmuter-version-number
-  Initially takes to arguments for main scope for generating ids - player and data provider
-  returns a function to generate ids for individual actions there after
   
   provider and source MAY be the same
   start-time MUST be local UTC format 2023-09-07T09:44:16.818Z
@@ -90,18 +90,29 @@
   [player provider source action-name start-time version]
     (uuid --uuid/+null+ player provider source action-name start-time version))
   
-
+(defn resource->uuid
+  "UUID namespace hierarchy:
+  resource provider -> resource owner (provider_id) -> resource name -> transmuter-version-number
+  "
+  ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
+  [provider owner resource-name version]
+    (uuid --uuid/+null+ provider owner resource-name version))
+  
 
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?
   (set (get-in types [:enums :ActionTypes :values])))
 (def is-action-name?
   (set (get-in types [:enums :ActionNames :values])))
+(def is-resource-name?
+  (set (get-in types [:enums :ResourceNames :values])))
 (def is-data-provider?
   (set (get-in types [:enums :data-providers :values])))
 
 (defn action-type->name [action-name]
   (if (is-action-name? action-name) (name action-name) nil))
+(defn resource-type->name [resource-name]
+  (if (is-resource-name? resource-name) (name resource-name) nil))
 
 ;;; Crypto Types
 

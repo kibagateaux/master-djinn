@@ -21,13 +21,18 @@
   ;; general game actions
   :Mutation/submit_data trans/multiplexer
   :Mutation/activate_jinni i/activate-jinni
+  :Mutation/sync_provider_id i/sync-provider-id
   
   ;; spotify
-  :Mutation/sync_provider_id i/sync-provider-id
   :Mutation/spotify_follow i/spotify-follow
   :Mutation/spotify_disco i/spotify-disco
   :Mutation/spotify_top_tracks i/spotify-top-tracks
+  :Mutation/spotify_top_playlists i/spotify-top-playlists
   ;; :Mutation/spotify_create_playlist i/spotify-create-playlist
+
+  ;; github
+  :Mutation/github_sync_repos i/github-sync-repos
+
 })
 
 (defn jinni-schema
