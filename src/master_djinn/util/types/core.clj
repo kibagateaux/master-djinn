@@ -16,14 +16,14 @@
   (let [action-fields (get-in schema [:objects :Action :fields])
         resource-fields (get-in schema [:objects :Resource :fields])]
     (reduce (fn [acc [typename fields]]
-              (assoc acc (keyword "master-djinn.util.types.core" (str "::" typename))
+              (assoc acc ::master-djinn.util.types.core/typename
                     (spec/keys :req (mapv (fn [[k {:keys [type]}]]
                                           (if (keyword? type)
-                                            (keyword "master-djinn.util.types.core" (str "::" (name type)))
+                                            ::master-djinn.util.types.core/type
                                             ::string))
                                         fields))))
             {}
-            [["Action" action-fields] ["Resource" resource-fields]])))
+            [[[:Action action-fields] [:Resource resource-fields]]])))
 
 (def types (generate-spec-definitions graphql-schema))
 
