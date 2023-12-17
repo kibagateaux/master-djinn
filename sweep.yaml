@@ -3,12 +3,14 @@
 
 # This setting contains a list of rules that Sweep will check for. If any of these rules are broken in a new commit, Sweep will create an pull request to fix the broken rule.
 rules:
-- "All new business logic should have corresponding unit tests."
+- "All new business logic should have corresponding unit tests with `clojure.spec`."
 - "Refactor large functions to be more modular."
 - "Add docstrings to all functions and file headers."
+- "Properly categorizes business logic into spell types or general utils."
+- "Always uses "
 
 # This is the branch that Sweep will develop from and make pull requests to. Most people use 'main' or 'master' but some users also use 'dev' or 'staging'.
-branch: 'main'
+branch: 'master'
 
 # By default Sweep will read the logs and outputs from your existing Github Actions. To disable this, set this to false.
 gha_enabled: True
@@ -18,7 +20,11 @@ gha_enabled: True
 # Example:
 #
 # description: sweepai/sweep is a python project. The main api endpoints are in sweepai/api.py. Write code that adheres to PEP8.
-description: ''
+description: >
+  A Clojure GraphQL webserver for the business logic and Neo4j database integration for a magic RPG game. 
+  Graphql schema is in `resources/jinni-schema.edn`, GraphQL resolvers defined in `src/util/gql/*`. 
+  Database queries written in Cypher are defined in `util/db/*`.
+  General business logic are categorized as different "spell types"  and live in `incantations/`. `conjure/` spells request data from integrations, `evoke/` spells create side effects on integrations, `transmute/` spells normalize data from integrations into types defined by `clojure.spec`.
 
 # This sets whether to create pull requests as drafts. If this is set to True, then all pull requests will be created as drafts and GitHub Actions will not be triggered.
 draft: False
@@ -32,12 +38,21 @@ blocked_dirs: []
 #
 # docs:
 #   - PyGitHub: ["https://pygithub.readthedocs.io/en/latest/", "We use pygithub to interact with the GitHub API"]
-docs: []
+docs:
+  - Clojure ["https://clojuredocs.org/", "Clojure language core functions for Java and JVM interoperability, data types, "]
+  - ClojureSpecGuide ["https://clojure.org/guides/spec", "How to write specifications and tests in Clojure with their `clojure.spec` framework."]
+  - ClojureSpecRationale ["https://clojure.org/about/spec", "How to think from first principles about how and why `clojure.spec` is the best way to write tests for a codebase."]
+  - Pedestal ["http://pedestal.io/pedestal/0.7-pre/index.html", "Clojure HTTPS web server API framework using Java's `jetty` framework"]
+  - Lacinia ["lacinia.readthedocs.io/en/latest/", "Standard GraphQL server implementation in Clojure"]
+  - Lacinia-Pedestal ["https://lacinia-pedestal.readthedocs.io/en/latest/", "Clojure library tying Lacinia GraphQL library to Pedestal sever framework"]
+  - Neo4jCypher ["https://neo4j.com/docs/cypher-manual/current/introduction/", "Cypher language docs for querying Neo4j graph databases"]
 
 # Sandbox executes commands in a sandboxed environment to validate code changes after every edit to guarantee pristine code. For more details, see the [Sandbox](./sandbox) page.
 sandbox:
   install:
     - trunk init
+    - lein install
   check:
     - trunk fmt {file_path} || return 0
     - trunk check --fix --print-failures {file_path}
+    - lein dev # TODO run tests/specs
