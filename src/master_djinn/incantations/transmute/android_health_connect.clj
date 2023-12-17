@@ -1,6 +1,8 @@
 (ns master-djinn.incantations.transmute.android-health-connect
   (:require [clojure.data.json :as json]
-            [master-djinn.util.types.core :refer [action-type->name action->uuid]]))
+            [master-djinn.util.types.core :refer [action-type->name action->uuid]]
+            [clojure.spec.alpha :as spec]
+            [master-djinn.util.types.core :as types]))
 
 
 (defonce transmuter-data-provider "AndroidHealthConnect")
@@ -49,9 +51,13 @@
         ;; TODO cleaner if vars above are in action data themselves
         ;; BUT also nice that :data is straight from providers and our data is separate
         inputs (:data data)]
+        action-specs (types/types :Action)]
   (if (not= provider transmuter-data-provider)
     (throw (Exception. "Trans:AndroidHealthConnect: Invalid data provider" provider))
     {:actions (case action_name
-      "Step" (map #(Step->Action pid provider %) inputs)
+      "Step" (let [actions (map #(Step->Action pid provider %) inputs)]
+                      (when-not (every? (fn [a] (spec/valid? action-specs a)) actions)
+                        (throw (Exception. "Transmute output does not conform to the Action spec.")))
+                      actions)
       "default" [])})))
   
