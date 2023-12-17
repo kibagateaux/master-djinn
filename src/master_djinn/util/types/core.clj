@@ -7,10 +7,25 @@
             [environ.core :refer [env]]
             [clj-uuid :as --uuid]))
 
-(def types (-> "jinni-schema.edn"
-            io/resource
-            slurp
-            edn/read-string))
+(def graphql-schema (-> "jinni-schema.edn"
+               io/resource
+               slurp
+               edn/read-string))
+
+(defn generate-spec-definitions [schema]
+  (let [action-fields (get-in schema [:objects :Action :fields])
+        resource-fields (get-in schema [:objects :Resource :fields])]
+    (reduce (fn [acc [typename fields]]
+              (assoc acc (keyword "master-djinn.util.types.core" (str "::" typename))
+                    (spec/keys :req (mapv (fn [[k {:keys [type]}]]
+                                          (if (keyword? type)
+                                            (keyword "master-djinn.util.types.core" (str "::" (name type)))
+                                            ::string))
+                                        fields))))
+            {}
+            [["Action" action-fields] ["Resource" resource-fields]])))
+
+(def types (generate-spec-definitions graphql-schema))
 
 (defn json->map [j] (json/read-str j :key-fn keyword))
 
@@ -94,11 +109,14 @@
 
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?
-  (set (get-in types [:enums :ActionTypes :values])))
+  (spec/def ::action-type (spec/set (get-in types [:enums :ActionTypes :values])))
+  ::action-type)
 (def is-action-name?
-  (set (get-in types [:enums :ActionNames :values])))
+  (spec/def ::action-name (spec/set (get-in types [:enums :ActionNames :values])))
+  ::action-name)
 (def is-data-provider?
-  (set (get-in types [:enums :data-providers :values])))
+  (spec/def ::data-provider (spec/set (get-in types [:enums :DataProviders :values])))
+  ::data-provider)
 
 (defn action-type->name [action-name]
   (if (is-action-name? action-name) (name action-name) nil))
