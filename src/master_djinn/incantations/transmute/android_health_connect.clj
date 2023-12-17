@@ -41,6 +41,8 @@
     
 
 (defn transmute
+  {:pre  [(= provider transmuter-data-provider)]
+   :post [(every? (fn [a] (spec/valid? action-specs a)) %)]}
   [data]
   ;; {:pre  [spec/valid? types/::action-source-data args] ;; TODO predicate for valid submit_data arg
   ;;     :post [(map string? %)]}
@@ -52,11 +54,8 @@
         ;; BUT also nice that :data is straight from providers and our data is separate
         inputs (:data data)]
         action-specs (types/types :Action)]
-  (if (not= provider transmuter-data-provider)
-    (throw (Exception. "Trans:AndroidHealthConnect: Invalid data provider" provider))
-    {:actions (case action_name
-      "Step" (let [actions (map #(Step->Action pid provider %) inputs)]
-                      (when-not (every? (fn [a] (spec/valid? action-specs a)) actions)
+  {:actions (case action_name
+      "Step" (map #(Step->Action pid provider %) inputs)
                         (throw (Exception. "Transmute output does not conform to the Action spec.")))
                       actions)
       "default" [])})))
