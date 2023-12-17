@@ -1,10 +1,10 @@
 (ns master-djinn.incantations.conjure.spotify
     (:require [clj-http.client :as client]
-            [master-djinn.util.types.core :refer [action->uuid action-type->name]]
+            [master-djinn.util.graphql-schema :refer [action->uuid action-type->name]]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.core :refer [now]]
-            [master-djinn.util.types.core :refer [json->map]]
+            [master-djinn.util.graphql-schema :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
 
@@ -30,6 +30,7 @@
                 (db/call db/batch-create-actions {:actions [{
                     :name  (action-type->name :Perceiving)
                     :data_provider db/MASTER_DJINN_DATA_PROVIDER
+gql-schema/types :Action
                     :player_id player-id
                     :player_relation "DID"
                     :data {
