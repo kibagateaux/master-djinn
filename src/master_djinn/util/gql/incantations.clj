@@ -1,11 +1,12 @@
 ;; GQL resolvers wrapper around spells that return data or http errors
 (ns master-djinn.util.gql.incantations
-    (:require [master-djinn.incantations.evoke.jinni :as j]
+    (:require [com.walmartlabs.lacinia.resolve :as resolve]
+            [master-djinn.incantations.evoke.jinni :as j]
             [master-djinn.incantations.evoke.spotify :as spotify-e]
             [master-djinn.incantations.conjure.spotify :as spotify-c]
             [master-djinn.incantations.conjure.core :as c]
             [master-djinn.portal.core :as portal]
-            [master-djinn.util.core :refer [get-signer]]
+            [master-djinn.util.core :refer [get-signer map->json]]
             [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
             [master-djinn.util.crypto :refer [ecrecover MASTER_DJINNS]]))
 
@@ -24,9 +25,18 @@
     (cond
       ;; TODO throw API errors. create resolver wrapper
       ;; TODO define in specs not code here
-      (nil? pid) (println "Player must give their majik to activation")
-      (not= (:player_id args) pid) (println "Signer !== Registrant")
-      (not (MASTER_DJINNS djinn)) (println "majik msg not from powerful enough djinn")
+      (nil? pid) (do 
+        (println "Gql:Resolv:ActivateJinni:ERROR - Player must give their majik to activation")
+        {:status 400 :body (map->json { :error "Player must give their majik to activation"})})
+      (not= (:player_id args) pid) (do 
+        (println "Gql:Resolv:ActivateJinni:ERROR - Signer !== Registrant")
+        {:status 401 :body (map->json { :error "Signer !== Registrant"})})
+      (not (MASTER_DJINNS djinn)) (do 
+        (println "Gql:Resolv:ActivateJinni:ERROR - majik msg not from powerful enough djinn")
+        {:status 403 :body (map->json { :error "majik msg not from powerful enough djinn"})})
+    ;;   (nil? pid) (println "Player must give their majik to activation")
+    ;;   (not= (:player_id args) pid) (println "Signer !== Registrant")
+    ;;   (not (MASTER_DJINNS djinn)) (println "majik msg not from powerful enough djinn")
       ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
       :else (j/activate-jinni pid jid))))
 

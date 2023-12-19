@@ -4,7 +4,7 @@
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.core :refer [now]]
-            [master-djinn.util.types.core :refer [json->map]]
+            [master-djinn.util.core :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
 ;; Also figure out best way to use clj-http. ideally async bc then everything is in tail but had issues with that 

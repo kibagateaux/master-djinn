@@ -15,6 +15,8 @@
 (defonce MOBILE_APP_DATA_SOURCE "JinniMobileApp")
 
 (defn call [query args]
+  (println "DB:call: uri" (:activitydb-uri (load-config)))
+  (println "DB:call: args" args)
   (neo4j/with-transaction connection tx
     (-> (query tx args) doall first)))
 
@@ -22,11 +24,10 @@
   "for direct read queries that dont require formatting input data"
   [query]
   (fn [context args value]
-    ;; (println "DB:resolver: ctx" context)
-    ;; (println "DB:resolver: ctx" args)
     ;; using context:  https://lacinia.readthedocs.io/en/latest/resolve/context.html
     (neo4j/with-transaction connection tx
       ;; (println "DB:resolver: ctx" context)
+      (println "DB:resolver: uri" (:activitydb-uri (load-config)))
       (println "DB:resolver: args" args)
       (println "DB:resolver: value" value)
       ;; doall returns list but only ever one response w/ a map (which could contain lists)

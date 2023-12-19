@@ -6,7 +6,9 @@ WORKDIR /usr/src/app
 RUN lein uberjar
 
 FROM clojure:lein
-EXPOSE 8000
+# if prod deployment
+EXPOSE 80
+# if dev deployment
 EXPOSE 8888
 
 # RUN mv "$(lein uberjar | sed -n 's/^Created \(.*standalone\.jar\)/\1/p')" app.jar

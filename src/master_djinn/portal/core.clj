@@ -2,7 +2,8 @@
   (:require [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.data.json :as json]
-            [master-djinn.util.types.core :refer [load-config uuid json->map]]
+            [master-djinn.util.core :refer [json->map map->json]]
+            [master-djinn.util.types.core :refer [load-config uuid]]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as id]
             [master-djinn.util.crypto :as crypt]
@@ -35,8 +36,8 @@
 })
 
 (defn get-redirect-uri [provider]
-  (str "https://"
-        (or (:api-domain (load-config)) "scry.cryptonative.ai")
+  (str "http://"
+        (or (:api-domain (load-config)) "apprentice.scryer.jinni.health")
         "/oauth/callback"
         "?provider=" provider))
 
@@ -103,8 +104,8 @@
       (clojure.string/blank? provider)    {:status 400 :body "must include oauth provider"}
       (nil? config)                       {:status 400 :body "oauth provider not supported"}
       :else (try
-        {:status 200 :body (json/write-str {:state (init-oauth-identity player_id provider)})}
-        (catch Exception e {:status 400 :body (json/write-str {:error (ex-message e)})}))
+        {:status 200 :body (map->json {:state (init-oauth-identity player_id provider)})}
+        (catch Exception e {:status 400 :body (map->json {:error (ex-message e)})}))
     )))
 
 ;;; Step #1 & #2 - Provider response handling
@@ -153,8 +154,8 @@
           ;; (println "oauth token" (str/split (:scope body) #" ") (:access_token body))
           {:status 301
             ;; TODO redirect not working. AI generated mf
-            :headers {"Location" (str "jinnihealth://inventory/" provider)} ;; redirect with deeplink 
-            :body (json/write-str {
+            :headers {"Location" (str "jinni-health://inventory/" provider)} ;; redirect with deeplink 
+            :body (map->json {
               :id creds
               :msg (str provider "Item Successfully Equipped!")}
         )})
@@ -213,7 +214,7 @@
   (let [id (id/getid player-id provider)
         provider-config ((keyword provider) oauth-providers)
         base-config (get-oauth-login-request-config provider provider-config)
-        request-config (assoc base-config :form-params { ;; (json/write-str ?
+        request-config (assoc base-config :form-params { ;; (map->json ?
                         :grant_type "refresh_token"
                         :refresh_token (:refresh_token id)
                         :client_id (:client-id provider-config)})]

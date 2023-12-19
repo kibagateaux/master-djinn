@@ -2,7 +2,8 @@
     (:import  (org.web3j.crypto ECKeyPair Sign Keys)
               (org.web3j.utils Numeric)))
 
-(defonce MALIKS_MAJIK_CARD nil) ;; TODO
+(defonce MALIKS_MAJIK_CARD "0x1a861777Ba3BceD36E63242C2DdE484CA5563587")
+(defonce MALEKS_MAJIK_CARD "0x46C79830a421038E75853eD0b476Ae17bFeC289A")
 (defonce TEST_SIGNER "0x0AdC54d8113237e452b614169469b99931cF094e")
 (defonce MASTER_DJINNS (set [
     MALIKS_MAJIK_CARD

@@ -4,7 +4,7 @@
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.core :refer [now]]
-            [master-djinn.util.types.core :refer [json->map]]
+            [master-djinn.util.core :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
 (defonce PROVIDER "spotify")

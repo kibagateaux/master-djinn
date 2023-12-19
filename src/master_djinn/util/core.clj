@@ -1,5 +1,9 @@
 (ns master-djinn.util.core
-  (:require [master-djinn.util.crypto :refer [TEST_SIGNER]]))
+  (:require [master-djinn.util.crypto :refer [TEST_SIGNER]]
+            [clojure.data.json :as json]))
+
+(defn json->map [j] (json/read-str j :key-fn keyword))
+(defn map->json [m] (json/write-str m))
 
 (defn now []
   (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")

@@ -1,6 +1,5 @@
 (ns master-djinn.util.types.core
   (:require [clojure.java.io :as io]
-            [clojure.data.json :as json]
             [clojure.edn :as edn]
             [clojure.spec.alpha :as spec]
             [clojure.spec.test.alpha :as spec-test]
@@ -11,8 +10,6 @@
             io/resource
             slurp
             edn/read-string))
-
-(defn json->map [j] (json/read-str j :key-fn keyword))
 
 ;; prevent compile fail c no file. check file exists if no, empty map, else parse file.
 ;; (def local-config {})
