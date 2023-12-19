@@ -1,6 +1,4 @@
 {:enums
-;; TODO super annoying that these are clojure keywords and not strings as they come thru the API
-;; not that thats an issue on the backend but makes it non-interoperable with String values
     {:ActionTypes
         {:description "General categories for actions"
         :values [:Exercise :Socialize :Internalize]}
@@ -99,9 +97,7 @@
             :creators {:type (list Avatar)}
         }}
         :Query {:fields {
-            :players {:type (list :Avatar)
-                    :args { :verification {:type :SignedRequest} } ;; non-null for now
-            }
+            :players {:type (list :Avatar)}
             ;; :jinni {:type (non-null :Avatar)
             ;;     :args {:player_id {:type String}}}
             ;; ;; get all of a players jin not just their primary.

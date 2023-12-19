@@ -36,8 +36,8 @@
 })
 
 (defn get-redirect-uri [provider]
-  (str "http://"
-        (or (:api-domain (load-config)) "apprentice.scryer.jinni.health")
+  (str "https://"
+        (or (:api-domain (load-config)) "scryer.jinni.health")
         "/oauth/callback"
         "?provider=" provider))
 
@@ -126,8 +126,8 @@
                           {:redirect_uri (get-redirect-uri provider)
                             :grant_type "authorization_code"
                             :code code
-                            ;; only needed on - github, 
                             :client_id (:client-id oauth-config)
+                            ;; only needed on - github, 
                             :client_secret (:client-secret oauth-config)
                             })
         response (client/post (:token-uri oauth-config) request-config)]

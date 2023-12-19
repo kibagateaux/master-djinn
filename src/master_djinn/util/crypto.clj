@@ -7,6 +7,7 @@
 (defonce TEST_SIGNER "0x0AdC54d8113237e452b614169469b99931cF094e")
 (defonce MASTER_DJINNS (set [
     MALIKS_MAJIK_CARD
+    MALEKS_MAJIK_CARD
     TEST_SIGNER
 ]))
 
@@ -48,22 +49,22 @@
     (.toString i 16))
 
 ;; examples
-(def test-signer-good {:signer "0x0AdC54d8113237e452b614169469b99931cF094e"
-    :query "query get_players{\n  players {\n    id\n  }\n}}"
-    ;; MEW + MM
-    ;; :signature "0x7175657279206765745f706c61796572737b5c6e2020706c6179657273207b5c6e2020202069645c6e20207d5c6e7d7d"})
-    :signature "0xf67454814ba74310d2ed31451c8db378c2f8417d5b00aac6920d95c04c4d78fe604e8ffd8c9e9889d270a2c9a4be525ce64ff935e8a5961a57be02e75284354b1b"})
+;; (def test-signer-good {:signer "0x0AdC54d8113237e452b614169469b99931cF094e"
+;;     :query "query get_players{\n  players {\n    id\n  }\n}}"
+;;     ;; MEW + MM
+;;     ;; :signature "0x7175657279206765745f706c61796572737b5c6e2020706c6179657273207b5c6e2020202069645c6e20207d5c6e7d7d"})
+;;     :signature "0xf67454814ba74310d2ed31451c8db378c2f8417d5b00aac6920d95c04c4d78fe604e8ffd8c9e9889d270a2c9a4be525ce64ff935e8a5961a57be02e75284354b1b"})
     
-(def test-signer-good2 {:signer "0x08628f1fbcae43e0926459d2fbbd0d01702fbeea"
-    :query "query get_players{\n  players {\n    id\n  }\n}}"
-    ;; MEW + MM
-    ;; :signature "0x7175657279206765745f706c61796572737b5c6e2020706c6179657273207b5c6e2020202069645c6e20207d5c6e7d7d"})
-    :signature "77a11304fbe22046d4ecf29b2b864baa64e981e065e1c0a56f5b39407f4aa95f58616c26eb868def223942d05d2a67b75c652d700afa230c74a7585e81f8286a1c"})
+;; (def test-signer-good2 {:signer "0x08628f1fbcae43e0926459d2fbbd0d01702fbeea"
+;;     :query "query get_players{\n  players {\n    id\n  }\n}}"
+;;     ;; MEW + MM
+;;     ;; :signature "0x7175657279206765745f706c61796572737b5c6e2020706c6179657273207b5c6e2020202069645c6e20207d5c6e7d7d"})
+;;     :signature "77a11304fbe22046d4ecf29b2b864baa64e981e065e1c0a56f5b39407f4aa95f58616c26eb868def223942d05d2a67b75c652d700afa230c74a7585e81f8286a1c"})
 
-(def test-signer-bad {:signer "0x0AdC54d8113237e452b614169469b99931cF094e"
-    :query "Hark! This is an example signed message but an invalid query that should fail!!!"
-    ;; etherscan + MM
-    :signature "0x6233e0e51bd00c25c6d9176cb44d13141e476c9049fbe2a5849af6cfa5e3db784841b8fb140a0b554db3e3f41b129d8a6ad49739c959199a0efabcdcd75423f71c"})
+;; (def test-signer-bad {:signer "0x0AdC54d8113237e452b614169469b99931cF094e"
+;;     :query "Hark! This is an example signed message but an invalid query that should fail!!!"
+;;     ;; etherscan + MM
+;;     :signature "0x6233e0e51bd00c25c6d9176cb44d13141e476c9049fbe2a5849af6cfa5e3db784841b8fb140a0b554db3e3f41b129d8a6ad49739c959199a0efabcdcd75423f71c"})
 
 (defn ecrecover
     "original-msg is human readable string that signer was shown
