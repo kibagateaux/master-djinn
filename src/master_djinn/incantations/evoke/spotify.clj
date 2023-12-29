@@ -53,7 +53,7 @@
 
 (defn create-silent-disco
     "No API call required to Spotify, happens locally on their device. Just here to track actions
-        TODO would be dope to somehow get the jam share url and target player sto join jam from inside Jinni"
+        TODO would be dope to somehow get the jam share url and target players to join jam from inside Jinni"
     [player-id playlist-id]
     (let [version "0.0.1" start-time (now)]
         (println "spotify create silent disco" player-id playlist-id)

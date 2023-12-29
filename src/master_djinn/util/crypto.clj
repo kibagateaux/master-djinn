@@ -42,7 +42,7 @@
     "@DEV: only works for <256 bytes because of Java Long. If larger values being converted switch to (BigInteger. )"
     [i]
     (Integer/toString i 16))
-;; TODO defmulti
+
 (defn bigint->hex
     "@DEV: for >256 bytes if too big for Java Long"
     [i]
@@ -84,8 +84,7 @@
         v (hex->bytes (if (< (hex->int _v) 27) (int->hex (+ (hex->int _v) 27)) _v)) ;; so coerce to ETH native 27/28
         signature-data (new org.web3j.crypto.Sign$SignatureData (first v) r s)
         hashed-msg (.getBytes original-msg)
-        ;; this really shouldnt be necessary. Error in type conversions? 
-        ;; byte mismatch consistenet with "/n" count and locations roughly.
+        ;; byte conversion mismatch on "/n".
         fixed-hashed-msg (hex->bytes (clojure.string/replace (bytes->hex hashed-msg) #"0a" "5c6e"))
         ;; eee (println "ECRECOVER hashed msg: " (bytes->hex hashed-msg) (bytes->hex fixed-hashed-msg) )
         ;; Using Sign.signedPrefixedMessageToKey for EIP-712 compliant signatures
@@ -120,17 +119,17 @@
 
         ;; MAJOR SECURITY BUG: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
         ;; @DEV: TODO FIXES
-        ;; 1. fix security bug!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 
-        ;; 1. if signature/_raw_query on in POST variables even if they aren't required for the query sent
+        ;; - fix security bug!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 
+        ;; - if signature/_raw_query on in POST variables even if they aren't required for the query sent
         ;; then we will still go through this code path even if we dont need to
-        ;; 2. if you do `mutation submit_data(...) but define mutation/query some_other_name{...}
+        ;; - if you do `mutation submit_data(...) but define mutation/query some_other_name{...}
         ;; then lacinia will throw an invalid operation bc we are telling it to execute some_other_name
         ;; but they are still seeing submit_data somewhere in the data where we havent cleaned up properly
         ;; WORKAROUND: use unamed query/mutation in signed query and raw query
-        ;; 3. create generalized query & mutation on schema so we only have one entry point for each when using signed requests
+        ;; - create generalized query & mutation on schema so we only have one entry point for each when using signed requests
         ;; since we will extract full query from signed message and then execute that
-        ;; 4. ideally operation-name could map to a predefined query structure stored servers so we dont to pass the entire query data structure in
-        ;; theoretically this could also all for "service discovery" oce we decentralize where servers can perform certain computations based on exposed operation-names
+        ;; - ideally operation-name could map to a predefined query structure stored servers so we dont to pass the entire query data structure in
+        ;; theoretically this could also all for "service discovery" once we decentralize where servers can perform certain computations based on exposed operation-names
         ;; this requires having shared types/lib between frontend and backend without duplicating code which is a longer-term lift
 
         (if (and sig (not signer))

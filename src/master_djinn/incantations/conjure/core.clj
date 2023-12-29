@@ -10,7 +10,7 @@
 ;; Also figure out best way to use clj-http. ideally async bc then everything is in tail but had issues with that 
 ;; creating response in (let) then accessing is ok but not concurrent and i could see how it might not handle errors great
 (defn get-provider-id
-    "DOCS: "
+    "Uses portal/oauth-providers config to auto fetch players' profile and parse ID on integrated service"
     [player-id provider token]
     (try (let [config ((keyword provider) portal/oauth-providers)
                 url (:user-info-uri config)
@@ -36,6 +36,7 @@
 )
 
 (defn sync-provider-id
+    "Gets players id on an integration and save to their in game :Identity"
     [player-id provider]
     (let [id (iddb/getid player-id provider)]
         (cond

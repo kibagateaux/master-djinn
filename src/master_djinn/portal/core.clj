@@ -77,6 +77,7 @@
       (neo4j/with-transaction db/connection tx
         (->> {:pid pid
             :provider (kebab->capital provider)
+            :label (kebab->capital provider)
             :nonce nonce}
           (id/init-player-identity tx)
           doall ;; this returns null list if player does not exist. Does not throw/revert
@@ -113,7 +114,7 @@
   "Part #2 of OAuth2 flow
 
   1. use code to verify user authorization in our app
-  2. receive access_token and refresh_token back from 
+  2. receive access_token and refresh_token back from
 
   OAuth provider returns - { :body { :scope :access_token :refresh_token :expires_in }}
 
@@ -153,7 +154,9 @@
           (println "oauth token response" id body)
           ;; (println "oauth token" (str/split (:scope body) #" ") (:access_token body))
           {:status 301
-            ;; TODO redirect not working. AI generated mf
+            ;; TODO universal links instead of direct deep links
+            ;; https://stackoverflow.com/questions/77214219/expo-linking-with-custom-scheme-does-not-redirect-back-to-app
+            ;; https://docs.expo.dev/guides/deep-linking/
             :headers {"Location" (str "jinni-health://inventory/" provider)} ;; redirect with deeplink 
             :body (map->json {
               :id creds
@@ -235,24 +238,8 @@
 
 (defn oauthed-request-config
   "For sending requests on behalf of a user to an OAuth2 server
-  User must have completed oauth flow and have:Identity in db already"
+  User must have completed oauth flow and have an :Identity in db already for service being called"
   [access-token]
   {:accept :json :async? false ;; TODO bottleneck but not important with minimal users
   :headers  {"Authorization" (str "Bearer " access-token)
               "Content-Type" "application/json"}})
-
-;; TODO OAuth providers return a new access token on each request
-;; Create a helper function that updates :Identity in DB with new access token
-
-
-
-;;; OAuth2 best practices
-;;; https://docs.cloud.coinbase.com/sign-in-with-coinbase/docs/sign-in-with-coinbase-security
-;;; included a state GET parameter during the OAuth2 authorization process. Verifying that this variable matches upon receipt of an authorization code 
-;;; validates our SSL certificate when it connects over https
-
-;; stealing code from:
-;; https://github.com/cemerick/friend
-;; https://github.com/propan/geheimtur
-;; https://github.com/yetanalytics/pedestal-oidc
-

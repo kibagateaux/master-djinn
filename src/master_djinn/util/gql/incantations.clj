@@ -21,10 +21,10 @@
         jid (uuid nil pid (str (java.util.UUID/randomUUID)))]
     (println djinn (MASTER_DJINNS djinn))
     (println pid jid)
-        ;; TODO calc kin, archetype, tone for human + jinn bdays and add to Avatar model
+    ;; TODO check that pid doesnt already have a jid already
     (cond
       ;; TODO throw API errors. create resolver wrapper
-      ;; TODO define in specs not code here
+      ;; TODO define in clojure.specs not code here
       (nil? pid) (do 
         (println "Gql:Resolv:ActivateJinni:ERROR - Player must give their majik to activation")
         {:status 400 :body (map->json { :error "Player must give their majik to activation"})})

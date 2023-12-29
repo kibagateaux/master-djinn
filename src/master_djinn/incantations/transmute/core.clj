@@ -15,8 +15,8 @@
     :AndroidHealthConnect ahc/transmute
     (fn [args]
       (if (types/is-data-provider? provider) ;; TODO redundant with spec
-        (println "Trans:multiplexer: VALID DATA PROVIDER WITH NO TRANSMUTER" args)
-        (println "Trans:multiplexer: INVALID DATA PROVIDER" args) )
+        (println "Trans:multiplexer: VALID DATA PROVIDER WITH NO TRANSMUTER - " provider)
+        (println "Trans:multiplexer: INVALID DATA PROVIDER - " provider) )
       []))) ;; default return empty actions instead of nil/error to prevent code complexity. can check if empty to prevent unneccessary queries
 
 ;; @DEV: is defmulti/defmethod more semantic/terse? I prefer current format personally

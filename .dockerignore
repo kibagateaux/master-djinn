@@ -3,4 +3,5 @@
 
 !project.clj
 !src/
+!test/
 !resources/

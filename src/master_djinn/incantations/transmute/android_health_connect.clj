@@ -39,6 +39,7 @@
     
 
 (defn transmute
+  "Transform raw data collected from phone into game :Action types"
   [data]
   ;; {:pre  [spec/valid? types/::action-source-data args] ;; TODO predicate for valid submit_data arg
   ;;     :post [(map string? %)]}
