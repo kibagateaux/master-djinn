@@ -3,6 +3,9 @@ name: Docker build and push to Artifact Registry
 
 on:
   push:
+    branches:
+      - master
+      - apprentice
 
 env:
   PROJECT_ID: jinni-api-microservices

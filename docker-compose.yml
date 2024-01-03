@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   api:
-    # image: djinn:test # local image
-    image: asia-northeast2-docker.pkg.dev/jinni-api-microservices/master-djinn-test/master:latest # GCP prod instance
+    image: djinn:test # local image
+    # image: asia-northeast2-docker.pkg.dev/jinni-api-microservices/master-djinn-test/master:latest # GCP prod instance
     ports:
       - '80:80'
       - '8888:8888'
