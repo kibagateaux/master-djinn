@@ -47,8 +47,8 @@ jobs:
     - name: Login to Artifact Registry
       uses: docker/login-action@v1
       with:
-        # registry: "asia-northeast2-docker.pkg.dev" ## TODO env var
-        registry: gcr.io
+        registry: "asia-northeast2-docker.pkg.dev" ## TODO env var or gcr.io generalized
+        # registry: gcr.io
         username: oauth2accesstoken
         password: ${{ steps.auth.outputs.access_token }}
 
