@@ -1,7 +1,13 @@
 (ns master-djinn.util.db.core
   (:require [neo4j-clj.core :as neo4j]
-            [master-djinn.util.types.core :refer [load-config]])
+            [master-djinn.util.types.core :refer [load-config]]
+            [steffan-westcott.clj-otel.api.metrics.instrument :as inst]
+            [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import (java.net URI)))
+
+(def database-query-counter
+  (inst/instrument {:name "db.queries.counter"
+                          :instrument-type :counter}))
 
 (defonce connection
   (let [{:keys [activitydb-uri activitydb-user activitydb-pw]} (load-config)]
@@ -18,7 +24,9 @@
   (println "DB:call: uri" (:activitydb-uri (load-config)))
   (println "DB:call: args" args)
   (neo4j/with-transaction connection tx
-    (-> (query tx args) doall first)))
+    (inst/add! database-query-counter {:value 1})
+    (span/with-span! ["DB.Query" {:system/profile-id (:id query)}]
+      (-> (query tx args) doall first))))
 
 (defn generate-resolver
   "for direct read queries that dont require formatting input data"

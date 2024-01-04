@@ -1,8 +1,3 @@
-
-
-
-
-
 (defproject master-djinn "0.0.1-SNAPSHOT"
   :description "Backend services for self-actualization game 
                 using interactive real-world data from your phone to take care of your 
@@ -27,6 +22,14 @@
                 [joplin.core "0.3.11"]
                 ;; Cryptography
                 [org.web3j/core "4.10.3"]
+                ;; Telemetry
+                [com.github.steffan-westcott/clj-otel-api "0.2.5"]
+                [com.github.steffan-westcott/clj-otel-exporter-otlp "0.2.5"]
+                [com.github.steffan-westcott/clj-otel-sdk "0.2.5"]
+                [com.github.steffan-westcott/clj-otel-instrumentation-resources "0.2.5"]
+                [io.grpc/grpc-stub "1.60.1"]
+                [io.grpc/grpc-protobuf "1.60.1"]
+                [io.grpc/grpc-netty "1.60.1"]
                 ;; tbh no idea where these came from. pretty sure part of pedestal template. Look at other projects to see if we can delete
                 [ch.qos.logback/logback-classic "1.2.10" :exclusions [org.slf4j/slf4j-api]]
                 [org.slf4j/jul-to-slf4j "1.7.35"]
@@ -41,5 +44,6 @@
   ;:java-agents [[org.mortbay.jetty.alpn/jetty-alpn-agent "2.0.5"]]
   :profiles {:dev {:aliases {"run-dev" ["trampoline" "run" "-m" "master-djinn.server/run-dev"]}
                    :dependencies [[io.pedestal/pedestal.service-tools "0.6.1"]]}
+            ;; TODO would be nice to move Dockerfile flags to uberjar config
             :uberjar {:aot [master-djinn.server]}}
   :main ^{:skip-aot true} master-djinn.server)

@@ -8,3 +8,11 @@ services:
       - '80:80'
       - '8888:8888'
     env_file: ./.env
+  # telemetry:
+  #   image: jaegertracing/all-in-one
+  #   command:  --collector.otlp.enabled=true
+  #   # image: asia-northeast2-docker.pkg.dev/jinni-api-microservices/master-djinn-test/master:latest # GCP prod instance
+  #   ports:
+  #     - '16686:16686'
+  #     - '4317:4317'
+  #   env_file: ./.env

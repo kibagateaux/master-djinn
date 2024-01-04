@@ -10,7 +10,8 @@
             [com.walmartlabs.lacinia.pedestal.internal :as lp-internal]
             [io.pedestal.interceptor :refer [interceptor]]
             [io.pedestal.http.body-params :as body-params]
-            [master-djinn.util.types.core :refer [load-config]]))
+            [master-djinn.util.types.core :refer [load-config]]
+            [master-djinn.portal.logs :refer [init-otel!]]))
 
 (def ^:private signed-request-interceptor
   "checks if query includes a signed query and 
@@ -54,6 +55,7 @@
 
 (defn create-gql-service
   [compiled-schema options]
+  (init-otel!)
   (let [interceptors (gql-interceptors compiled-schema)
         {:keys [port host oauth-init-path oauth-cb-path oauth-refresh-path]} options
         ;; aaaa (println "custom gql" interceptors)
