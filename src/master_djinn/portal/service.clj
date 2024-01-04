@@ -10,6 +10,7 @@
             [com.walmartlabs.lacinia.pedestal.internal :as lp-internal]
             [io.pedestal.interceptor :refer [interceptor]]
             [io.pedestal.http.body-params :as body-params]
+            [steffan-westcott.clj-otel.api.trace.http :as otel-trace]
             [master-djinn.util.types.core :refer [load-config]]
             [master-djinn.portal.logs :refer [init-otel!]]))
 
@@ -56,15 +57,17 @@
 (defn create-gql-service
   [compiled-schema options]
   (init-otel!)
-  (let [interceptors (gql-interceptors compiled-schema)
+  (let [otel-interceptors (otel-trace/server-span-interceptors)
+        interceptors (concat otel-interceptors (gql-interceptors compiled-schema))
+        rest-interceptors (concat otel-interceptors [(body-params/body-params)])
         {:keys [port host oauth-init-path oauth-cb-path oauth-refresh-path]} options
         ;; aaaa (println "custom gql" interceptors)
         routes (into #{["/graphql" :post interceptors :route-name ::graphql-api]
                       ["/graphiql" :get (p2/graphiql-ide-handler gql-server-config) :route-name ::graphql-ide]
-                      [oauth-init-path :get (conj [(body-params/body-params)] id/oauth-init-handler) :route-name ::oauth-init]
-                      [oauth-cb-path :post (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-post]
-                      [oauth-cb-path :get (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-get]
-                      ;; [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
+                      [oauth-init-path :get (concat rest-interceptors id/oauth-init-handler) :route-name ::oauth-init]
+                      [oauth-cb-path :post (concat rest-interceptors id/oauth-callback-handler) :route-name ::oauth-callback-post]
+                      [oauth-cb-path :get (concat rest-interceptors id/oauth-callback-handler) :route-name ::oauth-callback-get]
+                      ;; [oauth-refresh-path :post (concat rest-interceptors id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
                       }
                   (p2/graphiql-asset-routes (:gql-asset-path gql-server-config)))]
     ;; (println "custom gql" gql-server-config)

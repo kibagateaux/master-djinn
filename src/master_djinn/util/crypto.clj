@@ -1,4 +1,5 @@
 (ns master-djinn.util.crypto
+    (:require [steffan-westcott.clj-otel.api.trace.span :as span])
     (:import  (org.web3j.crypto ECKeyPair Sign Keys)
               (org.web3j.utils Numeric)))
 
@@ -75,22 +76,23 @@
         Open issue on web3j repo - https://github.com/web3j/web3j/issues/1989
     "
     [signed-msg-hash original-msg]
-    (let [raw-hex-str (if (clojure.string/starts-with? signed-msg-hash "0x")
-                        (subs signed-msg-hash 2)
-                        signed-msg-hash)
-        r (hex->bytes (subs raw-hex-str 0 64))
-        s (hex->bytes (subs raw-hex-str 64 128))
-        _v (subs raw-hex-str 128 130) ;; could be 0/1 or 27/28
-        v (hex->bytes (if (< (hex->int _v) 27) (int->hex (+ (hex->int _v) 27)) _v)) ;; so coerce to ETH native 27/28
-        signature-data (new org.web3j.crypto.Sign$SignatureData (first v) r s)
-        hashed-msg (.getBytes original-msg)
-        ;; byte conversion mismatch on "/n".
-        fixed-hashed-msg (hex->bytes (clojure.string/replace (bytes->hex hashed-msg) #"0a" "5c6e"))
-        ;; eee (println "ECRECOVER hashed msg: " (bytes->hex hashed-msg) (bytes->hex fixed-hashed-msg) )
-        ;; Using Sign.signedPrefixedMessageToKey for EIP-712 compliant signatures
-        pubkey (Sign/signedPrefixedMessageToKey fixed-hashed-msg signature-data)
-        address (if (nil? pubkey) nil (Keys/toChecksumAddress (Keys/getAddress (bigint->hex pubkey))))]
-    address))
+    (span/with-span! "crypt.ecrecover.start" {:system/signed-msg signed-msg-hash}
+        (let [raw-hex-str (if (clojure.string/starts-with? signed-msg-hash "0x")
+                            (subs signed-msg-hash 2)
+                            signed-msg-hash)
+            r (hex->bytes (subs raw-hex-str 0 64))
+            s (hex->bytes (subs raw-hex-str 64 128))
+            _v (subs raw-hex-str 128 130) ;; could be 0/1 or 27/28
+            v (hex->bytes (if (< (hex->int _v) 27) (int->hex (+ (hex->int _v) 27)) _v)) ;; so coerce to ETH native 27/28
+            signature-data (new org.web3j.crypto.Sign$SignatureData (first v) r s)
+            hashed-msg (.getBytes original-msg)
+            ;; byte conversion mismatch on "/n".
+            fixed-hashed-msg (hex->bytes (clojure.string/replace (bytes->hex hashed-msg) #"0a" "5c6e"))
+            ;; eee (println "ECRECOVER hashed msg: " (bytes->hex hashed-msg) (bytes->hex fixed-hashed-msg) )
+            ;; Using Sign.signedPrefixedMessageToKey for EIP-712 compliant signatures
+            pubkey (Sign/signedPrefixedMessageToKey fixed-hashed-msg signature-data)
+            address (if (nil? pubkey) nil (Keys/toChecksumAddress (Keys/getAddress (bigint->hex pubkey))))]
+        address)))
 
 (defn handle-signed-POST-query
     "Takes Lacinia app context including a signed gql request (query or mutation), gets the ETH signer, 

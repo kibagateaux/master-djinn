@@ -25,7 +25,7 @@
   (println "DB:call: args" args)
   (neo4j/with-transaction connection tx
     (inst/add! database-query-counter {:value 1})
-    (span/with-span! ["DB.Query" {:system/profile-id (:id query)}]
+    (span/with-span! ["db.call" {:system/profile-id (:qu query)}]
       (-> (query tx args) doall first))))
 
 (defn generate-resolver

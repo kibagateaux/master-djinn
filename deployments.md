@@ -1,6 +1,7 @@
 ## Step 0 - Installs
 - gcloud CLI on local machine - `curl https://sdk.cloud.google.com | zsh`
-- `gcloud auth login` then `gcloud auth configure-docker {artifact-registry-zone.pkg.dev}`
+- `gcloud auth login` then `gcloud auth configure-docker {artifact-registry-zone.pkg.dev}` then ssh into server and run `docker-credential-gcr configure-docker --registries=asia-northeast2-docker.pkg.dev` EVERYTIME you want to pull
+
 - [docker](https://docs.docker.com/engine/install/ubuntu/) on remote server 
 
 
@@ -24,11 +25,11 @@ Ensure you have installed docker on your server first.
 touch .env docker-compose.yml
 echo "local env file contents" >> .env
 echo "local docker-compose file contents" >> docker-compose.yml
-echo alias docker-compose="'"'docker run --rm \
+echo alias docker-composer="'"'docker run --rm \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$PWD:$PWD" \
     -w="$PWD" \
-    docker/compose'"'" >> ~/.bashrc
+    docker/compose'"'" >> ~/.bash_profile
 
 docker pull docker/compose
 

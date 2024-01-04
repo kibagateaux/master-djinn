@@ -1,4 +1,3 @@
-
 name: Docker build and push to Artifact Registry
 
 on:
@@ -11,7 +10,6 @@ env:
   PROJECT_ID: jinni-api-microservices
   GAR_REGION: asia-northeast2
   REPOSITORY: master-djinn-test
-  # IMAGE: $GITHUB_REF#*/} # pull branch name to use as image name
   IMAGE: ${{ github.ref_name }}
 
 permissions:
@@ -19,7 +17,6 @@ permissions:
   id-token: 'write'
 
 jobs:
-    
   login-build-push:
     name: Google cloud login, build, and push
     runs-on: ubuntu-latest
