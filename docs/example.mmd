@@ -1,0 +1,17 @@
+---
+title: Example Action + Divination Generation
+description: Overview of simple gameplay interaction
+---
+erDiagram
+    PLAYER ||--|| APPLE_IDENTITY :":HAS"
+    STRAVA ||--|| STEP_ACTION :":GENERATES"
+    iHEALTH ||--|| STEP_ACTION :":ATTESTS"
+    PLAYER ||--|| STEP_ACTION :":DID"
+    STRAVA ||--|| IDENTITY :":CREATES"
+    GITHUB ||--|| IDENTITY :":CREATES"
+    GITHUB ||--|| CODE_ACTION :":GENERATES"
+    GITHUB ||--|| CODE_ACTION :":ATTESTS"
+    PLAYER ||--|| CODE_ACTION :":DID"
+    JINNI ||--|| STEP_ACTION :":READS"
+    JINNI ||--|| CODE_ACTION :":READS"
+    JINNI ||--|| DIVINATION :":SEES"

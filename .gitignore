@@ -41,3 +41,5 @@ repl-port
 out/
 build/
 
+# Doc graphics
+docs/*.svg

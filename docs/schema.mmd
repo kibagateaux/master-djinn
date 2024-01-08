@@ -1,0 +1,16 @@
+---
+title: API Docs
+description: Look at jinni-schema for exact fields. Generate graphic with `MERMAID_FILE_NAME=schema; mmdc -i ./$MERMAID_FILE_NAME.mmd -o ./$MERMAID_FILE_NAME.svg -t dark -b transparent && open ./$MERMAID_FILE_NAME.svg`
+---
+erDiagram
+    PLAYER ||--|| AVATAR :":HAS"
+    JINNI ||--|| AVATAR :":HAS"
+    AVATAR ||--o{ IDENTITY :":HAS"
+    AVATAR ||--o{ ACTION :":DID :WANTS"
+    ACTION }o--|{ DATA_PROVIDER :":ATTESTS"
+    DATA_PROVIDER }o--|{ DATA_SOURCE :":AGGREGATES"
+    ACTION }o--|| DATA_SOURCE :":GENERATES"
+
+    ACTION }o--o{ RESOURCE :":CONSUMES :GENERATES"
+    AVATAR }o--o{ RESOURCE :":STEWARDS"
+    JINNI ||--o{ DIVINATION :":SEES"

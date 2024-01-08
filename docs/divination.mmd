@@ -1,0 +1,25 @@
+---
+title: Jinni AI Divination Process Diagram
+description: System design and step-by-step process of reading player data and generating images of player avatars
+---
+journey
+    title Jinni AI Divination Process Diagram
+    section Aggregate Data
+      Equip Items: 1: Player
+      Call Integrations: 3: JINNI API
+      Store Action Data: 3: JINNI API
+    section Read Data
+      Get Intentions: 5: JINNI API
+      Get Actions: 5: JINNI API
+    section Analyze Data
+      ChatGPT Create Prompt To Analyze Based On Intentions: 1: JINNI API, OPEN AI API
+      ChatGPT Analyze Action Data: 1: JINNI API, OPEN AI API
+      ChatGPT Output Action Analysis: 1: JINNI API, OPEN AI API
+    section Generate Image
+      Get Current Jinni Image: 5: JINNI API
+      ChatGPT Generate DALLE Prompt: 5: JINNI API, OPEN AI API
+      Generate New Jinni Image: 2: JINNI API, OPEN AI API
+      Save New Jinni Image: 5: JINNI API, OPEN AI API
+    section Internalization
+      View New Jinni: 1: Player
+      Analyze How Actions Affected Jinni: 3: Player
