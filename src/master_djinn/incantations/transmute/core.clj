@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as spec]
     [master-djinn.util.db.core :as db]
     [master-djinn.util.types.core :as types]
+    [master-djinn.util.types.actions :as type-a]
     [neo4j-clj.core :as neo4j]
     [master-djinn.incantations.transmute.android-health-connect :as ahc]
   ))
@@ -17,14 +18,14 @@
       (if (types/is-data-provider? provider) ;; TODO redundant with spec
         (println "Trans:multiplexer: VALID DATA PROVIDER WITH NO TRANSMUTER - " provider)
         (println "Trans:multiplexer: INVALID DATA PROVIDER - " provider) )
-      []))) ;; default return empty actions instead of nil/error to prevent code complexity. can check if empty to prevent unneccessary queries
+      #('[])))) ;; default return empty actions instead of nil/error to prevent code complexity. can check if empty to prevent unneccessary queries
 
 ;; @DEV: is defmulti/defmethod more semantic/terse? I prefer current format personally
 (defn multiplexer
 ;; TODO technically should just be (transmute args) and rest should be handled in portal handler to keep this no side effects
     [context args value]
-    ;;  {:pre  [spec/valid? types/::action-source-data args] ;; TODO predicate for valid submit_data arg
-    ;;   :post [(map string? %)]}
+    ;;  {:pre  [(spec/valid? ::type-a/provider-input-actions args)] ;; TODO predicate for valid submit_data arg
+    ;;   :post [(spec/valid? (spec/+ string?) %)]}
     (let [transmute (provider->transmuter (:data_provider args))]
     ;; TODO (spec/check-asserts true)
     ;; TODO validate player for action here
