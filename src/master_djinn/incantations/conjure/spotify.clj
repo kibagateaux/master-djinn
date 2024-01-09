@@ -1,6 +1,6 @@
 (ns master-djinn.incantations.conjure.spotify
     (:require [clj-http.client :as client]
-            [master-djinn.util.types.core :refer [action->uuid action-type->name]]
+            [master-djinn.util.types.core :refer [action->uuid normalize-action-type]]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.core :refer [now]]
@@ -28,14 +28,14 @@
             ;; But fits with playground model of multiple apps and selfhosted data access
             (= 200 (:status res)) (do
                 (db/call db/batch-create-actions {:actions [{
-                    :name  (action-type->name :Perceiving)
+                    :name  (normalize-action-type :Perceiving)
                     :data_provider db/MASTER_DJINN_DATA_PROVIDER
                     :player_id player-id
                     :player_relation "DID"
                     :data {
                         ;; TODO need to add startTime to uuid using java and then convert to ISO locale string
                         :players [target-player-id]
-                        :uuid (action->uuid player-id db/MASTER_DJINN_DATA_PROVIDER db/MOBILE_APP_DATA_SOURCE (action-type->name :Perceiving) start-time version)
+                        :uuid (action->uuid player-id db/MASTER_DJINN_DATA_PROVIDER db/MOBILE_APP_DATA_SOURCE (normalize-action-type :Perceiving) start-time version)
                         :start_time start-time
                         :end_time start-time
                         :data_source db/MOBILE_APP_DATA_SOURCE

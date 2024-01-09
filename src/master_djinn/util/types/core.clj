@@ -87,18 +87,15 @@
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?
   (set (get-in types [:enums :ActionTypes :values])))
-(def is-action-name?
-  (set (get-in types [:enums :ActionNames :values])))
 (def is-action-relation?
   (set (get-in types [:enums :ActionRelations :values])))
 (def is-data-provider?
-  (set (get-in types [:enums :data-providers :values])))  ;; works as kebab case too
+  (set (get-in types [:enums :DataProviders :values])))
 
-(defn action-type->name [action-name]
-  (if (is-action-name? action-name) (name action-name) nil))
+(defn normalize-action-type [action-name]
+  (if (is-action-type? action-name) (name action-name) nil))
 
 ;;; Crypto Types
-
 (defn address? [str]
   (re-matches #"0x[a-fA-F0-9]{40}" str))
 (defn signature? [str]
@@ -110,17 +107,34 @@
 (spec/def ::uuid uuid-v5?)
 (spec/def ::empty-array (spec/or :vec (spec/and vector? empty?) :list (spec/and list? empty?)))
 
-
-;;; Core Game Data Types 
-
+;;; Basic Data Types
 (spec/def ::data_provider is-data-provider?)
 (spec/def ::data_source string?)
 (spec/def ::player_id address?)
 (spec/def ::timestamp string?) ;; TODO regex for ISO "2023-09-07T09:44:16.818Z"
+(spec/def ::player_relation is-action-relation?)
+
+;;; Input Data From Players & Providers
 (spec/def ::startTime ::timestamp) ;; TODO regex for ISO "2023-09-07T09:44:16.818Z"
 (spec/def ::endTime ::timestamp) ;; TODO regex for ISO "2023-09-07T09:44:16.818Z"
-(spec/def ::count (spec/and :number int? :positive pos?))
+(spec/def ::count (spec/and int? pos?))
+(spec/def ::action_type string?) ;; non-normalized basic inputs e.g Step
+(spec/def ::metadata map?)
 
+;; per provider input data types. TODO match ::data_provider to ::raw_data input
+(spec/def ::android-health-connect-action
+  (spec/keys :req-un [::startTime ::endTime ::metadata]
+            :opt-un [::count]))
+(spec/def ::ios-health-action
+  (spec/keys :req-un [::startTime ::endTime]))
+(spec/def ::raw_data
+  (spec/* (spec/or ::android-health-connect-action ::ios-health-action)))
+
+(spec/def ::provider-input-actions (spec/keys :req-un [
+    ::data_provider
+    ::player_id
+    ::action_type
+    ::raw_data]))
 ;;; TODO implement  https://github.com/typedclojure/typedclojure/
 ;;; https://github.com/typedclojure/typedclojure/blob/main/example-projects/spec1-type-providers/src/typed_example/spec1_extensible.clj
 ;; https://github.com/bhb/expound

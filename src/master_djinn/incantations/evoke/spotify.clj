@@ -1,6 +1,6 @@
 (ns master-djinn.incantations.evoke.spotify
     (:require [clj-http.client :as client]
-            [master-djinn.util.types.core :refer [action->uuid action-type->name]]
+            [master-djinn.util.types.core :refer [action->uuid normalize-action-type]]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.core :refer [now]]
@@ -22,13 +22,13 @@
         (try (let [res (client/put url (portal/oauthed-request-config (:access_token id)))]    
             (cond
                 (= 204 (:status res)) (db/call db/batch-create-actions {:actions [{
-                    :name (action-type->name :Socializing)
+                    :name (normalize-action-type :Socializing)
                     :data_provider db/MASTER_DJINN_DATA_PROVIDER
                     :player_id player-id
                     :player_relation "DID"
                     :data {
                         :players  (clojure.string/join "," target-players)
-                        :uuid (action->uuid player-id db/MASTER_DJINN_DATA_PROVIDER db/MOBILE_APP_DATA_SOURCE (action-type->name :Socializing) start-time version)
+                        :uuid (action->uuid player-id db/MASTER_DJINN_DATA_PROVIDER db/MOBILE_APP_DATA_SOURCE (normalize-action-type :Socializing) start-time version)
                         :start_time start-time
                         :end_time start-time
                         :data_source db/MOBILE_APP_DATA_SOURCE
@@ -58,13 +58,13 @@
     (let [version "0.0.1" start-time (now)]
         (println "spotify create silent disco" player-id playlist-id)
         (db/call db/batch-create-actions {:actions [{
-            :name  (action-type->name :Partying)
+            :name  (normalize-action-type :Partying)
             :data_provider db/MASTER_DJINN_DATA_PROVIDER
             :player_id player-id
             :player_relation "DID"
             :data {
                 ;; :players [target_player_ids]
-                :uuid (action->uuid player-id db/MASTER_DJINN_DATA_PROVIDER db/MOBILE_APP_DATA_SOURCE (action-type->name :Perceiving) start-time version)
+                :uuid (action->uuid player-id db/MASTER_DJINN_DATA_PROVIDER db/MOBILE_APP_DATA_SOURCE (normalize-action-type :Perceiving) start-time version)
                 :start_time start-time
                 :end_time start-time ;; TODO ideally webhook when jam ends to log
                 :data_source db/MOBILE_APP_DATA_SOURCE

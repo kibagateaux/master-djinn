@@ -1,6 +1,6 @@
 (ns master-djinn.incantations.conjure.core
     (:require [clj-http.client :as client]
-            [master-djinn.util.types.core :refer [action->uuid action-type->name]]
+            [master-djinn.util.types.core :refer [action->uuid normalize-action-type]]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.core :refer [now]]

@@ -1,13 +1,10 @@
 {:enums
     {:ActionTypes
         {:description "General categories for actions"
-        :values [:Exercise :Socialize :Internalize]}
-    :ActionRelations
-        {:description "Allowed Neo4j relations between players and actions"
-        :values [:DID]}
-    :ActionNames
-        {:description "General categories for actions"
         :values [
+            :Exercise
+            :Socialize
+            :Internalize
             :Perceiving
             :Walking
             :Running
@@ -19,9 +16,10 @@
             :Socializing
             :Partying
             :Messaging
-            :Eating
-        ]}
-    
+            :Eating]}
+    :ActionRelations
+        {:description "Allowed Neo4j relations between players and actions"
+        :values [:DID]}
     :DataProviders
         {:description "Valid Data Providers. 
                 Unique game items that players can equip.
@@ -82,7 +80,7 @@
             ;; :implements [:Action]
             
             :id {:type (non-null String)}
-            :name {:type (non-null String)}
+            :action_type {:type (non-null String)}
             :startTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
             :endTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
             :data_provider {:type (non-null :DataProviders)}
@@ -93,7 +91,7 @@
             ;; :implements [:Action]
             
             :id {:type (non-null String)}
-            :name {:type (non-null String)}
+            :resource_type {:type (non-null String)}
             :image {:type String}
             :href {:type String} ;; link to view data on resource
             :creators {:type (list Avatar)}
@@ -116,9 +114,9 @@
                 {:type        (list ID)
                 :description "Submit new game action data from players and return :Action UUIDs created"
                 :args       {:verification {:type :SignedRequest} ;; non-null for now
-                            :data {:type (list :RawInputData)}
+                            :raw_data {:type (list :RawInputData)}
                             :data_provider {:type (non-null :DataProviders)}
-                            :name {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
+                            :action_type {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
                             :player_id {:type (non-null String)}}}  ;; 0x ETH address
             
             :activate_jinni

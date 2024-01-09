@@ -1,12 +1,14 @@
 (ns master-djinn.incantations.transmute.core
   (:require
     [clojure.spec.alpha :as spec]
+    [clojure.spec.test.alpha :as stest]
     [master-djinn.util.db.core :as db]
     [master-djinn.util.types.core :as types]
-    [master-djinn.util.types.actions :as type-a]
+    [master-djinn.util.types.game-data :as type-gd]
     [neo4j-clj.core :as neo4j]
     [master-djinn.incantations.transmute.android-health-connect :as ahc]
   ))
+
 
 
 (defn provider->transmuter [provider]
@@ -24,16 +26,16 @@
 (defn multiplexer
 ;; TODO technically should just be (transmute args) and rest should be handled in portal handler to keep this no side effects
     [context args value]
-    ;;  {:pre  [(spec/valid? ::type-a/provider-input-actions args)] ;; TODO predicate for valid submit_data arg
+    ;;  {:pre  [(spec/valid? ::type-gd/provider-input-actions args)] ;; TODO predicate for valid submit_data arg
     ;;   :post [(spec/valid? (spec/+ string?) %)]}
-    (let [transmute (provider->transmuter (:data_provider args))]
+    (let [transmuter (provider->transmuter (:data_provider args))]
     ;; TODO (spec/check-asserts true)
     ;; TODO validate player for action here
     (neo4j/with-transaction db/connection tx
     ;; TODO add try block. specifically want to catch duplicate uuid invariant violation
     ;; so we know if data needs to be resubmitted or not. (also figure out if part of data sent was duplicated or all, no actions sent willbe saved since single tx)
       (->> args
-          transmute
+          transmuter
           ((fn [config] (println "TRANSMUTING " config) config))
           ;; now have normalized format of { :data_provider :player_id :actions [{:name :player_relation :data {}}]}
           (db/batch-create-actions tx)
@@ -42,4 +44,14 @@
           first ;; doall returns list but only ever one response
           :ids)))) ;; extract list of :Action uuids created
         
-    
+(spec/fdef provider->transmuter
+        :args (spec/cat :provider ::types/data_provider)
+        :ret (spec/fspec :args (spec/cat :data ::types/provider-input-actions)
+                :ret ::type-gd/Actions))
+
+(spec/fdef multiplexer
+        :args (spec/cat :context map? :args ::types/provider-input-actions :value any?)
+        :ret ::type-gd/Actions)
+
+(stest/instrument `provider->transmuter)
+(stest/instrument `multiplexer)

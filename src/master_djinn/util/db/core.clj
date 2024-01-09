@@ -73,7 +73,7 @@
 
   WITH a, action, rp
 
-  CALL apoc.create.addLabels(a, [action.name]) YIELD node
+  CALL apoc.create.addLabels(a, [action.action_type]) YIELD node
   CALL apoc.refactor.setType(rp, action.player_relation) YIELD output AS relation
 
   RETURN COLLECT(a.uuid) as ids
