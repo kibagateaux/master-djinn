@@ -11,8 +11,7 @@
             slurp
             edn/read-string))
 
-;; prevent compile fail c no file. check file exists if no, empty map, else parse file.
-;; (def local-config {})
+;; prevent compile fail c no file. check file exists. If no, empty map, else parse file.
 (def local-config 
  (if (.exists (io/as-file "resources/env.edn"))
     (-> "env.edn"
@@ -21,10 +20,14 @@
         edn/read-string)
       {}))
 
-(defn load-config []
+(defn load-config
+  "Load config from Java System vars or .edn config file in /resources
+  Prioritize server env vars over file config and only override System if there are no env vars at all.
+  If some vars are missing thats fine. Depends on services that host wants to provide"
+  []
   (let [file-config local-config
         env-config {:api-host (or (System/getenv "API_HOST") "0.0.0.0")
-                    :api-domain (or (System/getenv "API_DOMAIN") "scry.cryptonative.ai")
+                    :api-domain (or (System/getenv "API_DOMAIN") "scry.jinni.health")
 
                     :activitydb-uri (System/getenv "ACTIVITYDB_URI")
                     :activitydb-user (System/getenv "ACTIVITYDB_USER")
@@ -33,16 +36,10 @@
                     :strava-client-id (System/getenv "STRAVA_CLIENT_ID")
                     :strava-client-secret (System/getenv "STRAVA_CLIENT_SECRET")
                     :spotify-client-id (System/getenv "SPOTIFY_CLIENT_ID")
-                    :spotify-client-secret (System/getenv "SPOTIFY_CLIENT_SECRET")}]
+                    :spotify-client-secret (System/getenv "SPOTIFY_CLIENT_SECRET")
+                    :github-client-id (System/getenv "GITHUB_CLIENT_ID")
+                    :github-client-secret (System/getenv "GITHUB_CLIENT_SECRET")}]
     
-    ;; (println "LOAD CONFIG file exists? " "resources/env.edn" (.exists (io/as-file "resources/env.edn")))
-    ;; (clojure.pprint/pprint "LOAD_CONFIG:system" env)
-    ;; (println "LOAD_CONFIG:test" (every? nil? (vals env-config)) (:api-domain file-config) file-config)
-    ;; (println "LOAD_CONFIG:test" (System/getenv "API_DOMAIN") (env :api-domain) (env :spotify-client-id))
-
-    ;; prioritize server env vars over file config
-    ;; only override if there are no env vars at all.
-    ;; If some are missing thats fine. Depends on services that host wants to provide
     ;; TODO return (into file-config env-config)
      (if (empty? file-config) env-config file-config)))
 
@@ -52,7 +49,6 @@
 ;;   [func]
 ;;   `(:v (meta (resolve ~func))))
 
-;; TODO move uuid to crypto util
 (defn uuid
   "domain = initial UUID to scope namespaces within. SHOULD ALWAYS be --uuid/+null+
   recursively apply namespaces to UUID creating a hierarchy
@@ -64,7 +60,7 @@
 
 ;; TODO maybe should be env vars but even if self-hosted these should be the same.
 ;; Not relevant until people start making new games which is very far in the future
-(defonce PLAYGROUND_UUID (--uuid/v5 --uuid/+namespace-url+ "https://cryptonative.ai/"))
+(defonce PLAYGROUND_UUID (--uuid/v5 --uuid/+namespace-url+ "https://jinni.health/"))
 (defonce GAME_NAME "Jinni")
 (defn avatar->uuid
   "UUID namespace hierarchy:
@@ -88,14 +84,15 @@
     (uuid --uuid/+null+ player provider source action-name start-time version))
   
 
-
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?
   (set (get-in types [:enums :ActionTypes :values])))
 (def is-action-name?
   (set (get-in types [:enums :ActionNames :values])))
+(def is-action-relation?
+  (set (get-in types [:enums :ActionRelations :values])))
 (def is-data-provider?
-  (set (get-in types [:enums :data-providers :values])))
+  (set (get-in types [:enums :data-providers :values])))  ;; works as kebab case too
 
 (defn action-type->name [action-name]
   (if (is-action-name? action-name) (name action-name) nil))

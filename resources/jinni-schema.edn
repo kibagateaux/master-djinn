@@ -2,7 +2,9 @@
     {:ActionTypes
         {:description "General categories for actions"
         :values [:Exercise :Socialize :Internalize]}
-
+    :ActionRelations
+        {:description "Allowed Neo4j relations between players and actions"
+        :values [:DID]}
     :ActionNames
         {:description "General categories for actions"
         :values [
@@ -46,7 +48,7 @@
             {:description "Any unprocessed data collected from data providers. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
             :fields {
                 :id {:type String} ;; uuid in data provider system
-                :count {:type String} ;; uuid in data provider system
+                :count {:type Int}
                 :timestamp {:type String} ;; exact time action occured
                 ;; timespan that action occured over
                 :startTime {:type String}

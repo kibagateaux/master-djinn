@@ -2,12 +2,12 @@
 ```graphql
 mutation submit_raw_data(
   $raw_data: [RawInputData],
-  $source: DataProviders!,
+  $provider: DataProviders!,
   $name: String!
 ){
   submit_data(
     data: $raw_data,
-    data_provider: $source,
+    data_provider: $provider,
     name: $name,
     player_id: "me"
   )
@@ -21,15 +21,16 @@ mutation submit_raw_data(
       "endTime": "2023-09-07T09:45:16.819Z",
       "metadata": {
         "clientRecordId": null,
-        "clientRecordVersion": 0,
+        "clientRecordVersion": "0",
         "dataOrigin": "com.google.android.apps.fitness",
-        "device": 0,
+        "device": "0",
         "id": "079e8187-15f2-421d-8024-7c4b2f5fda06",
         "lastModifiedTime": "2023-09-07T09:57:52.715Z",
-        "recordingMethod": 0
+        "recordingMethod": "0"
       }
   }],
-  "source": "AndroidHealthConnect",
-  "name":"Step"
+  "provider": "AndroidHealthConnect",
+  "name":"Step",
+  "player_id": "0x0AdC54d8113237e452b614169469b99931cF094e"
 }
 ```
