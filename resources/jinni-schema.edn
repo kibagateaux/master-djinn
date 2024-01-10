@@ -20,7 +20,7 @@
     :ActionRelations
         {:description "Allowed Neo4j relations between players and actions"
         :values [:DID]}
-    :DataProviders
+    :Providers
         {:description "Valid Data Providers. 
                 Unique game items that players can equip.
                 Possible that a data provider can also be a data source. Or a data source could appear in multiple data providers."
@@ -83,13 +83,13 @@
             :action_type {:type (non-null String)}
             :startTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
             :endTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
-            :data_provider {:type (non-null :DataProviders)}
+            :provider {:type (non-null :Providers)}
             :player {:type :Avatar} ;; Action may have multiple players? or no player if its projected?
         }}
         :Resource {:fields {
-            ;; make interface if we need abstract for incipient/consequential
-            ;; :implements [:Action]
-            
+            ;; make interface if we need abstract for public/permissioned/private
+            ;; :implements [:Resource]
+
             :id {:type (non-null String)}
             :resource_type {:type (non-null String)}
             :image {:type String}
@@ -115,7 +115,7 @@
                 :description "Submit new game action data from players and return :Action UUIDs created"
                 :args       {:verification {:type :SignedRequest} ;; non-null for now
                             :raw_data {:type (list :RawInputData)}
-                            :data_provider {:type (non-null :DataProviders)}
+                            :provider {:type (non-null :Providers)}
                             :action_type {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
                             :player_id {:type (non-null String)}}}  ;; 0x ETH address
             

@@ -58,12 +58,12 @@
 ;; if we want multiple data providers/sources to attest to an action, will need to rethink data model and will cause issues with autoMERGEing
 ;; @DEV: relationships can only ahve 1 type. refactor.setType *overrides*. Create multiple relations if want to express :WANTS and :DID 
   ;; MATCH (p:Avatar     {id: $actions[0].player_id})
-  ;; MERGE (d:DataProvider {id: $actions[0].data_provider})
+  ;; MERGE (d:DataProvider {id: $actions[0].provider})
 (neo4j/defquery batch-create-actions "
   UNWIND $actions AS action
 
   MERGE (p:Avatar     {id: action.player_id})
-  MERGE (d:DataProvider {id: action.data_provider})
+  MERGE (d:DataProvider {id: action.provider})
 
   WITH action, p, d
   
@@ -87,7 +87,7 @@
 ;; resources must have actions???
 (neo4j/defquery create-action-with-resources "
     MERGE (p:Avatar     {id: action.player_id})
-    MERGE (d:DataProvider {id: action.data_provider})
+    MERGE (d:DataProvider {id: action.provider})
     CREATE p-[rp:ACTS]->(a:Action)
     SET a = action.data
     CALL apoc.refactor.setType(rp, action.player_relation) YIELD output AS relation

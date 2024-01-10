@@ -6,7 +6,15 @@
     )
 
 
-    ; :distinct true :min-count 1
+(spec/def ::Avatar (spec/keys
+  :req-un [::types/id ::types/name ::types/birthday]
+  ;; dont include uuid as that is secret for now[]
+  :opt-un [::types/uuid]))
+
+(spec/def ::Identity (spec/keys
+  ;; dont include uuid as that is secret for now[]
+  :req-un [::types/uuid ::types/id ::types/provider]
+  :opt-un [::types/access_token ::types/refresh_token]))
 
 (spec/def ::action_type types/normalize-action-type)
 
@@ -14,18 +22,30 @@
   :req-un [::types/uuid ::types/data_source ::types/startTime ::types/endTime ::action_type]
   :opt-un [::types/count]))
 
-;; TODO feel like :Action.:Actions need a lot of work on how they are structured so
-;; API + playgroun data system is scalable while making DB queries simp[le/efficient]
+;; TODO autogenerate from schema.edn
 (spec/def ::Action (spec/keys :req-un [
   ::types/action_type ;; :TODO non-namespaced keys = name 
-  ::types/data_provider 
+  ::types/provider 
   ::types/player_id
+  
   ::types/player_relation
   ::data ;; :TODO non-namespaced keys = data 
 ]))
 
 ;; (spec/def ::Actions (spec/or ::types/empty-array (spec/+ ::Action)))
 (spec/def ::Actions (spec/* ::Action))
+    ; :distinct true :min-count 1
+
+;; TODO autogenerate from schema.edn
+(spec/def ::Resource (spec/keys :req-un [
+  ::types/resource_type ;; :TODO non-namespaced keys = name 
+  ::types/provider 
+  ::types/player_id
+  ::types/player_relation
+  ::data ;; :TODO non-namespaced keys = data 
+]))
+
+(spec/def ::Resources (spec/* ::Resource))
 
 ;; TODO i shouldn't need to write transmuters anymore
 ;; Should just write specs about input data, output :Action, and transmuter func.

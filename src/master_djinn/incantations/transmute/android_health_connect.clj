@@ -2,17 +2,35 @@
   (:require [clojure.data.json :as json]
             [clojure.spec.alpha :as spec]
             [clojure.spec.test.alpha :as stest]
+            [clojure.test.check.generators :as gen]
+            [expound.alpha :as expound]
             [master-djinn.util.types.core :as types]
             [master-djinn.util.types.game-data :as type-gd]))
 
 
 (defonce transmuter-data-provider :AndroidHealthConnect)
+(set! spec/*explain-out* expound/printer)
 
+(spec/fdef Step->Action
+        :args (spec/cat :pid ::types/signer :provider ::types/provider :input ::types/android-health-connect-action)
+        :ret ::type-gd/Action)
+
+(spec/fdef transmute
+        :args (spec/cat :data (spec/and map? ::types/provider-input-actions))  ;; TODO submit-data structure with specific android-health-connect action type
+        ;; basic :args above throw error w=on stest/check unable to generate data so tell it how to generate data manually
+        ;; :args (spec/with-gen
+        ;;   (spec/and
+        ;;     (spec/cat :data (spec/and map? ::types/provider-input-actions))
+        ;;     #(= (distinct (map :startTime (:raw_data %))) (map :startTime (:raw_data %)))
+        ;;     ) ;; should not have duplicate data
+        ;;   #(gen/let [data (spec/gen ::types/provider-input-actions)]
+        ;;      [data]))
+        :ret ::type-gd/Actions)
 
 (defn Step->Action
-  ;; {:pre  [spec/valid? ::android-health-connect-action args] ;; TODO predicate for valid submit-data arg
-  ;;     :post ::db.submit-data}
   [pid provider input]
+  ;; {:pre  [(expound/expound ::types/android-health-connect-action input)] ;; TODO predicate for valid submit-data arg
+  ;;     :post [(expound/expound ::type-gd/Action %)]}
   "
   @DEV: transmuter-version is UUID namespace to track data provenance as codebase evolves over time.
   Tried adding as clojure func metadata but that was a bitch.
@@ -28,7 +46,7 @@
         origin (or (get-in input [:metadata :dataOrigin]) p)]
     {
     :action_type action-type
-    :data_provider p
+    :provider p
     :player_id pid
     :player_relation "DID"
     :data {
@@ -48,9 +66,11 @@
 (defn transmute
   "Transform raw data collected from phone into game :Action types"
   [data]
-  ;; {:pre [(spec/explain ::type-gd/provider-input-actions data) (spec/valid? ::type-gd/provider-input-actions data)] ;; TODO submit-data structure with specific android-health-connect action type
-  ;;     :post [(spec/valid? ::type-gd/Actions %)]}
-  (let [provider (:data_provider data) ;; @DEV: remove keyword prefix ":" for neo4j tag
+  ;;; @DEV: these fail at runtime from API but running in repl manually succeeds 
+  ;; {:pre [(spec/conform ::types/provider-input-actions data) (spec/explain ::types/provider-input-actions data)] ;; TODO submit-data structure with specific android-health-connect action type
+  ;;     :post [(spec/conform ::type-gd/Actions (:raw_data %)) (spec/explain ::type-gd/Actions (:raw_data %))]}
+  ;; (clojure.pprint/pprint "Trans:Andr:transmute" data)
+  (let [provider (:provider data) ;; @DEV: remove keyword prefix ":" for neo4j tag
         action_type (:action_type data)
         pid (:player_id data)
         aaa (println "player id   " pid)
@@ -64,15 +84,22 @@
       "default" [])})))
 
 
-(spec/fdef Step->Action
-        :args (spec/cat :pid ::types/signer :provider ::types/data_provider :input ::types/android-health-connect-action)
-        :ret ::type-gd/Actions)
 
-;; (type-gd/gen-transmuter-spec transmute ::type-gd/provider-input-actions)
-(spec/fdef transmute
-        :args (spec/cat :data (spec/and map? ::types/provider-input-actions))  ;; TODO submit-data structure with specific android-health-connect action type
-        :ret ::type-gd/Actions)
-
+;;; @DEV: (instrument) only checks inputs at runtime, does not check outputs!
+;; This passes fine even tho :pre/:post doesnt. spec/fdef + stest/instrument MAY be broken giving false postives :pre/:post definitely throws false negatives
+;; can verify with repl commands below
+  ;; => (require '[expound.alpha :as exp] '[clojure.spec.alpha :as s] '[master-djinn.util.types.core :as t])
+  ;; => (exp/expound ::t/provider-input-actions {:raw_data [{:count 531, :startTime "2030-04-07T09:44:16.818Z", :endTime "2031-09-07T09:45:16.819Z", :metadata {:clientRecordId nil, :clientRecordVersion "0", :dataOrigin "com.google.android.apps.fitness", :device "0", :id "079e8187-15f2-421d-8024-7c4b2f5fda06", :lastModifiedTime "2023-09-07T09:57:52.715Z", :recordingMethod "0"}}], :provider :AndroidHealthConnect, :action_type "Step", :player_id "0x0AdC54d8113237e452b614169469b99931cF094e"})
 (stest/instrument `Step->Action)
 (stest/instrument `transmute)
-;; (stest/check `transmute)
+
+;; (defspec cant-transmute-normalized-Actions 100
+;;   (prop/for-all [acts (map (gen/vector ::type-gd/Action)]
+;;     (transmute (transmute acts))))
+
+;; (defspec unknown-action-type-returns-empty-list 100
+;;   (prop/for-all [acts (map #(assoc % :action_type "UNKOWN_TYPE")(gen/vector ::type-gd/Action)]
+;;     (= [] (transmute acts))))
+
+;; (expound/explain-results (stest/check `transmute))
+;; (expound/explain-results (stest/check `Step->Action))

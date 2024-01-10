@@ -2,12 +2,12 @@
 ```graphql
 mutation submit_raw_data(
   $raw_data: [RawInputData],
-  $provider: DataProviders!,
+  $provider: Providers!,
   $name: String!
 ){
   submit_data(
     data: $raw_data,
-    data_provider: $provider,
+    provider: $provider,
     name: $name,
     player_id: "me"
   )

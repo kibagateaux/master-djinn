@@ -29,7 +29,7 @@
             (= 200 (:status res)) (do
                 (db/call db/batch-create-actions {:actions [{
                     :name  (normalize-action-type :Perceiving)
-                    :data_provider db/MASTER_DJINN_DATA_PROVIDER
+                    :provider db/MASTER_DJINN_DATA_PROVIDER
                     :player_id player-id
                     :player_relation "DID"
                     :data {

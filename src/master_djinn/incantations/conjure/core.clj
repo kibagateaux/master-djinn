@@ -42,8 +42,8 @@
         (cond
             (not id) {:error "No id provider identity"}
             (not (:access_token id)) {:error "No id provider access token"}
-            (some? (:provider_id id)) {:error "Already synced id from provider"} ;; return 200 since didnt fail?
+            (some? (:id id)) id
             :else (db/call iddb/sync-provider-id {
                 :pid player-id
                 :provider provider
-                :provider_id (get-provider-id player-id provider (:access_token id))}))))
+                :id (get-provider-id player-id provider (:access_token id))}))))

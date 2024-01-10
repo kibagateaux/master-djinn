@@ -17,9 +17,9 @@
     (let [id (iddb/getid player-id)
         type "all" ;; owned and contributor repos
         sort "pushed" ;; get most recently contributed repos
-        url (:api-uri "/users/" (:provider_id id) "/repos")
+        url (:api-uri "/users/" (:id id) "/repos")
     ])
-    ;; store repos as :Resources provider_id = (:node_id repo)
+    ;; store repos as :Resources id = (:node_id repo)
 )
 
 (defn get-commits
@@ -27,6 +27,6 @@
     [player-id]
     ;; TODO repos stored as resources (allows multiple players to contribute to them
     ;; get all respos that a user stewards (get-player-resources :Github)
-    ;; url (str "/repos/" (:ext_owner repo) "/" (:name repo) "/commits?author=" (:provider_id id) "&since=" ???)
+    ;; url (str "/repos/" (:ext_owner repo) "/" (:name repo) "/commits?author=" (:id id) "&since=" ???)
     ;; commits (map #({:description (get-in % [:commit :message]) :start-time/end-time (get-in % [:commit :author :date])} )(parse (:body response) )
 )

@@ -28,7 +28,7 @@
     [context args value]
     ;;  {:pre  [(spec/valid? ::type-gd/provider-input-actions args)] ;; TODO predicate for valid submit_data arg
     ;;   :post [(spec/valid? (spec/+ string?) %)]}
-    (let [transmuter (provider->transmuter (:data_provider args))]
+    (let [transmuter (provider->transmuter (:provider args))]
     ;; TODO (spec/check-asserts true)
     ;; TODO validate player for action here
     (neo4j/with-transaction db/connection tx
@@ -37,7 +37,7 @@
       (->> args
           transmuter
           ((fn [config] (println "TRANSMUTING " config) config))
-          ;; now have normalized format of { :data_provider :player_id :actions [{:name :player_relation :data {}}]}
+          ;; now have normalized format of { :provider :player_id :actions [{:name :player_relation :data {}}]}
           (db/batch-create-actions tx)
           ;; spec/assert ::Action
           doall ;; eagerly load results before db connection closes
@@ -45,7 +45,7 @@
           :ids)))) ;; extract list of :Action uuids created
         
 (spec/fdef provider->transmuter
-        :args (spec/cat :provider ::types/data_provider)
+        :args (spec/cat :provider ::types/provider)
         :ret (spec/fspec :args (spec/cat :data ::types/provider-input-actions)
                 :ret ::type-gd/Actions))
 

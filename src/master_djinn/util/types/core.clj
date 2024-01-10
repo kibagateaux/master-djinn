@@ -90,7 +90,7 @@
 (def is-action-relation?
   (set (get-in types [:enums :ActionRelations :values])))
 (def is-data-provider?
-  (set (get-in types [:enums :DataProviders :values])))
+  (set (get-in types [:enums :Providers :values])))
 
 (defn normalize-action-type [action-name]
   (if (is-action-type? action-name) (name action-name) nil))
@@ -98,30 +98,43 @@
 ;;; Crypto Types
 (defn address? [str]
   (re-matches #"0x[a-fA-F0-9]{40}" str))
+(defn date? "check YYYY-MM-DD format. NOT a timestamp" [str]
+  (re-matches #"\d{4}-\d{2}-\d{2}" str))
 (defn signature? [str]
   (re-matches #"0x[a-fA-F0-9]+" str))
 (defn uuid-v5? "specifically matches UUID v5 which we use exclusively" [str]
   (re-matches #"(?i)^[0-9A-F]{8}-[0-9A-F]{4}-[5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$" str))
 (spec/def ::signer address?)
 (spec/def ::signature signature?)
-(spec/def ::uuid uuid-v5?)
+(spec/def ::id string?) ;; usually players public id on a provider
+(spec/def ::uuid uuid-v5?) ;; UUID for any entity in system
 (spec/def ::empty-array (spec/or :vec (spec/and vector? empty?) :list (spec/and list? empty?)))
+(spec/def ::access_token string?) ;; usually players public id on a provider
+(spec/def ::refresh_token string?) ;; usually players public id on a provider
 
 ;;; Basic Data Types
-(spec/def ::data_provider is-data-provider?)
+(spec/def ::name string?)
+(spec/def ::birthday date?)
+
+(spec/def ::provider is-data-provider?)
 (spec/def ::data_source string?)
 (spec/def ::player_id address?)
 (spec/def ::timestamp string?) ;; TODO regex for ISO "2023-09-07T09:44:16.818Z"
 (spec/def ::player_relation is-action-relation?)
-
 ;;; Input Data From Players & Providers
+; Action
 (spec/def ::startTime ::timestamp) ;; TODO regex for ISO "2023-09-07T09:44:16.818Z"
 (spec/def ::endTime ::timestamp) ;; TODO regex for ISO "2023-09-07T09:44:16.818Z"
 (spec/def ::count (spec/and int? pos?))
-(spec/def ::action_type string?) ;; non-normalized basic inputs e.g Step
+(spec/def ::action_type string?) ;; nnormalized or on-normalized basic inputs e.g Step
 (spec/def ::metadata map?)
+; Resource
+(spec/def ::resource_type string?)  ;; nnormalized or on-normalized basic inputs e.g Step
+(spec/def ::image string?)
+(spec/def ::href string?)
+(spec/def ::creators string?)
 
-;; per provider input data types. TODO match ::data_provider to ::raw_data input
+;; per provider input data types. TODO match ::provider to ::raw_data input
 (spec/def ::android-health-connect-action
   (spec/keys :req-un [::startTime ::endTime ::metadata]
             :opt-un [::count]))
@@ -131,7 +144,7 @@
   (spec/* (spec/or ::android-health-connect-action ::ios-health-action)))
 
 (spec/def ::provider-input-actions (spec/keys :req-un [
-    ::data_provider
+    ::provider
     ::player_id
     ::action_type
     ::raw_data]))

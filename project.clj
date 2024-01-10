@@ -7,6 +7,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.10.0"
   :dependencies [[org.clojure/clojure "1.11.1"]
+                [org.clojure/test.check "1.1.1"]
+                [expound "0.9.0"]
                 ;; basic project dependencies
                 [environ "1.2.0"]
                 [clj-http "3.12.3"]

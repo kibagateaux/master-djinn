@@ -138,7 +138,7 @@
             ;; ensure identity exists for player before setting tokens
             ;; cypher query wont duplicate if id already exists 
             id (db/call id/init-player-identity {
-                :pid crypt/TEST_SIGNER
+                :pid crypt/TEST_SIGNER ;; TODO pass in pid as func param after using OAuth state param to verify user in handler
                 :provider provider 
                 :label (clojure.string/capitalize provider)})
             creds (:id (db/call id/set-identity-credentials {

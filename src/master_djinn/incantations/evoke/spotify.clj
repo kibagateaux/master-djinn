@@ -15,7 +15,7 @@
     [player-id target-players]
     (let [version "0.0.1" start-time (now)
             id (iddb/getid player-id PROVIDER) ;; TODO checjk if null
-            targets (map #(:provider_id %) (filter some? (map #(iddb/getid % PROVIDER) target-players)))
+            targets (map #(:id %) (filter some? (map #(iddb/getid % PROVIDER) target-players)))
             url (str (:api-uri CONFIG)
                     "/me/following?type=user&ids="
                     (clojure.string/join "," targets))]
@@ -23,7 +23,7 @@
             (cond
                 (= 204 (:status res)) (db/call db/batch-create-actions {:actions [{
                     :name (normalize-action-type :Socializing)
-                    :data_provider db/MASTER_DJINN_DATA_PROVIDER
+                    :provider db/MASTER_DJINN_DATA_PROVIDER
                     :player_id player-id
                     :player_relation "DID"
                     :data {
@@ -59,7 +59,7 @@
         (println "spotify create silent disco" player-id playlist-id)
         (db/call db/batch-create-actions {:actions [{
             :name  (normalize-action-type :Partying)
-            :data_provider db/MASTER_DJINN_DATA_PROVIDER
+            :provider db/MASTER_DJINN_DATA_PROVIDER
             :player_id player-id
             :player_relation "DID"
             :data {
@@ -82,7 +82,7 @@
     [player-id name desc collaborators]
     ;; get username + access_token from db for player id
     ;; 
-    ;; (let [url (str (:api-uri CONFIG) "/users/" {provider_id} "/playlists")
+    ;; (let [url (str (:api-uri CONFIG) "/users/" {id} "/playlists")
     
     ;; response (client/post url {:name name
                                     ;; :desc (if desc desc (str "Jinni playlist made with majik by " username))
