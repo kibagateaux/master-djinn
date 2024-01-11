@@ -61,8 +61,6 @@
         ;; aaaa (println "custom gql" interceptors)
         routes (into #{["/graphql" :post interceptors :route-name ::graphql-api]
                       ["/graphiql" :get (p2/graphiql-ide-handler gql-server-config) :route-name ::graphql-ide]
-                      [oauth-init-path :get (conj [(body-params/body-params)] id/oauth-init-handler) :route-name ::oauth-init]
-                      [oauth-cb-path :post (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-post]
                       [oauth-cb-path :get (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-get]
                       ;; [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
                       }

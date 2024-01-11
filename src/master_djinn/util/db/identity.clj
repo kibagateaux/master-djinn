@@ -30,7 +30,7 @@
     MERGE (p)-[:HAS]->(id:Identity {provider: $provider})
 
     WITH id
-    CALL apoc.create.addLabels(id, [$label]) YIELD node
+    CALL apoc.create.addLabels(id, [$provider]) YIELD node
     RETURN ID(node) as id
 ")
 

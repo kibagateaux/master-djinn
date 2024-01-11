@@ -25,9 +25,8 @@
 ;; TODO autogenerate from schema.edn
 (spec/def ::Action (spec/keys :req-un [
   ::types/action_type ;; :TODO non-namespaced keys = name 
-  ::types/provider 
+  ::types/provider
   ::types/player_id
-  
   ::types/player_relation
   ::data ;; :TODO non-namespaced keys = data 
 ]))
