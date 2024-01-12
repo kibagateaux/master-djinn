@@ -83,12 +83,21 @@
   [player provider source action-name start-time version]
     (uuid --uuid/+null+ player provider source action-name start-time version))
   
-
+(defn resource->uuid
+  "UUID namespace hierarchy:
+  resource provider -> resource owner (provider_id) -> resource name -> transmuter-version-number
+  "
+  ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
+  [provider owner resource-name version]
+    (uuid --uuid/+null+ provider owner resource-name version))
+  
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?
   (set (get-in types [:enums :ActionTypes :values])))
 (def is-action-relation?
   (set (get-in types [:enums :ActionRelations :values])))
+(def is-resource-type?
+  (set (get-in types [:enums :ResourceTypes :values])))
 (def is-data-provider?
   (set (get-in types [:enums :Providers :values])))
 

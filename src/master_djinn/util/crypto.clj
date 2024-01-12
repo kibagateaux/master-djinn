@@ -117,21 +117,24 @@
             ]
         ;; (clojure.pprint/pprint (:request context))
 
-        ;; MAJOR SECURITY BUG: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
+        ;; MAJOR SECURITY BUG #1: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
+        ;; MAJOR SECURITY BUG #2: replay attack if query uses variables someone can get a users query and replace with any variables that they didnt approve
+
         ;; @DEV: TODO FIXES
-        ;; - fix security bug!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 
-        ;; - if signature/_raw_query on in POST variables even if they aren't required for the query sent
+        ;; 1. fix security bug #1!!!  How? check that signer is :Identity in DB (bad), pass in pid with :verification data (bad), 
+        ;; 1. fix security bug #2!!!  sign variables and add in verification as well, ecrecover those and replace like query
+        ;; 1. if signature/_raw_query on in POST variables even if they aren't required for the query sent
         ;; then we will still go through this code path even if we dont need to
-        ;; - if you do `mutation submit_data(...) but define mutation/query some_other_name{...}
+        ;; 2. if you do `mutation submit_data(...) but define mutation/query some_other_name{...}
         ;; then lacinia will throw an invalid operation bc we are telling it to execute some_other_name
         ;; but they are still seeing submit_data somewhere in the data where we havent cleaned up properly
         ;; WORKAROUND: use unamed query/mutation in signed query and raw query
-        ;; - create generalized query & mutation on schema so we only have one entry point for each when using signed requests
+        ;; 3. create generalized query & mutation on schema so we only have one entry point for each when using signed requests
         ;; since we will extract full query from signed message and then execute that
-        ;; - ideally operation-name could map to a predefined query structure stored servers so we dont to pass the entire query data structure in
-        ;; theoretically this could also all for "service discovery" once we decentralize where servers can perform certain computations based on exposed operation-names
+        ;; 4. ideally operation-name could map to a predefined query structure stored servers so we dont to pass the entire query data structure in
+        ;; theoretically this could also all for "service discovery" oce we decentralize where servers can perform certain computations based on exposed operation-names
         ;; this requires having shared types/lib between frontend and backend without duplicating code which is a longer-term lift
 
-        (if (and sig (not signer))
+        (if (and sig (not signer)) ;; always false bc ecrecover always returns an address even if invalid
             (throw (Exception. "Signature does not match the right signer"))
             with-query)))

@@ -1,26 +1,105 @@
 (ns master-djinn.incantations.conjure.github
     (:require [clj-http.client :as client]
-            [master-djinn.util.types.core :refer [action->uuid normalize-action-type]]
-            [master-djinn.portal.core :refer [refresh-access-token]]
+            [master-djinn.util.types.core :refer [action->uuid action-type->name]]
+            [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.core :refer [now]]
-            [master-djinn.util.core :refer [json->map]]
+            [master-djinn.incantations.transmute.github :as trans]
+            [master-djinn.util.types.core :refer [json->map map->json]]
             [master-djinn.util.db.identity :as iddb]))
 
 ;; Github app vs OAuth app https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/about-creating-github-apps#github-apps-that-act-on-their-own-behalf
+(defonce PROVIDER "Github")
 (defonce CONFIG ((keyword PROVIDER) portal/oauth-providers))
-(defonce PROVIDER "github")
+
+(defonce qu-get-player-repos "query(
+    $username: String!,
+    $visibility: RepositoryPrivacy!
+) {
+  user(login: $username) {
+    repositories(
+      first: 5,
+      orderBy: {field: PUSHED_AT, direction: DESC},
+      privacy: $visibility
+    ) {
+    nodes {
+        id
+        name
+        description
+        url
+        createdAt
+        pushedAt
+        visibility
+        fundingLinks {
+          url
+        }
+        owner {
+          username: login
+        }
+        collaborators {
+          nodes {
+            username: login
+          }
+        }
+      }
+    }
+  }
+}")
 
 (defn sync-repos
     "DOCS: https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-a-user"
     [player-id]
-    (let [id (iddb/getid player-id)
-        type "all" ;; owned and contributor repos
-        sort "pushed" ;; get most recently contributed repos
-        url (:api-uri "/users/" (:id id) "/repos")
-    ])
+    (println "C:Github:SyncRepos:Init")
+    (try (let [id (iddb/getid player-id PROVIDER)
+            aaa (println "C:Github:SyncRepo:id " id)
+            res (client/post (:api-uri CONFIG) { :body (map->json {
+                :query qu-get-player-repos
+                :variables {:username (:id id) :visibility "PUBLIC"}})})]
+        (println "C:Github:SyncRepo:Response - status, body - " (:status res))
+        (clojure.pprint/pprint (json->map (:body res)))
+        (if (some? (:body res))
+            (db/call db/batch-create-resources {:resources (map
+                #(trans/Repo->Resource player-id (:id id) PROVIDER %)
+                (-> (:body res) json->map :data :user :repositories :nodes))})
+            {:error "C:Github:SyncRepos:ERROR failed to fetch - "}
+        ))
+    (catch Exception err
+        (println "C:Github:SyncRepo:ERROR requesting" (ex-data err))
+        (cond 
+        (= 401 (:status (ex-data err))) (portal/refresh-access-token player-id PROVIDER)
+        )
+    ))
     ;; store repos as :Resources id = (:node_id repo)
 )
+
+(def qu-get-player-commits "query($owner: String!) {
+    user(login: $owner) {
+      repositories(first: 5, orderBy: { field: PUSHED_AT, direction: DESC}) {
+        nodes {
+          name
+        ref(qualifiedName: "master") {
+          target {
+            ... on Commit {
+              id
+              history(first: 50) {
+                pageInfo {
+                  hasNextPage
+                }
+                nodes {
+                    committedDate
+                    message
+                    author {
+                      name
+                    }
+                  }
+                }
+              }
+            }	
+          }
+        }
+      }
+    }
+  }")
 
 (defn get-commits
     "DOCS: https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28"

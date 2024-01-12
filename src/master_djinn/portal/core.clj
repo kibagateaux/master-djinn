@@ -15,23 +15,23 @@
 
 (defonce oauth-providers {
   :Spotify {
-    :id "spotify"
-    :auth-uri "https://accounts.spotify.com/authorize"
-    :token-uri "https://accounts.spotify.com/api/token"
-    :api-uri "https://api.spotify.com/v1"
-    :client-id (:spotify-client-id (load-config))
-    :client-secret (:spotify-client-secret (load-config))
+    :id                 "Spotify"
+    :auth-uri           "https://accounts.spotify.com/authorize"
+    :token-uri          "https://accounts.spotify.com/api/token"
+    :api-uri            "https://api.spotify.com/v1"
+    :client-id          (:spotify-client-id (load-config))
+    :client-secret      (:spotify-client-secret (load-config))
     ;; :scope SEE FRONTEND
-    :user-info-parser #(-> % :body json->map :id)
+    :user-info-parser   #(-> % :body json->map :id)
     :user-info-uri      "https://api.spotify.com/v1/me"}
   :Github {
-    :id "github"
+    :id                 "Github"
     :auth-uri           "https://github.com/login/oauth/authorize"
     :token-uri          "https://github.com/login/oauth/access_token"
     :client-id          (:github-client-id (load-config))
     :client-secret      (:github-client-secret (load-config))
     ;; :scope             SEE FRONTEND
-    :user-info-parser #(-> % :body json->map :login)
+    :user-info-parser   #(-> % :body json->map :login)
     :user-info-uri      "https://api.github.com/user"} ; https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28
 })
 
@@ -141,7 +141,8 @@
       (not (clojure.string/blank? error)) {:status 400 :body error} ; catch all error last
       (clojure.string/blank? code)        {:status 400 :body "no code provided for oauth flow"}
       ;; ensure player is registered and identity exists before setting tokens
-      ;; set-tokens query wont duplicate avatar/identity
+      ;; set-tokens query wont duplicate avatar/identity anyway.
+      ;; Last check to prevent unneccessary db calls
       (nil? (db/call id/init-player-identity {:pid pid :provider provider}))
                                           {:status 401 :body "player not registered"}
       :else                               (try (let
@@ -182,7 +183,7 @@
   (let [id (id/getid player-id provider)
         provider-config ((keyword provider) oauth-providers)
         base-config (get-oauth-login-request-config provider provider-config)
-        request-config (assoc base-config :form-params { ;; (map->json ?
+        request-config (assoc base-config :form-params {
                         :grant_type "refresh_token"
                         :refresh_token (:refresh_token id)
                         :client_id (:client-id provider-config)})]

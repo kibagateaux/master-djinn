@@ -6,7 +6,6 @@
 (defn map->json [m] (json/write-str m))
 
 (defn now "get current time in ISO 8601 locale time" []
-
   (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")
         utc (java.time.ZoneId/of "UTC")
         now (java.time.ZonedDateTime/now utc)]

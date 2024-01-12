@@ -20,6 +20,31 @@
     :ActionRelations
         {:description "Allowed Neo4j relations between players and actions"
         :values [:DID]}
+
+    :ResourceTypes
+        {:description "General categories for resources"
+        :values [
+            :Software
+            :Music
+        ]}
+    :ResourceAccessibility
+        {:description "How resources can be viewed and consumed by players"
+        :values [
+            :Public ;; anyone can see and use
+            :Permissioned ;; publically viewable but requires access rights
+            :Private ;; can only be seen and used with access rights
+            :Secret ;; can only be seen and used with access rights
+        ]}
+    :ResourceRelations
+        {:description "How avatars and actions interact with resources"
+        :values [
+            :MONITORS
+            :CONTROLS
+            :STEWARDS
+            :CONSUMES
+            :GENERATES
+        ]}
+
     :Providers
         {:description "Valid Data Providers. 
                 Unique game items that players can equip.
@@ -28,6 +53,8 @@
             :IphoneHealthKit
             :IwatchHealthKit
             :AndroidHealthConnect
+            :Github
+            :Spotify
         ]}
     }
 

@@ -80,20 +80,29 @@
 ") ;; FIX this returns all actions on a player with UUID. If there are duplicate UUIDs then
 ;; Should be fixed by having constraints set but nice to not have it returned just in case
 
+(neo4j/defquery batch-create-resources "
+    UNWIND $resources AS resource
+
+    MERGE (p:Avatar       {id: resource.player_id})
+    MERGE p-[rp:MONITORS]->(r:Resource {uuid: #resource.data.uuid})
+    SET r = $resource.data
+    
+    CALL apoc.create.addLabels(r, [resource.name]) YIELD node
+    CALL apoc.refactor.setType(rp, resource.player_relation) YIELD output AS relation
+    
+    RETURN COLLECT(p.uuid) as players, COLLECT(r.uuid) as resources 
+")
 
 ;; TODO batch-create-action-resources {:actions [{:resources {:relation "Consumed" "Curated" "Created" }}]}
 ;; doesnt create actions, make that initial step in batch-create-actions
 ;; this just creates resources and relations with actions
 ;; resources must have actions???
-(neo4j/defquery create-action-with-resources "
-    MERGE (p:Avatar     {id: action.player_id})
-    MERGE (d:DataProvider {id: action.provider})
-    CREATE p-[rp:ACTS]->(a:Action)
-    SET a = action.data
-    CALL apoc.refactor.setType(rp, action.player_relation) YIELD output AS relation
-    CREATE (d)-[rd:ATTESTS]->(a)
-    
-    WITH a, p
+(neo4j/defquery create-action-resource-relations "
+    MATCH (a:Action       {uuid: $action.uuid})
+    WITH a
     UNWIND $resources AS resource
-    MERGE (r:Resource {uuid: $resource.uuid})
+
+    MATCH (r:Resource {uuid: resource.uuid })
+    MERGE (a)-[rr]-(r)
+    CALL apoc.refactor.setType(rr, resource.action_relation) YIELD output AS relation
 ")
