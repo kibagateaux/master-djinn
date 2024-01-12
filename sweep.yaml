@@ -24,7 +24,7 @@ description: >
   A Clojure GraphQL webserver for the business logic and Neo4j database integration for a magic RPG game. 
   Graphql schema is in `resources/jinni-schema.edn`, GraphQL resolvers defined in `src/util/gql/*`. 
   Database queries written in Cypher are defined in `util/db/*`.
-  General business logic are categorized as different "spell types"  and live in `incantations/`. `conjure/` spells request data from integrations, `evoke/` spells create side effects on integrations, `transmute/` spells normalize data from integrations into types defined by `clojure.spec`.
+  General business logic are categorized as different "spell types"  and live in `incantations/`. `conjure/` spells request data from integrations, `manifest/` spells create side effects on integrations, `transmute/` spells normalize data from integrations into types defined by `clojure.spec`.
 
 # This sets whether to create pull requests as drafts. If this is set to True, then all pull requests will be created as drafts and GitHub Actions will not be triggered.
 draft: False

@@ -1,8 +1,8 @@
 ;; GQL resolvers wrapper around spells that return data or http errors
 (ns master-djinn.util.gql.incantations
     (:require [com.walmartlabs.lacinia.resolve :as resolve]
-            [master-djinn.incantations.evoke.jinni :as j]
-            [master-djinn.incantations.evoke.spotify :as spotify-e]
+            [master-djinn.incantations.manifest.jinni :as j]
+            [master-djinn.incantations.manifest.spotify :as spotify-m]
             [master-djinn.incantations.conjure.spotify :as spotify-c]
             [master-djinn.incantations.conjure.core :as c]
             [master-djinn.portal.core :as portal]
@@ -54,12 +54,12 @@
 (defn spotify-follow
     [ctx args val]
     (let [pid (get-signer ctx)]
-        (spotify-e/follow-players pid (:target_players args))))
+        (spotify-m/follow-players pid (:target_players args))))
 
 (defn spotify-disco
     [ctx args val]
     (let [pid (get-signer ctx)]
-        (spotify-e/create-silent-disco pid (:playlist_id args))))
+        (spotify-m/create-silent-disco pid (:playlist_id args))))
 
 (defn spotify-top-tracks
     [ctx args val]

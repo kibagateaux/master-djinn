@@ -1,4 +1,4 @@
-(ns master-djinn.incantations.evoke.spotify
+(ns master-djinn.incantations.manifest.spotify
     (:require [clj-http.client :as client]
             [master-djinn.util.types.core :refer [action->uuid normalize-action-type]]
             [master-djinn.portal.core :as portal]

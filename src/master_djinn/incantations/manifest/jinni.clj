@@ -1,4 +1,4 @@
-(ns master-djinn.incantations.evoke.jinni
+(ns master-djinn.incantations.manifest.jinni
     (:require 
             [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
             [master-djinn.util.crypto :refer [ecrecover MALIKS_MAJIK_CARD]]

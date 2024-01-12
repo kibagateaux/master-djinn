@@ -162,6 +162,7 @@
             :body (map->json {
               :id pid
               :provider provider
+              :state state
               :msg (str provider "Item Successfully Equipped!")}
         )})
       (catch Exception e
