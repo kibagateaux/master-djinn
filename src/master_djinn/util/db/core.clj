@@ -21,8 +21,8 @@
 (defonce MOBILE_APP_DATA_SOURCE "JinniMobileApp")
 
 (defn call [query args]
-  (println "DB:call: uri" (:activitydb-uri (load-config)))
-  (println "DB:call: args" args)
+  (println "DB:call: query" query)
+  (if args (do (println "DB:call: args") (clojure.pprint/pprint args)) nil)
   (neo4j/with-transaction connection tx
     (inst/add! database-query-counter {:value 1})
     (span/with-span! ["DB.Query" {:system/profile-id (:id query)}]
@@ -58,12 +58,12 @@
 ;; if we want multiple data providers/sources to attest to an action, will need to rethink data model and will cause issues with autoMERGEing
 ;; @DEV: relationships can only ahve 1 type. refactor.setType *overrides*. Create multiple relations if want to express :WANTS and :DID 
   ;; MATCH (p:Avatar     {id: $actions[0].player_id})
-  ;; MERGE (d:DataProvider {id: $actions[0].provider})
+  ;; MERGE (d:Provider {id: $actions[0].provider})
 (neo4j/defquery batch-create-actions "
   UNWIND $actions AS action
 
   MERGE (p:Avatar     {id: action.player_id})
-  MERGE (d:DataProvider {id: action.provider})
+  MERGE (d:Provider   {provider: action.provider})
 
   WITH action, p, d
   
@@ -83,14 +83,18 @@
 (neo4j/defquery batch-create-resources "
     UNWIND $resources AS resource
 
-    MERGE (p:Avatar       {id: resource.player_id})
-    MERGE p-[rp:MONITORS]->(r:Resource {uuid: #resource.data.uuid})
-    SET r = $resource.data
+    MERGE (p:Avatar     {id: resource.player_id})
+    MERGE (d:Provider   {provider: resource.provider})
+    MERGE (p)-[rp:MONITORS]->(r:Resource {uuid: resource.data.uuid})
+    MERGE (r)<-[:HOSTS]-(d)
+    SET r = resource.data
     
-    CALL apoc.create.addLabels(r, [resource.name]) YIELD node
+    WITH r, d, rp, resource
+    CALL apoc.create.addLabels(r, [resource.name]) YIELD node as rNode
+    CALL apoc.create.addLabels(d, [resource.provider]) YIELD node as dNode
     CALL apoc.refactor.setType(rp, resource.player_relation) YIELD output AS relation
     
-    RETURN COLLECT(p.uuid) as players, COLLECT(r.uuid) as resources 
+    RETURN COLLECT(r) as resources
 ")
 
 ;; TODO batch-create-action-resources {:actions [{:resources {:relation "Consumed" "Curated" "Created" }}]}
@@ -104,5 +108,7 @@
 
     MATCH (r:Resource {uuid: resource.uuid })
     MERGE (a)-[rr]-(r)
+    
+    WITH rr, resource
     CALL apoc.refactor.setType(rr, resource.action_relation) YIELD output AS relation
 ")

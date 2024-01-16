@@ -72,7 +72,7 @@
 
 (defn action->uuid
   "UUID namespace hierarchy:
-  player-id -> data provider -> data origin -> action-name -> action-start-time -> transmuter-version-number
+  player-id -> data provider -> data origin -> action-type -> action-start-time -> transmuter-version-number
   Initially takes to arguments for main scope for generating ids - player and data provider
   returns a function to generate ids for individual actions there after
   
@@ -80,16 +80,16 @@
   start-time MUST be local UTC format 2023-09-07T09:44:16.818Z
   "
   ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
-  [player provider source action-name start-time version]
-    (uuid --uuid/+null+ player provider source action-name start-time version))
+  [player provider source action-type start-time version]
+    (uuid --uuid/+null+ player provider source action-type start-time version))
   
 (defn resource->uuid
   "UUID namespace hierarchy:
-  resource provider -> resource owner (provider_id) -> resource name -> transmuter-version-number
+  resource provider -> resource owner (provider_id) -> resource type -> resource name -> transmuter-version-number
   "
   ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
-  [provider owner resource-name version]
-    (uuid --uuid/+null+ provider owner resource-name version))
+  [owner provider resource-type name version]
+    (uuid --uuid/+null+ owner provider resource-type name version))
   
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?
@@ -101,8 +101,10 @@
 (def is-data-provider?
   (set (get-in types [:enums :Providers :values])))
 
-(defn normalize-action-type [action-name]
-  (if (is-action-type? action-name) (name action-name) nil))
+(defn normalize-action-type [action-type]
+  (if (is-action-type? action-type) (name action-type) nil))
+(defn normalize-resource-type [resource-name]
+  (if (is-resource-type? resource-name) (name resource-name) nil))
 
 ;;; Crypto Types
 (defn address? [str]
@@ -140,7 +142,7 @@
 ; Resource
 (spec/def ::resource_type string?)  ;; nnormalized or on-normalized basic inputs e.g Step
 (spec/def ::image string?)
-(spec/def ::href string?)
+(spec/def ::url string?)
 (spec/def ::creators string?)
 
 ;; per provider input data types. TODO match ::provider to ::raw_data input

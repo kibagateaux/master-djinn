@@ -49,8 +49,6 @@
         ))
 ))
 
-
-
 (defn create-silent-disco
     "No API call required to Spotify, happens locally on their device. Just here to track actions
         TODO would be dope to somehow get the jam share url and target players to join jam from inside Jinni"

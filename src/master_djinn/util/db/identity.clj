@@ -51,7 +51,7 @@
 
 (neo4j/defquery sync-provider-id "
     MATCH (p:Avatar { id: $pid })-[:HAS]->(id:Identity {provider: $provider})
-    SET id.id = $id
+    SET id.provider_id = $provider_id
     RETURN id
 ")
 

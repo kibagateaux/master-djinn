@@ -17,9 +17,9 @@
                 res (client/get url (portal/oauthed-request-config token))]
         (println "C:GetProfile:" provider ":Response - status, body - " (:status res) (:body res))
         (if (some? (:body res))
-            ((:user-info-parser config) res)
-            (do 
-                (println (str "C:GetProfile:" provider ":Error syncing provider id sync") res)
+            (do (println "provider id sync succesful" player-id provider ((:user-info-parser config) res))
+                ((:user-info-parser config) res))
+            (do (println (str "C:GetProfile:" provider ":Error syncing provider id sync") res)
                 {:error "Unknown error requesting profile"})))
     (catch Exception err
          (println (str "C:GetProfile:" provider ":Error requesting provider id: ") (ex-message err) (ex-data err))
@@ -39,11 +39,15 @@
     "Gets players id on an integration and save to their in game :Identity"
     [player-id provider]
     (let [id (iddb/getid player-id provider)]
+        (println "\n C:sync_id:params+id " provider player-id)
+        (clojure.pprint/pprint id)
         (cond
             (not id) {:error "No id provider identity"}
             (not (:access_token id)) {:error "No id provider access token"}
             (some? (:id id)) id
-            :else (db/call iddb/sync-provider-id {
-                :pid player-id
-                :provider provider
-                :id (get-provider-id player-id provider (:access_token id))}))))
+            :else (try (let [provider-id (get-provider-id player-id provider (:access_token id))]
+                (db/call iddb/sync-provider-id {
+                    :pid player-id
+                    :provider provider
+                    :provider_id provider-id})
+                provider-id))))) ;; return just provider id according to graphql spec

@@ -16,3 +16,16 @@
      :tracer-provider
        {:span-processors
          [{:exporters [(otel-trace/span-exporter)]}]}}))
+
+;; TODO https://github.com/getsentry/sentry-clj?tab=readme-ov-file#additional-initialisation-options
+;; need :release, :environment, 
+;; (sentry/init! (:sentry-dsn (load-config))  {:environment some-func :debug true :release githash?}))
+
+(defn log-err 
+  "sends errors to Sentry for debugging and tracking vs frontend"
+  [e]
+  ;; TODO create new source in sentry dashboard
+  ;; add lib https://github.com/getsentry/sentry-clj
+  ;; (sentry/send-event {:message "Something has gone wrong!" :throwable e})
+
+  )

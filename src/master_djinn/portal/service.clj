@@ -31,8 +31,11 @@
         ;; (println "service.signed-request : "  (:signature vars) (:_raw_query vars))
 
         (if (and (:signature verification) (:_raw_query verification))
+          (do 
+            (println "\n\nport:serv:sign-intercept - ")
+            (clojure.pprint/pprint (get-in context [:request :graphql-vars]))
           ;; if signed query sent handle
-          (handle-signed-POST-query context)
+          (handle-signed-POST-query context))
           ;; else pass along as normal GQL query
           context)))
       }))

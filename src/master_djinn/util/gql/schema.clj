@@ -13,6 +13,7 @@
     (let [results ((db/generate-resolver db/get-all-players) ctx args val)]
       (:players results)))
 
+
   
   ;; nested field resolvers e.g. { identity { avatar { actions { id }}}}
   ;; :Avatar/actions (db/generate-resolver db/get-user-actions)
@@ -20,13 +21,14 @@
   ;;; Mutations
   ;; general game actions
   :Mutation/submit_data trans/multiplexer
-  :Mutation/activate_jinni i/activate-jinni
-  
-  ;; spotify
+  :Mutation/jinni_activate i/activate-jinni
   :Mutation/sync_provider_id i/sync-provider-id
+  ;; github
+  :Mutation/sync_repos i/sync-repos
+  ;; spotify
+  :Query/spotify_top_tracks i/spotify-top-tracks
   :Mutation/spotify_follow i/spotify-follow
   :Mutation/spotify_disco i/spotify-disco
-  :Mutation/spotify_top_tracks i/spotify-top-tracks
   ;; :Mutation/spotify_create_playlist i/spotify-create-playlist
 })
 

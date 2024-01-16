@@ -21,16 +21,18 @@
     :api-uri            "https://api.spotify.com/v1"
     :client-id          (:spotify-client-id (load-config))
     :client-secret      (:spotify-client-secret (load-config))
-    ;; :scope SEE FRONTEND
+    ;; :scope           SEE FRONTEND
     :user-info-parser   #(-> % :body json->map :id)
     :user-info-uri      "https://api.spotify.com/v1/me"}
   :Github {
     :id                 "Github"
     :auth-uri           "https://github.com/login/oauth/authorize"
     :token-uri          "https://github.com/login/oauth/access_token"
+    ;; :api-uri            "https://api.github.com"
+    :graphql-uri            "https://api.github.com/graphql"
     :client-id          (:github-client-id (load-config))
     :client-secret      (:github-client-secret (load-config))
-    ;; :scope             SEE FRONTEND
+    ;; :scope           SEE FRONTEND
     :user-info-parser   #(-> % :body json->map :login)
     :user-info-uri      "https://api.github.com/user"} ; https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28
 })
@@ -188,17 +190,27 @@
                         :refresh_token (:refresh_token id)
                         :client_id (:client-id provider-config)})]
     (try (let [response (client/post (:token-uri provider-config) request-config)
-              new_token (:access_token (json->map (:body response)))]
-      ;; (println "refresh token response " (json/read-str (:body response) :key-fn keyword))
-      (db/call id/set-identity-credentials {
-        :pid player-id ;; TODO player-id when fixed in init-oauth-handler
-        :provider provider
-        :access_token new_token
-        :refresh_token (:refresh_token id) ;; so we dont overwrite with null
-      })
-    new_token)
+              res (json->map (:body response))
+              log (clojure.pprint/pprint res)
+              new_token (:access_token res)
+              refresh_token? (:refresh_token res)]
+      (println "refresh token response " res (:error res) (not new_token))
+      (if (or (:error res) (not new_token))
+        ;; (throw (Exception. "bad_refrsh_token"))
+        (throw (ex-info "bad_refresh_token" {:status 401}))
+        (do   (db/call id/set-identity-credentials {
+            :pid player-id ;; TODO player-id when fixed in init-oauth-handler
+            :provider provider
+            :access_token new_token
+            :refresh_token (or refresh_token? (:refresh_token id)) ;; so we dont overwrite with null
+          })
+        new_token)))
     (catch Exception err
-        (println (str "Error refreshing token on *" provider "*: ") (ex-message err) (ex-data err))
+      ;; TODO if status-code :401 then need to reauthenticate. 
+      ;; ¿redirect to app inventory item with "?action=equip" to restart authentication process?
+      (println (str "Error refreshing token on *" provider "*: ") (ex-message err) (ex-data err))
+      (throw err) ;; make sure call errors out so any function relying on success of refresh errors out as well preventing infinite loops
+        
     ))
 ))
 

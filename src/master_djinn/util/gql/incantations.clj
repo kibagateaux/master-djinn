@@ -4,6 +4,7 @@
             [master-djinn.incantations.manifest.jinni :as j]
             [master-djinn.incantations.manifest.spotify :as spotify-m]
             [master-djinn.incantations.conjure.spotify :as spotify-c]
+            [master-djinn.incantations.conjure.github :as github-c]
             [master-djinn.incantations.conjure.core :as c]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.core :refer [get-signer map->json]]
@@ -43,22 +44,28 @@
 (defn sync-provider-id
     "@DEV: does NOT require auth because simple stateless function that mirrors data from external db"
     [ctx args val]
+    (println "util:gql:incant " args val)
     (let [{:keys [provider player_id]} args]
         (cond
-            (nil? player_id) {:error "Must input player to sync id with"}
-            (nil? provider) {:error "Must input provider to sync id with"}
+            (nil? player_id) {:status 400 :error "Must input player to sync id with"}
+            (nil? provider) {:status 400 :error "Must input provider to sync id with"}
             ((set (keys providers)) (keyword provider))
                 (c/sync-provider-id player_id provider)
-            :else {:error "invalid provider to sync id with"})))
+            :else {:status 400 :error "invalid provider to sync id with"})))
+
+(defn sync-repos
+    [ctx args val]
+    (let [pid (get-signer ctx) provider (:provider args)]
+        (cond (= github-c/PROVIDER provider) (github-c/sync-repos pid))))
 
 (defn spotify-follow
     [ctx args val]
-    (let [pid (get-signer ctx)]
+    (if-let [pid (get-signer ctx)] ;; most be authed request
         (spotify-m/follow-players pid (:target_players args))))
 
 (defn spotify-disco
     [ctx args val]
-    (let [pid (get-signer ctx)]
+    (let [pid (get-signer ctx)] ;; most be authed request
         (spotify-m/create-silent-disco pid (:playlist_id args))))
 
 (defn spotify-top-tracks

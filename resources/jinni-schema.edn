@@ -16,6 +16,7 @@
             :Socializing
             :Partying
             :Messaging
+            :Coding
             :Eating]}
     :ActionRelations
         {:description "Allowed Neo4j relations between players and actions"
@@ -107,6 +108,7 @@
             ;; :implements [:Action]
             
             :id {:type (non-null String)}
+            :desc {:type String}
             :action_type {:type (non-null String)}
             :startTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
             :endTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
@@ -117,14 +119,21 @@
             ;; make interface if we need abstract for public/permissioned/private
             ;; :implements [:Resource]
 
-            :id {:type (non-null String)}
-            :resource_type {:type (non-null String)}
+            :uuid {:type (non-null String)}
+            :provider_id {:type (non-null String)}
+            :name {:type (non-null String)}
+            :desc {:type String}
+            :resource_type {:type String}
             :image {:type String}
-            :href {:type String} ;; link to view data on resource
+            :url {:type String} ;; link to view data on resource
             :creators {:type (list Avatar)}
         }}
         :Query {:fields {
             :players {:type (list :Avatar)}
+            :spotify_top_tracks
+                {:type       (list Resource)
+                :description "gets top tracks on spotify for a player"
+                :args       {:target_player {:type (non-null String)}}}
             ;; :jinni {:type (non-null :Avatar)
             ;;     :args {:player_id {:type String}}}
             ;; ;; get all of a players jin not just their primary.
@@ -146,7 +155,7 @@
                             :action_type {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
                             :player_id {:type (non-null String)}}}  ;; 0x ETH address
             
-            :activate_jinni
+            :jinni_activate
                 {:type       (non-null ID)
                 :description "registers a new jinni using ZKP that you have received a majik card"
                 :args       {:verification {:type :SignedRequest} ;; TODO ZKP?
@@ -156,21 +165,30 @@
             :sync_provider_id
                 {:type       String
                 :description "adds a players username on a OAuth platform to their :Identity in our DB after granting access"
-                :args       {:provider {:type (non-null String)}
+                :args       {:verification {:type :SignedRequest}
+                            :provider {:type (non-null String)}
                             :player_id {:type (non-null String)}}} ;; 0x ETH address
+            :sync_repos
+                {:type       (list :Resource)
+                :description "adds a players username on a OAuth platform to their :Identity in our DB after granting access"
+                :args       {:verification {:type :SignedRequest}
+                            :provider {:type (non-null String)}
+                            :player_id {:type (non-null String)}}} ;; 0x ETH address
+                
+            :github_sync_repos
+                {:type       String
+                :description "adds github repos as :Resources to player. Used for tracking daily :Actios"
+                :args       {:player_id {:type (non-null String)}}} ;; 0x ETH address
                 
             :spotify_follow
                 {:type       String
                 :description "follows other players from current players spotify account"
-                :args       {:target_players {:type (list (non-null String))}}}
+                :args       {:verification {:type (non-null :SignedRequest)}
+                            :target_players {:type (list (non-null String))}}}
             :spotify_disco
                 {:type       String
                 :description "creates a local silent disco"
                 :args       {:playlist_id {:type (non-null String)}}}
-            :spotify_top_tracks
-                {:type       (list Resource)
-                :description "gets top tracks on spotify for a player"
-                :args       {:target_player {:type (non-null String)}}}
             }}
     }
 }
