@@ -26,7 +26,9 @@
     :resource_type resource-type
     :provider provider
     :player_id pid
-    :player_relation (if (= username resource-owner) "CONTROLS" "STEWARDS")
+    ;; cypher cant MERGE on dynamic relations, only use STEWARD until figure out way to prevent dupes
+    ;; :player_relation (if (= username resource-owner) "CONTROLS" "STEWARDS")
+    :player_relation  "STEWARDS"
     :data {
         :name name
         :desc description
@@ -50,7 +52,7 @@
   
   TODO: (spec/valid :github-action input)
   "
-  (println "Trans:Github:Repo" pid transmuter-provider commit)
+  ;; (println "Trans:Github:Repo" pid transmuter-provider commit)
   (let [transmuter-version "0.0.1"
         {:keys [oid committedDate message author]} commit
         action-type (types/normalize-action-type :Coding)]
@@ -61,6 +63,7 @@
     :player_relation "DID"
     :data {
         :uuid (types/action->uuid pid transmuter-provider transmuter-provider action-type committedDate transmuter-version)
+        :desc message
         :start_time committedDate
         :end_time committedDate
         :data_source transmuter-provider}}))

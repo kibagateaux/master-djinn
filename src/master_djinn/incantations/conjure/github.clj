@@ -1,12 +1,12 @@
 (ns master-djinn.incantations.conjure.github
     (:require [clj-http.client :as client]
-            [master-djinn.util.types.core :refer [action->uuid]]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
+            [master-djinn.util.db.identity :as iddb]
+            [neo4j-clj.core :as neo4j]
             [master-djinn.util.core :refer [now]]
             [master-djinn.incantations.transmute.github :as trans]
-            [master-djinn.util.core :refer [json->map map->json]]
-            [master-djinn.util.db.identity :as iddb]))
+            [master-djinn.util.core :refer [json->map map->json]]))
 
 ;; Github app vs OAuth app https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/about-creating-github-apps#github-apps-that-act-on-their-own-behalf
 (defonce PROVIDER "Github")
@@ -63,10 +63,8 @@
         (clojure.pprint/pprint (-> (:body res) json->map :data :user :repositories :nodes))
         (if (and (:status res) (some? (:data body))) 
         ;;   (-> body :data :user :repositories :nodes
-        ;;     (fn [in] (println "post parse" in) in)
-        ;;     (fn [innn] trans/Repo->Resource player-id (:provider_id id) PROVIDER innn)
-        ;;     (fn [inn] (println "post trans" inn) inn)
-        ;;     (fn [innnn] db/call db/batch-create-resources {:resources innnn}))
+        ;;     #(trans/Repo->Resource player-id (:provider_id id) PROVIDER %)
+        ;;     #(db/call db/batch-create-resources {:resources %}))
           (let [rs (do (map 
                 (fn [repo] (trans/Repo->Resource player-id (:provider_id id) PROVIDER repo))
                 (-> body :data :user :repositories :nodes)))
@@ -83,10 +81,10 @@
         (cond 
         (= 401 (:status (ex-data err))) (try 
           (portal/refresh-access-token player-id PROVIDER)
-          (println "new access token")
+          ;; (println "new access token")
           (sync-repos player-id)
           (catch Exception err (println
-            (str "Conjure:Github:SyncRepo: ERROR #1 retrieving with refreshed token")
+            (str "Conjure:Github:SyncRepo: ERROR retrieving with refreshed token")
             (ex-message err) (ex-data err))
             (if (= "bad_refresh_token" (ex-message err))
               {:status 403 :error (ex-message err)}
@@ -95,18 +93,14 @@
   ))
 ))
 
-(defonce qu-get-player-commits "query($owner: String!, $repo: String!, $since: String!) {
+(defonce qu-get-player-commits "query($owner: String!, $repo: String!, $since: GitTimestamp!) {
     repository(owner: $owner, name: $repo) {
-        name
-      refs(refPrefix:'refs/heads/', first: 10) {
+      name
+      refs(refPrefix:\"refs/heads/\", first: 10) {
         nodes {
-          name
           target {
           ... on Commit {
-            history(first: 50, since: $since) {
-              pageInfo {
-                hasNextPage
-              }
+            history(first: 100, since: $since) {
               nodes {
                 	oid
                   committedDate
@@ -123,18 +117,73 @@
   }
 }")
 
-(defn get-commits
+(neo4j/defquery get-repos-names "
+  MATCH (Avatar {id: $player_id})-->(r:Resource)--(:Provider {provider: $provider})
+  RETURN COLLECT(r.name) as repo_names
+")
+
+(defn parse-ref-commits [ref]
+  (let [commits (-> ref :target :history :nodes)]
+  ;; (clojure.pprint/pprint commits)
+  (println commits)
+   commits))
+
+(defn parse-repo-refs [repo]
+  )
+  ;; (->> repo :refs :nodes
+  ;;   ;; (reduce flatten)
+  ;;   #(flatten (map parse-ref-commits %))
+  ;;   ;; (clojure.pprint/pprint)
+  ;;   ;; (fn [refs] (flatten (map parse-ref-commits refs)))
+  ;; ))
+
+(defn track-commits
     "DOCS: https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
     Gets all commits for ten branches (no particular order or filtering) and filters them for player Github id
     Commits are added as :Actions to database that :GENERATES the repo :Resource"
     [player-id]
+    (let [id (iddb/getid player-id PROVIDER)
+          repos (:repo_names (db/call get-repos-names {:player_id player-id :provider PROVIDER}))]
+          (println "track commits on repos for player" player-id repos)
+      (cond
+        (not id) {:status 403 :error "unequipped"}
+        (not repos) {:status 400 :error "must sync repos"}
+        :else (try (let [
+          since (or (:start_time (db/call db/get-last-action-time {:player_id player-id :provider PROVIDER}) db/PORTAL_DAY))
+          params (println "C:Github:track-commits:params" since repos)
+          reqs  (map #(client/post (:graphql-uri CONFIG)
+                    (assoc (portal/oauthed-request-config (:access_token id)) :body (map->json {
+                    :query qu-get-player-commits
+                    :variables {:repo % :owner (:provider_id id) :since since}})))
+                  repos)
+          ;;  first (println "C:Github:travk-commits:res" (first reqs))   
+                
+            actions (flatten (map (fn [res] (let [repo (-> res :body json->map :data :repository)
+                                prepo (clojure.pprint/pprint repo)
+                                ;; commits (-> repo :refs :nodes :target :history :nodes)  ; (flatten) assumes no vals in graph tree above commit
+                                pcom (println "\n\n parsing commits on repo" (:name repo) "\n\n")
+                                
+                                commits (flatten (map #(->> % :target :history :nodes) (->> repo :refs :nodes))) ; get array of commits nested in array of git branches
+                                pcom (println "\n\n transmuting on repo" (:name repo) (count commits) "\n\n")
+                                ;; pcom (clojure.pprint/pprint commits)
+                                ]
+                                (map #(trans/Commit->Action player-id (:name repo) %) commits) ;; TODO remove drop
+                                ;; TODO return actions-resource-relations obj too
+                                ))
+                reqs))]
+            (println "\n\n all commits as actions")
+            ;; (clojure.pprint/pprint actions)
+            (db/call db/batch-create-actions {:actions actions}))
+          (catch Exception err (println "C:Github:trackj-commits:err" err)))
+      
     ;; TODO repos stored as resources (allows multiple players to contribute to them
     ;; get all respos that a user stewards (get-player-resources :Github)
     ;; url (str "/repos/" (:ext_owner repo) "/" (:name repo) "/commits?author=" (:provider_id id) "&since=" ???)
     ;; commits (map #({:description (get-in % [:commit :message]) :start-time/end-time (get-in % [:commit :author :date])} )(parse (:body response) )
-)
+)))
 
 
+;; TODO for GitApp auth flow, not OAuth flow
 ;; (defn get-req-config [access_token]
 ;;   (update (portal/oauthed-request-config access_token) :headers merge {"X-GitHub-Api-Version" "2022-11-28"}))
 

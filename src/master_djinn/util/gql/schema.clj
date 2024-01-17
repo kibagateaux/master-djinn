@@ -23,9 +23,10 @@
   :Mutation/submit_data trans/multiplexer
   :Mutation/jinni_activate i/activate-jinni
   :Mutation/sync_provider_id i/sync-provider-id
-  ;; github
+  ;; Code
   :Mutation/sync_repos i/sync-repos
-  ;; spotify
+  :Mutation/track_commits i/track-commits
+  ;; Music
   :Query/spotify_top_tracks i/spotify-top-tracks
   :Mutation/spotify_follow i/spotify-follow
   :Mutation/spotify_disco i/spotify-disco

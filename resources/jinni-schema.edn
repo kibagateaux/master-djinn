@@ -170,16 +170,18 @@
                             :player_id {:type (non-null String)}}} ;; 0x ETH address
             :sync_repos
                 {:type       (list :Resource)
-                :description "adds a players username on a OAuth platform to their :Identity in our DB after granting access"
+                :description "adds github /gitlab/radicle repos as :Resources to player used for tracking commits as game :Actions"
                 :args       {:verification {:type :SignedRequest}
                             :provider {:type (non-null String)}
                             :player_id {:type (non-null String)}}} ;; 0x ETH address
-                
-            :github_sync_repos
-                {:type       String
-                :description "adds github repos as :Resources to player. Used for tracking daily :Actios"
-                :args       {:player_id {:type (non-null String)}}} ;; 0x ETH address
-                
+            :track_commits
+                {:type       (list ID)
+                :description "Gets all the commits by player since we last checked on the repos they've added to their :Identity
+                            Returns UUID of :Actions for commits"
+                :args       {:verification {:type :SignedRequest}
+                            :provider {:type (non-null String)}
+                            :player_id {:type (non-null String)}}} ;; 0x ETH address
+
             :spotify_follow
                 {:type       String
                 :description "follows other players from current players spotify account"

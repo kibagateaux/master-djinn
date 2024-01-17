@@ -53,11 +53,18 @@
                 (c/sync-provider-id player_id provider)
             :else {:status 400 :error "invalid provider to sync id with"})))
 
+;; Code Providers
 (defn sync-repos
     [ctx args val]
     (let [pid (get-signer ctx) provider (:provider args)]
         (cond (= github-c/PROVIDER provider) (github-c/sync-repos pid))))
 
+(defn track-commits
+    [ctx args val]
+    (let [pid (get-signer ctx) provider (:provider args)]
+        (cond (= github-c/PROVIDER provider) (github-c/track-commits pid))))
+
+;; Music Providers
 (defn spotify-follow
     [ctx args val]
     (if-let [pid (get-signer ctx)] ;; most be authed request

@@ -68,7 +68,7 @@
     )))
 ))
 
-(defn top-tracks
+(defn playlists
     "DOCS: https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks
     TODO: (priorty mega-low) add tracks as :Resources to DB so we can map players with similar music tastes
     "
@@ -76,7 +76,7 @@
     (let [version "0.0.1" start-time (now) limit 20
         id (iddb/getid target-player-id PROVIDER) ;; can only get top items as self.
         range "short_term" ;; short_term = 4 weeks medium_term = 6 months})
-        url (str (:api-uri CONFIG) "/me/top/tracks?limit="limit"&time_range="range)]
+        url (str (:api-uri CONFIG) "/users/"(:provider_id id)"/playlists?limit="limit"&time_range="range)]
     (try (let [res (client/get url (portal/oauthed-request-config (:access_token id)))]
         (println "get top track response" (:status res) )
         (cond
