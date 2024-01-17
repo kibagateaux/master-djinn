@@ -1,4 +1,4 @@
-FROM clojure:lein AS builder
+FROM clojure:lein-2.10.0 AS builder
 MAINTAINER Kiba Gateaux the_anonymous_hash+masterdjinn@proton.me
 
 COPY . /usr/src/app
@@ -9,7 +9,7 @@ RUN curl -o honeycomb.jar -L https://github.com/honeycombio/honeycomb-openteleme
 
 RUN lein uberjar
 
-FROM clojure:lein
+FROM clojure:lein-2.10.0
 # if prod deployment
 EXPOSE 80
 # if dev deployment

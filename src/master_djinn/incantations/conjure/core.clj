@@ -3,6 +3,7 @@
             [master-djinn.util.types.core :refer [action->uuid normalize-action-type]]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
+            [master-djinn.portal.logs :as log]
             [master-djinn.util.core :refer [now]]
             [master-djinn.util.core :refer [json->map]]
             [master-djinn.util.db.identity :as iddb]))
@@ -23,11 +24,13 @@
                 {:error "Unknown error requesting profile"})))
     (catch Exception err
          (println (str "C:GetProfile:" provider ":Error requesting provider id: ") (ex-message err) (ex-data err))
+        (log/handle-error err "Conjure:Core:get-provider-id/1:ERROR" {:provder provider} player-id)
          (cond (= 401 (:status (ex-data err)))
             ;; returns 403 if cant authenticate at all so no chance of endless recursion if user hasnt authorized us
             (try (get-provider-id player-id provider (portal/refresh-access-token player-id provider))
                 (catch Exception err (do
                     (println (str "C:" provider ":GetPofile ERROR fetching profile with refreshed token"))
+                    (log/handle-error err "Conjure:Core:get-provider-id/2:ERROR" {:provder provider} player-id)
                     {:error "Couldnt refresh access token. Relogin"})))
             (= 403 (:status (ex-data err))) (do
                 (println "C:GetProfile:" provider " ERROR no OAuth permissions for player " player-id)

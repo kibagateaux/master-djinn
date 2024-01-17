@@ -5,6 +5,7 @@
             [master-djinn.util.db.identity :as iddb]
             [neo4j-clj.core :as neo4j]
             [master-djinn.util.core :refer [now]]
+            [master-djinn.portal.logs :as log]
             [master-djinn.incantations.transmute.github :as trans]
             [master-djinn.util.core :refer [json->map map->json]]))
 
@@ -81,11 +82,10 @@
         (cond 
         (= 401 (:status (ex-data err))) (try 
           (portal/refresh-access-token player-id PROVIDER)
-          ;; (println "new access token")
           (sync-repos player-id)
-          (catch Exception err (println
-            (str "Conjure:Github:SyncRepo: ERROR retrieving with refreshed token")
-            (ex-message err) (ex-data err))
+          (catch Exception err 
+            (println (str "Conjure:Github:SyncRepo: ERROR retrieving with refreshed token") (ex-message err) (ex-data err))
+            (log/handle-error err "Conjure:Github:sync-repos:ERROR" {:provder PROVIDER} player-id)
             (if (= "bad_refresh_token" (ex-message err))
               {:status 403 :error (ex-message err)}
               {:status 501 :error (ex-message err)})
@@ -122,21 +122,6 @@
   RETURN COLLECT(r.name) as repo_names
 ")
 
-(defn parse-ref-commits [ref]
-  (let [commits (-> ref :target :history :nodes)]
-  ;; (clojure.pprint/pprint commits)
-  (println commits)
-   commits))
-
-(defn parse-repo-refs [repo]
-  )
-  ;; (->> repo :refs :nodes
-  ;;   ;; (reduce flatten)
-  ;;   #(flatten (map parse-ref-commits %))
-  ;;   ;; (clojure.pprint/pprint)
-  ;;   ;; (fn [refs] (flatten (map parse-ref-commits refs)))
-  ;; ))
-
 (defn track-commits
     "DOCS: https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
     Gets all commits for ten branches (no particular order or filtering) and filters them for player Github id
@@ -157,7 +142,6 @@
                     :variables {:repo % :owner (:provider_id id) :since since}})))
                   repos)
           ;;  first (println "C:Github:travk-commits:res" (first reqs))   
-                
             actions (flatten (map (fn [res] (let [repo (-> res :body json->map :data :repository)
                                 prepo (clojure.pprint/pprint repo)
                                 ;; commits (-> repo :refs :nodes :target :history :nodes)  ; (flatten) assumes no vals in graph tree above commit
@@ -174,7 +158,9 @@
             (println "\n\n all commits as actions")
             ;; (clojure.pprint/pprint actions)
             (db/call db/batch-create-actions {:actions actions}))
-          (catch Exception err (println "C:Github:trackj-commits:err" err)))
+          (catch Exception err 
+            (log/handle-error err "Conjure:Github:track-commit:ERROR" {:provder PROVIDER} player-id)
+            (println "C:Github:trackj-commits:err" err)))
       
     ;; TODO repos stored as resources (allows multiple players to contribute to them
     ;; get all respos that a user stewards (get-player-resources :Github)

@@ -1,7 +1,32 @@
 (ns master-djinn.portal.logs
-  (:require [steffan-westcott.clj-otel.sdk.otel-sdk :as sdk]
+  (:require [master-djinn.util.types.core :refer [load-config]]
+            [sentry-clj.core :as sentry]
+            [steffan-westcott.clj-otel.sdk.otel-sdk :as sdk]
             [steffan-westcott.clj-otel.resource.resources :as res]
             [steffan-westcott.clj-otel.exporter.otlp.grpc.trace :as otel-trace]))
+
+(defonce report-sentry (if-let [dsn (:sentry-dsn (load-config))] (do
+  (sentry/init! dsn {:environment (:api-domain (load-config)) :debug true}) true)))
+
+(defn map->sentry [m]
+  (mapcat (fn [[k v]] [(name k) (str v)]) m))
+
+(defn handle-error
+([error ^Exception message data]
+  (println "handle error" data (map->sentry data))
+  ;; TODO otel stuff
+  (if (not report-sentry) nil
+    (sentry/send-event {:message {:message message
+                                ;; convert :data map to ["key" "val"] for sentry
+                                  :params (map->sentry data)}
+                        :throwable error})))
+([error ^Exception message data player-id]
+  (println "handle error" message report-sentry (:sentry-dsn (load-config)))
+  ;; TODO otel stuff
+  (if (nil? report-sentry) nil
+    (sentry/send-event {:message {:message message :params (map->sentry data)}
+                        :throwable error
+                        :user {:id player-id}}))))
 
 ;; init docs https://github.com/steffan-westcott/clj-otel/blob/8ab82dc918540021dc94e1c43b39edf8ca9c621c/clj-otel-sdk/src/steffan_westcott/clj_otel/sdk/otel_sdk.clj
 (defn init-otel! []

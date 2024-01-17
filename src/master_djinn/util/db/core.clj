@@ -1,6 +1,7 @@
 (ns master-djinn.util.db.core
   (:require [neo4j-clj.core :as neo4j]
             [master-djinn.util.types.core :refer [load-config]]
+            [master-djinn.portal.logs :as log]
             [steffan-westcott.clj-otel.api.metrics.instrument :as inst]
             [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import (java.net URI)))
@@ -21,13 +22,19 @@
 (defonce MASTER_DJINN_DATA_PROVIDER "MasterDjinn")
 (defonce MOBILE_APP_DATA_SOURCE "JinniMobileApp")
 
+
 (defn call [query args]
-  (println "DB:call: query" query)
+  (println "DB:call: query" (:id query) (:cypher query))
   (if args (do (println "DB:call: args") (clojure.pprint/pprint args)) nil)
-  (neo4j/with-transaction connection tx
-    (inst/add! database-query-counter {:value 1})
-    (span/with-span! ["DB.Query" {:system/profile-id (:id query)}]
-      (-> (query tx args) doall first))))
+  (try (neo4j/with-transaction connection tx
+      (inst/add! database-query-counter {:value 1})
+      (span/with-span! ["DB.Query" {:system/profile-id (:id query)}]
+      (-> (query tx args) doall first)))
+    (catch Exception err 
+      ;; (println "DB:call:ERROR" err)
+      (log/handle-error err "util:db:call:ERROR" {:args args})
+      ;; catch just for automated reporting. bubble up error for app to handle as it pleases
+      (throw err))))
 
 (defn generate-resolver
   "for direct read queries that dont require formatting input data"

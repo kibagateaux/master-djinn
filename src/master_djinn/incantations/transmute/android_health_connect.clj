@@ -9,7 +9,6 @@
 
 
 (defonce transmuter-data-provider :AndroidHealthConnect)
-(set! spec/*explain-out* expound/printer)
 
 (spec/fdef Step->Action
         :args (spec/cat :pid ::types/signer :provider ::types/provider :input ::types/android-health-connect-action)

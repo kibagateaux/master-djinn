@@ -26,8 +26,6 @@
     :resource_type resource-type
     :provider provider
     :player_id pid
-    ;; cypher cant MERGE on dynamic relations, only use STEWARD until figure out way to prevent dupes
-    ;; :player_relation (if (= username resource-owner) "CONTROLS" "STEWARDS")
     :player_relation  "STEWARDS"
     :data {
         :name name

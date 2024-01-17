@@ -39,7 +39,6 @@
           ;; else pass along as normal GQL query
           context)))
       }))
-
 (defonce gql-server-config {
     :api-path "/graphql"
     :ide-path "/graphiql"
@@ -59,6 +58,7 @@
 (defn create-gql-service
   [compiled-schema options]
   (init-otel!)
+  (println "P:gql-]servce:is]-remote?" (if (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health") 80 8888) (:api-domain (load-config)) )
   (let [interceptors (gql-interceptors compiled-schema)
         {:keys [port host oauth-init-path oauth-cb-path oauth-refresh-path]} options
         ;; aaaa (println "custom gql" interceptors)

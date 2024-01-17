@@ -27,7 +27,7 @@
   []
   (let [file-config local-config
         env-config {:api-host (or (System/getenv "API_HOST") "0.0.0.0")
-                    :api-domain (or (System/getenv "API_DOMAIN") "scry.jinni.health")
+                    :api-domain (or (System/getenv "API_DOMAIN") "scryer.jinni.health")
 
                     :activitydb-uri (System/getenv "ACTIVITYDB_URI")
                     :activitydb-user (System/getenv "ACTIVITYDB_USER")

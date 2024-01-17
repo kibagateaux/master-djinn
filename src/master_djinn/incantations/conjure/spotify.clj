@@ -3,6 +3,7 @@
             [master-djinn.util.types.core :refer [action->uuid normalize-action-type]]
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
+            [master-djinn.portal.logs :as log]
             [master-djinn.util.core :refer [now json->map]]
             [master-djinn.util.db.identity :as iddb]))
 
@@ -51,9 +52,9 @@
             (= 401 (:status res)) (try
                     (portal/refresh-access-token player-id PROVIDER) 
                     (top-tracks player-id target-player-id)
-                    (catch Exception err (println
-                        (str "Conjure:Spotify:TopTracks ERROR #1 retrieving with refreshed token")
-                        (ex-message err) (ex-data err))))
+                    (catch Exception err 
+                            (println (str "Conjure:Spotify:TopTracks ERROR #1 retrieving with refreshed token") (ex-message err) (ex-data err))
+                            (log/handle-error err "Conjure:Spotify:top-tracks/1:ERROR" {:provder PROVIDER} player-id)))
             :else  (println (str "Error requesting top tracks on *" PROVIDER "*: ") res)))
     (catch Exception err
         (println (str "Error gettign top tracks on *" PROVIDER "*: ") (ex-data err)) 
@@ -61,9 +62,9 @@
             (= 401 (:status (ex-data err))) (try
                         (portal/refresh-access-token player-id PROVIDER) 
                         (top-tracks player-id target-player-id)
-                        (catch Exception err (println
-                            (str "Conjure:Spotify:TopTracks ERROR #2 retrieving with refreshed token")
-                            (ex-message err) (ex-data err))))
+                        (catch Exception err 
+                            (println (str "Conjure:Spotify:TopTracks ERROR #2 retrieving with refreshed token") (ex-message err) (ex-data err))
+                            (log/handle-error err "Conjure:Spotify:top-tracks/2:ERROR" {:provder PROVIDER} player-id)))
             :else  (println (str "Error processing top tracks on *" PROVIDER "*: ") (ex-data err))
     )))
 ))
@@ -109,9 +110,9 @@
             (= 401 (:status res)) (try
                     (portal/refresh-access-token player-id PROVIDER) 
                     (top-tracks player-id target-player-id)
-                    (catch Exception err (println
-                        (str "Conjure:Spotify:TopTracks ERROR #1 retrieving with refreshed token")
-                        (ex-message err) (ex-data err))))
+                    (catch Exception err 
+                        (println (str "Conjure:Spotify:TopTracks ERROR #1 retrieving with refreshed token") (ex-message err) (ex-data err))
+                        (log/handle-error err "Conjure:Spotify:playlists/1:ERROR" {:provder PROVIDER} player-id)))
             :else  (println (str "Error requesting top tracks on *" PROVIDER "*: ") res)))
     (catch Exception err
         (println (str "Error gettign top tracks on *" PROVIDER "*: ") (ex-data err)) 
@@ -119,9 +120,9 @@
             (= 401 (:status (ex-data err))) (try
                         (portal/refresh-access-token player-id PROVIDER) 
                         (top-tracks player-id target-player-id)
-                        (catch Exception err (println
-                            (str "Conjure:Spotify:TopTracks ERROR #2 retrieving with refreshed token")
-                            (ex-message err) (ex-data err))))
+                        (catch Exception err
+                            (println (str "Conjure:Spotify:TopTracks ERROR #2 retrieving with refreshed token") (ex-message err) (ex-data err))
+                            (log/handle-error err "Conjure:Spotify:playlists/2:ERROR" {:provder PROVIDER} player-id)))
             :else  (println (str "Error processing top tracks on *" PROVIDER "*: ") (ex-data err))
     )))
 ))

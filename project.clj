@@ -7,10 +7,6 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.10.0"
   :dependencies [[org.clojure/clojure "1.11.1"]
-                ;; [org.clojure/core.specs.alpha "0.1.24"]
-                ;; [org.clojure/spec.alpha "0.1.143"]
-                [org.clojure/test.check "1.1.1"]
-                [expound "0.9.0"]
                 ;; basic project dependencies
                 [environ "1.2.0"]
                 [clj-http "3.12.3"]
@@ -23,10 +19,16 @@
                 ;; Database
                 [danlentz/clj-uuid "0.1.9"]
                 [gorillalabs/neo4j-clj "4.1.0"]
-                [joplin.core "0.3.11"]
+                [joplin.core "0.3.11"] ;; TODO constraints on init
                 ;; Cryptography
                 [org.web3j/core "4.10.3"]
+                ;; Testing
+                [org.clojure/core.specs.alpha "0.1.24"]
+                [org.clojure/spec.alpha "0.1.143"]
+                [org.clojure/test.check "1.1.1"]
+                [expound "0.9.0"]
                 ;; Telemetry
+                [io.sentry/sentry-clj "7.2.211"]
                 [com.github.steffan-westcott/clj-otel-api "0.2.5"]
                 [com.github.steffan-westcott/clj-otel-exporter-otlp "0.2.5"]
                 [com.github.steffan-westcott/clj-otel-sdk "0.2.5"]

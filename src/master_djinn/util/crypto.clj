@@ -108,13 +108,10 @@
                                                             :verification])
             aaa (println "util.crypto/prase-signed-query: " sig q)
             signer (ecrecover sig q)
-            ;; aaa (println "parse-signed-POST-query with sig: " signer)
             ;; add signer to app context for use in resolvers
             with-signer (assoc-in context [:request :signer] signer)
             ;; replace original query sent with signed query for lacinia to execute secure query
-            with-query (assoc-in with-signer [:request :graphql-query] q)
-            ;; aaa (println "parse-signed-POST-query with sig: " (get-in with-query [:request :graphql-query]))
-            ]
+            with-query (assoc-in with-signer [:request :graphql-query] q)]
         (println signer (get-in with-query [:request :signer]))
         (clojure.pprint/pprint (get-in with-query [:request :graphql-query]))
 
