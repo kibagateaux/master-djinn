@@ -17,6 +17,7 @@
       )
   ))
 
+(defonce PORTAL_DAY "2023-06-20T12:30:00.000Z")
 (defonce MASTER_DJINN_DATA_PROVIDER "MasterDjinn")
 (defonce MOBILE_APP_DATA_SOURCE "JinniMobileApp")
 
@@ -49,9 +50,18 @@
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
 (neo4j/defquery get-player-actions"
-  MATCH  (u:Avatar { id: $player_id })-[]->(a:Action)
+  MATCH  (u:Avatar { id: $player_id })-[:ACTS]->(a:Action)
   WHERE  a.startTime >= $starttime AND a.endTime <= $endtime
   RETURN COLLECT(a) as actions
+")
+
+(neo4j/defquery get-last-action-time "
+  MATCH (:Avatar {id: $player_id})-[:ACTS {type: \"DID\"}]->(a:Action)<-[:ATTESTS]-(:Provider {provider: $provider})
+  
+  WITH a
+  ORDER BY a.start_time DESC LIMIT 1
+  
+  RETURN a.start_time as start_time
 ")
 
 ;; TODO Ideally CREATE in unind could be a merge for automatic dedupe but cant get that query to work with putting object in directly to create
@@ -67,14 +77,12 @@
 
   WITH action, p, d
   
-  CREATE (p)-[rp:ACTS]->(a:Action)
+  MERGE (p)-[rp:ACTS {type: action.player_relation}]->(a:Action {uuid: action.data.uuid})
   SET a = action.data
-  CREATE (d)-[rd:ATTESTS]->(a)
+  MERGE (d)-[rd:ATTESTS]->(a)
 
-  WITH a, action, rp
-
+  WITH a, action
   CALL apoc.create.addLabels(a, [action.action_type]) YIELD node
-  CALL apoc.refactor.setType(rp, action.player_relation) YIELD output AS relation
 
   RETURN COLLECT(a.uuid) as ids
 ") ;; FIX this returns all actions on a player with UUID. If there are duplicate UUIDs then
@@ -85,14 +93,13 @@
 
     MERGE (p:Avatar     {id: resource.player_id})
     MERGE (d:Provider   {provider: resource.provider})
-    MERGE (p)-[rp:MONITORS]->(r:Resource {uuid: resource.data.uuid})
+    MERGE (p)-[rp:MONITORS {type: resource.player_relation }]->(r:Resource {uuid: resource.data.uuid})
     MERGE (r)<-[:HOSTS]-(d)
     SET r = resource.data
     
-    WITH r, d, rp, resource
-    CALL apoc.create.addLabels(r, [resource.name]) YIELD node as rNode
+    WITH r, d, resource
+    CALL apoc.create.addLabels(r, [resource.resource_type]) YIELD node as rNode
     CALL apoc.create.addLabels(d, [resource.provider]) YIELD node as dNode
-    CALL apoc.refactor.setType(rp, resource.player_relation) YIELD output AS relation
     
     RETURN COLLECT(r) as resources
 ")
