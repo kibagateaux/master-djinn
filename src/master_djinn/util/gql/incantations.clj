@@ -7,6 +7,7 @@
             [master-djinn.incantations.conjure.github :as github-c]
             [master-djinn.incantations.conjure.core :as c]
             [master-djinn.portal.core :as portal]
+            [master-djinn.util.db.identity :as iddb]
             [master-djinn.util.core :refer [get-signer map->json]]
             [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
             [master-djinn.util.crypto :refer [ecrecover MASTER_DJINNS]]))
@@ -49,14 +50,16 @@
         (cond
             (nil? player_id) {:status 400 :error "Must input player to sync id with"}
             (nil? provider) {:status 400 :error "Must input provider to sync id with"}
-            ((set (keys providers)) (keyword provider))
+            ((set (keys providers)) (keyword provider)) ;; ensure valid provider
                 (c/sync-provider-id player_id provider)
             :else {:status 400 :error "invalid provider to sync id with"})))
 
 ;; Code Providers
 (defn sync-repos
     [ctx args val]
-    (let [pid (get-signer ctx) provider (:provider args)]
+    (let [pid (get-signer ctx) provider (:provider args)
+            id (iddb/getid pid provider)]
+        (if (nil? (:provider_id id)) (c/sync-provider-id pid provider) nil)
         (cond (= github-c/PROVIDER provider) (github-c/sync-repos pid))))
 
 (defn track-commits
@@ -65,6 +68,15 @@
         (cond (= github-c/PROVIDER provider) (github-c/track-commits pid))))
 
 ;; Music Providers
+(defn get-playlists
+    [ctx args val]
+    (let [pid (get-signer ctx) provider (:provider args)
+            id (iddb/getid pid provider)]
+        ;; if provider not synced yet then get player id before continuing
+        (if (nil? (:provider_id id)) (c/sync-provider-id pid provider) nil)
+        (cond (= spotify-c/PROVIDER provider)
+                (spotify-c/get-playlists pid (:target_player args)))))
+
 (defn spotify-follow
     [ctx args val]
     (if-let [pid (get-signer ctx)] ;; most be authed request

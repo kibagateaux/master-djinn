@@ -3,7 +3,7 @@
             [master-djinn.util.types.core :as types]))
 
 
-(defonce transmuter-provider "Github")
+(defonce PROVIDER "Github")
 
 (defn Repo->Resource
   [pid username provider input]
@@ -20,7 +20,6 @@
 ;;   (println "Trans:Github:Repo" pid username provider input)
   (let [transmuter-version "0.0.1"
         {:keys [id name description url visibility createdAt pushedAt owner collaborators]} input
-        resource-owner (:username (:owner input))
         resource-type (types/normalize-resource-type :Software)]
     {
     :resource_type resource-type
@@ -33,8 +32,8 @@
         :href url
         :provider_id id
         :accessibility (clojure.string/lower-case visibility)
-        :creators (clojure.string/join "," (map :username (:nodes collaborators)))
-        :uuid (types/resource->uuid resource-owner provider resource-type name transmuter-version)
+        :creators (clojure.string/join "," (map :username (:nodes collaborators))) ;; includes owner by default
+        :uuid (types/resource->uuid pid provider resource-type id transmuter-version)
         :last_used pushedAt
         :created_at createdAt
     }}))
@@ -50,18 +49,18 @@
   
   TODO: (spec/valid :github-action input)
   "
-  ;; (println "Trans:Github:Repo" pid transmuter-provider commit)
+  ;; (println "Trans:Github:Repo" pid PROVIDER commit)
   (let [transmuter-version "0.0.1"
         {:keys [oid committedDate message author]} commit
         action-type (types/normalize-action-type :Coding)]
     {
     :action_type action-type
-    :provider transmuter-provider
+    :provider PROVIDER
     :player_id pid
     :player_relation "DID"
     :data {
-        :uuid (types/action->uuid pid transmuter-provider transmuter-provider action-type committedDate transmuter-version)
+        :uuid (types/action->uuid pid PROVIDER PROVIDER action-type committedDate transmuter-version)
         :desc message
         :start_time committedDate
         :end_time committedDate
-        :data_source transmuter-provider}}))
+        :data_source PROVIDER}}))

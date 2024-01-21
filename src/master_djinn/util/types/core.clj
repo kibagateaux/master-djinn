@@ -85,11 +85,11 @@
   
 (defn resource->uuid
   "UUID namespace hierarchy:
-  resource provider -> resource owner (provider_id) -> resource type -> resource name -> transmuter-version-number
+  resource provider -> resource owner (player-id) -> resource type -> resource id (on provider) -> transmuter-version-number
   "
   ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
-  [owner provider resource-type name version]
-    (uuid --uuid/+null+ owner provider resource-type name version))
+  [owner provider resource-type providerid version]
+    (uuid --uuid/+null+ owner provider resource-type providerid version))
   
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?

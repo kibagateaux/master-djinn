@@ -18,7 +18,7 @@
 
 (neo4j/defquery create-player "
     MERGE (p:Avatar:Human { id: $player.id, uuid: $player.uuid })
-    MERGE (p)-[:HAS]->(id:Identity:Ethereum { id: $player.id, provider: 'Ethereum' })
+    MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
     MERGE (p)-[:BONDING]->(j:Avatar:Jinn { id: $jinni.id, uuid: $jinni.uuid })
     RETURN $jinni.uuid as jinni
 ")

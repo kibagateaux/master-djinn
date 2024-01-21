@@ -12,6 +12,7 @@
   ;; TODO add parse results fn to generate_resulver for cleaner code
     (let [results ((db/generate-resolver db/get-all-players) ctx args val)]
       (:players results)))
+  :Query/get_playlists i/get-playlists
 
 
   
@@ -27,7 +28,7 @@
   :Mutation/sync_repos i/sync-repos
   :Mutation/track_commits i/track-commits
   ;; Music
-  :Query/spotify_top_tracks i/spotify-top-tracks
+  ;; :Query/spotify_top_tracks i/spotify-top-tracks
   :Mutation/spotify_follow i/spotify-follow
   :Mutation/spotify_disco i/spotify-disco
   ;; :Mutation/spotify_create_playlist i/spotify-create-playlist

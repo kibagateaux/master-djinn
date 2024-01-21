@@ -130,10 +130,13 @@
         }}
         :Query {:fields {
             :players {:type (list :Avatar)}
-            :spotify_top_tracks
+            :get_playlists
                 {:type       (list Resource)
-                :description "gets top tracks on spotify for a player"
-                :args       {:target_player {:type (non-null String)}}}
+                :description "gets players playlists to use in spells and widgets"
+                :args       {:verification {:type :SignedRequest}
+                            :provider {:type (non-null String)} ;; Spotify
+                            :target_player {:type (non-null String)}}}
+
             ;; :jinni {:type (non-null :Avatar)
             ;;     :args {:player_id {:type String}}}
             ;; ;; get all of a players jin not just their primary.
