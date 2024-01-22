@@ -53,6 +53,18 @@
 (neo4j/defquery define-action-invariants
   "CREATE CONSTRAINT unique_action_uuid FOR (a:Action) REQUIRE a.uuid IS UNIQUE")
 
+;; Mistral embed API only does 1024 dimension
+;; cosine is better for text content/similarity 
+;; https://docs.mistral.ai/platform/endpoints#embedding-models
+(neo4j/defquery define-divination-invariants
+  "CREATE VECTOR INDEX divination-embeds IF NOT EXISTS
+  FOR (d:Divination)
+  ON (d.embed)
+  OPTIONS  {indexConfig: {
+    `vector.dimensions`: 1024,
+    `vector.similarity_function`: 'cosine'
+  }")
+
 (neo4j/defquery get-all-players
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
