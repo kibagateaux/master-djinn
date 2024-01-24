@@ -90,6 +90,14 @@
   ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
   [owner provider resource-type providerid version]
     (uuid --uuid/+null+ owner provider resource-type providerid version))
+
+(defn spell->uuid
+  "UUID namespace hierarchy:
+  resource provider -> resource owner (player-id) -> resource type -> resource id (on provider) -> transmuter-version-number
+  "
+  ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
+  [player provider spell-name time version]
+    (uuid --uuid/+null+ player provider spell-name time version))
   
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?

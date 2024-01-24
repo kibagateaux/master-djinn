@@ -182,7 +182,7 @@
   (println "refreshing access token for "  player-id " on " provider)
   (let [id (id/getid player-id provider)
         provider-config ((keyword provider) oauth-providers)
-        base-config (get-oauth-login-request-config provider provider-config)
+        base-config (get-oauth-login-request-config provider)
         request-config (assoc base-config :form-params {
                         :grant_type "refresh_token"
                         :refresh_token (:refresh_token id)

@@ -51,13 +51,16 @@
     "DOCS: https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-a-user"
     [player-id]
     (println "C:Github:SyncRepos:Init")
-    (try (let [id (iddb/getid player-id PROVIDER)
+    (let [id (iddb/getid player-id PROVIDER)
+            track-spell (log/track-spell player-id PROVIDER "sync-repos" "0.0.1")
             aaa (println "C:Github:SyncRepo:id " id)
             config (assoc (portal/oauthed-request-config (:access_token id)) :body (map->json {
                 :query qu-get-player-repos
-                :variables {:username (:provider_id id) :visibility "PUBLIC"}}))
-            res (client/post (:graphql-uri CONFIG) config)
+                :variables {:username (:provider_id id) :visibility "PUBLIC"}}))]
+    (track-spell {:stage "init"})
+    (try (let [res (client/post (:graphql-uri CONFIG) config)
             body (json->map (:body res))]
+        (track-spell {:stage "response"})
         (clojure.pprint/pprint res)
         (println "C:Github:SyncRepo:Response - status, body - " (:status res))
         ;; (clojure.pprint/pprint (json->map (:body res)))
@@ -66,19 +69,24 @@
         ;;   (-> body :data :user :repositories :nodes
         ;;     #(trans/Repo->Resource player-id (:provider_id id) PROVIDER %)
         ;;     #(db/call db/batch-create-resources {:resources %}))
-          (let [rs (do (map 
+          (let [rs (map 
                 (fn [repo] (trans/Repo->Resource player-id (:provider_id id) PROVIDER repo))
-                (-> body :data :user :repositories :nodes)))
+                (-> body :data :user :repositories :nodes))
+                _ (track-spell {:stage "success"}) 
                 aaa (println "\n\nC:Github:SyncRepos:post-trans" rs)
                 data (db/call db/batch-create-resources {:resources rs})]
             (println "\n\nC:Github:SyncRepos:return" (:resources data))
             ;; (clojure.pprint/pprint rs)
             (:resources data))
-            {:status 400 :error "C:Github:SyncRepos:ERROR failed to fetch - "}
+              
+            (do (track-spell {:stage "error" :error body})
+              {:status 400 :error "C:Github:SyncRepos:ERROR failed to fetch - "})
+            
         ))
     (catch Exception err
         (println "C:Github:SyncRepo:ERROR requesting" (ex-message err) )
         (clojure.pprint/pprint (ex-data err))
+        (track-spell {:stage "error" :error (ex-data err)})
         (cond 
         (= 401 (:status (ex-data err))) (try 
           (portal/refresh-access-token player-id PROVIDER)
@@ -87,10 +95,13 @@
             (println (str "Conjure:Github:SyncRepo: ERROR retrieving with refreshed token") (ex-message err) (ex-data err))
             (log/handle-error err "Conjure:Github:sync-repos:ERROR" {:provder PROVIDER} player-id)
             (if (= "bad_refresh_token" (ex-message err))
-              {:status 403 :error (ex-message err)}
-              {:status 501 :error (ex-message err)})
-        ))
-  ))
+              (do (track-spell {:stage "unauthorized" :error (ex-data err)})
+                {:status 403 :error (ex-message err)})
+              (do (track-spell {:stage "error" :error (ex-data err)})
+                {:status 501 :error (ex-message err)})
+        )))
+      ))
+    )
 ))
 
 (defonce qu-get-player-commits "query($owner: String!, $repo: String!, $since: GitTimestamp!) {
@@ -127,12 +138,18 @@
     Gets all commits for ten branches (no particular order or filtering) and filters them for player Github id
     Commits are added as :Actions to database that :GENERATES the repo :Resource"
     [player-id]
+    (println "tracking commits on " PROVIDER " for " player-id)
     (let [id (iddb/getid player-id PROVIDER)
+          track-spell (log/track-spell player-id PROVIDER "track-commits" "0.0.1")
+          _ (track-spell {:stage "init"})
           repos (:repo_names (db/call get-repos-names {:player_id player-id :provider PROVIDER}))]
           (println "track commits on repos for player" player-id repos)
+      
       (cond
-        (not id) {:status 403 :error "unequipped"}
-        (not repos) {:status 400 :error "must sync repos"}
+        (nil? id) (do (track-spell {:stage "unauthorized"})
+          {:status 403 :error "unequipped"})
+        (empty? repos) (do (track-spell {:stage "error" :error "must sync respos"})
+          {:status 400 :error "must sync repos"})
         :else (try (let [
           since (or (:start_time (db/call db/get-last-action-time {:player_id player-id :provider PROVIDER}) db/PORTAL_DAY))
           params (println "C:Github:track-commits:params" since repos)
@@ -141,6 +158,7 @@
                     :query qu-get-player-commits
                     :variables {:repo % :owner (:provider_id id) :since since}})))
                   repos)
+          _ (track-spell {:stage "response"})
           ;;  first (println "C:Github:travk-commits:res" (first reqs))   
             actions (flatten (map (fn [res] (let [repo (-> res :body json->map :data :repository)
                                 prepo (clojure.pprint/pprint repo)
@@ -156,9 +174,11 @@
                                 ))
                 reqs))]
             (println "\n\n all commits as actions")
+            (track-spell {:stage "success"})
             ;; (clojure.pprint/pprint actions)
             (db/call db/batch-create-actions {:actions actions}))
           (catch Exception err 
+            (track-spell {:stage "error" :error (ex-data err)})
             (log/handle-error err "Conjure:Github:track-commit:ERROR" {:provder PROVIDER} player-id)
             (println "C:Github:trackj-commits:err" err)))
       

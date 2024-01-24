@@ -29,6 +29,7 @@
                 [expound "0.9.0"]
                 ;; Telemetry
                 [io.sentry/sentry-clj "7.2.211"]
+                [circleci/analytics-clj "0.8.0"]
                 [com.github.steffan-westcott/clj-otel-api "0.2.5"]
                 [com.github.steffan-westcott/clj-otel-exporter-otlp "0.2.5"]
                 [com.github.steffan-westcott/clj-otel-sdk "0.2.5"]
@@ -40,8 +41,7 @@
                 [ch.qos.logback/logback-classic "1.2.10" :exclusions [org.slf4j/slf4j-api]]
                 [org.slf4j/jul-to-slf4j "1.7.35"]
                 [org.slf4j/jcl-over-slf4j "1.7.35"]
-                [org.slf4j/log4j-over-slf4j "1.7.35"]
-                ]
+                [org.slf4j/log4j-over-slf4j "1.7.35"]]
   :plugins [[lein-environ "0.4.0"]]
   :resource-paths ["config", "resources"]
   :aliases {"serve" ["run" "-m" "master-djinn.server/-main"]

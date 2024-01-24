@@ -106,14 +106,14 @@
     (let  [{sig :signature q :_raw_query} (get-in context [:request
                                                             :graphql-vars
                                                             :verification])
-            aaa (println "util.crypto/prase-signed-query: " sig q)
+            ;; aaa (println "util.crypto/parse-signed-query: " sig q)
             signer (ecrecover sig q)
             ;; add signer to app context for use in resolvers
             with-signer (assoc-in context [:request :signer] signer)
             ;; replace original query sent with signed query for lacinia to execute secure query
             with-query (assoc-in with-signer [:request :graphql-query] q)]
-        (println signer (get-in with-query [:request :signer]))
-        (clojure.pprint/pprint (get-in with-query [:request :graphql-query]))
+        (println "util:crypto:ecrecover:signer" (get-in with-query [:request :signer]))
+        (println "util:crypto:ecrecover:query" (get-in with-query [:request :graphql-query]))
 
         ;; MAJOR SECURITY BUG #1: if `sig` or `q` are mismatched we get WRONG address from ecrecover, NOT `nil` as expected
         ;; MAJOR SECURITY BUG #2: replay attack if query uses variables someone can get a users query and replace with any variables that they didnt approve

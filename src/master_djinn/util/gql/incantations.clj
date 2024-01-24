@@ -65,7 +65,8 @@
 (defn track-commits
     [ctx args val]
     (let [pid (get-signer ctx) provider (:provider args)]
-        (cond (= github-c/PROVIDER provider) (github-c/track-commits pid))))
+        (cond (= github-c/PROVIDER provider) (github-c/track-commits pid)
+            :else (println "util:gql:incant:track-commits:ERROR - invalid provider for spell " provider))))
 
 ;; Music Providers
 (defn get-playlists

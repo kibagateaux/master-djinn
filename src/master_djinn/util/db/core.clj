@@ -24,7 +24,6 @@
 
 
 (defn call [query args]
-  (println "DB:call: query" (:id query) (:cypher query))
   (if args (do (println "DB:call: args") (clojure.pprint/pprint args)) nil)
   (try (neo4j/with-transaction connection tx
       (inst/add! database-query-counter {:value 1})

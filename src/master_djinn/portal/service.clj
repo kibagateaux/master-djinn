@@ -11,34 +11,40 @@
             [io.pedestal.interceptor :refer [interceptor]]
             [io.pedestal.http.body-params :as body-params]
             [master-djinn.util.types.core :refer [load-config]]
-            [master-djinn.portal.logs :refer [init-otel!]]))
+            [master-djinn.util.core :refer [get-signer]]
+            [master-djinn.portal.logs :as log]))
 
 (def ^:private signed-request-interceptor
   "checks if query includes a signed query and 
-  1. checks if signed query matches raw query
-  2. ecrecovers signer address
+  1. checks if query variables contains `verification` data for requested query and player signature of query
+    1a. if `verification` does not exist, skips following steps passing on original query context.
+  2. ecrecovers `verification` signer address (could be invalid signature returning random signer)
   3. injects address into app context
+  4. With or without signer, GQL resolvers handle authorization on individual data resources
 
-   This must come after [[body-data-interceptor inject-app-context-interceptor]] as they provide the data we consume
+  @DEV: MUST come after [[body-data-interceptor inject-app-context-interceptor]] as they provide the data we consume
    
-   returns an error if signed query does not match raw query
-   With or without signed query, GQL resolvers handle authorization on individual data resources"
+  returns original query context if no `verification` passed and does not inject `signer`"
   (interceptor
     {:name ::parse-signed-request
      :error lp-internal/on-error-error-response
     :enter (fn [context]
       (let [verification (get-in context [:request :graphql-vars :verification])]
-        ;; (println "service.signed-request : "  (:signature vars) (:_raw_query vars))
-
+          ;; (println "\n\n port:serv:sign-intercept - ")
+          ;; (println (:signature vars) (:_raw_query vars))
+          ;; (clojure.pprint/pprint (get-in context [:request :graphql-vars]))
         (if (and (:signature verification) (:_raw_query verification))
-          (do 
-            (println "\n\nport:serv:sign-intercept - ")
-            (clojure.pprint/pprint (get-in context [:request :graphql-vars]))
-          ;; if signed query sent handle
-          (handle-signed-POST-query context))
+            (let [ctx (handle-signed-POST-query context)
+                  pid (get-signer ctx)]
+              ;; TODO check if signer is valid :Identity here?
+              ;; technically non-player signers could be authorized to access their data
+
+              ;; (log/identify-player pid) ; MUST identify player otherwise tracks silently fail
+              ;; (log/track-player pid "Query Sent" {:query (:_raw_query verification)})
+              ctx)
           ;; else pass along as normal GQL query
-          context)))
-      }))
+          context)))}))
+
 (defonce gql-server-config {
     :api-path "/graphql"
     :ide-path "/graphiql"
@@ -57,7 +63,7 @@
 
 (defn create-gql-service
   [compiled-schema options]
-  (init-otel!)
+  (log/init-otel!)
   (println "P:gql-]servce:is]-remote?" (if (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health") 80 8888) (:api-domain (load-config)) )
   (let [interceptors (gql-interceptors compiled-schema)
         {:keys [port host oauth-init-path oauth-cb-path oauth-refresh-path]} options
