@@ -29,9 +29,13 @@
         env-config {:api-host (or (System/getenv "API_HOST") "0.0.0.0")
                     :api-domain (or (System/getenv "API_DOMAIN") "scryer.jinni.health")
 
+                    :sentry-dsn (System/getenv "SENTRY_DSN")
+                    :sentry-client-secret (System/getenv "SENTRY_CLIENT_SECRET")
+                    :segment-client-secret (System/getenv "SEGMENT_CLIENT_SECRET")
+
                     :activitydb-uri (System/getenv "ACTIVITYDB_URI")
                     :activitydb-user (System/getenv "ACTIVITYDB_USER")
-                    :activitydb-pw (System/getenv "ACTIVITYDB_PW")                    
+                    :activitydb-pw (System/getenv "ACTIVITYDB_PW")
                     
                     :strava-client-id (System/getenv "STRAVA_CLIENT_ID")
                     :strava-client-secret (System/getenv "STRAVA_CLIENT_SECRET")
