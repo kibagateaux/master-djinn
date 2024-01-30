@@ -1,12 +1,12 @@
 (ns master-djinn.incantations.manifest.jinni
     (:require 
             [master-djinn.util.core :refer [now]]
-            [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]
+            [master-djinn.util.types.core :refer [load-config uuid avatar->uuid widget->uuid]]
             [master-djinn.util.crypto :refer [ecrecover MALIKS_MAJIK_CARD]]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as iddb]))
 
-(defn activate-jinni
+(defn jinni-activate
   [player_id jinni_id]
   (:jinni (db/call iddb/create-player {
       :now (now)
@@ -33,3 +33,22 @@
 ;; create new jinni with first human being player submitting proof
 ;; https://segment.com/docs/connections/sources/catalog/libraries/server/clojure/
 ;; associate player with group in analytics
+
+(defn activate-widget
+  [player_id widgets]
+  ;; (let [w-uuid (map
+  ;;         #(assoc % :confi 
+  ;;           (assoc :uuid (widget->uuid player_id (:provider ) (:widget_id %) "0.0.1")))
+  ;;       widgets)]
+  ;;     (println "widgest w uuid" w-uuid)
+  ;;     ;; (clojure.pprint/pprint w-uuid)
+  ;;     )
+      
+  (:widgets (db/call db/set-widget-settings {
+      :player_id player_id
+      :widgets (map
+        (fn [setting] 
+          (let [provider (name (:provider setting))
+                uuid (widget->uuid player_id provider (:id setting) "0.0.1")]
+          (merge setting {:uuid uuid :provider provider})))
+        widgets)})))

@@ -14,7 +14,7 @@
 
 (defonce providers portal/oauth-providers)
 
-(defn activate-jinni
+(defn jinni-activate
     ;; TODO clojure.spec inputs and outputs
   [ctx args val]
   (println "activate jinn arhs:" args val)
@@ -28,8 +28,8 @@
       ;; TODO throw API errors. create resolver wrapper
       ;; TODO define in clojure.specs not code here
       (nil? pid) (do 
-        (println "Gql:Resolv:ActivateJinni:ERROR - Player must give their majik to activation")
-        {:status 400 :body (map->json { :error "Player must give their majik to activation"})})
+        (println "Gql:Resolv:ActivateJinni:ERROR - Unsigned API request")
+        {:status 401 :body (map->json { :error "Player must give their majik to activation"})})
       (not= (:player_id args) pid) (do 
         (println "Gql:Resolv:ActivateJinni:ERROR - Signer !== Registrant")
         {:status 401 :body (map->json { :error "Signer !== Registrant"})})
@@ -40,7 +40,35 @@
     ;;   (not= (:player_id args) pid) (println "Signer !== Registrant")
     ;;   (not (MASTER_DJINNS djinn)) (println "majik msg not from powerful enough djinn")
       ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
-      :else (j/activate-jinni pid jid))))
+      :else (j/jinni-activate pid jid))))
+
+(defn jinni-activate-widget
+    ;; TODO clojure.spec inputs and outputs
+    [ctx args val]
+    (let [pid (get-signer ctx)
+        widgets (:widgets args)
+        ;; provider (:provider setting)
+        ;; id (iddb/getid pid provider)
+        ]
+
+    (println "activate widget args:" widgets)
+    
+    (cond
+        ;; TODO validate that user has all provider accounts for widget selected
+        (nil? pid) (do 
+            (println "Gql:Resolv:ActivateWidget:ERROR - Unsigned API request")
+            {:status 401 :body (map->json { :error "Player must give their majik to activation"})})
+        ;; (nil? provider) (do 
+        ;;     (println "Gql:Resolv:ActivateWidget:ERROR - Must include :Widget provider in widgets")
+        ;;     {:status 400 :body (map->json { :error "No :Widget provider selected"})})
+        ;; (nil? id) (do 
+        ;;     (println "Gql:Resolv:ActivateWidget:ERROR No player :Identity for provider ")
+        ;;     {:status 403 :body (map->json { :error (str "Item not equipped for " provider)})})
+        (empty? widgets) (do 
+            (println "Gql:Resolv:ActivateWidget:ERROR - Must provider :Widget configs to set")
+            {:status 400 :body (map->json { :error "No :Widgets provided"})})
+        ;; TODO clojure.spec/conform widgets ::widgets
+        :else (j/activate-widget pid widgets))))
 
 (defn sync-provider-id
     "@DEV: does NOT require auth because simple stateless function that mirrors data from external db"
@@ -57,10 +85,16 @@
 ;; Code Providers
 (defn sync-repos
     [ctx args val]
-    (let [pid (get-signer ctx) provider (:provider args)
+    (let [caster (get-signer ctx)
+            pid (:player_id args)
+            provider (:provider args)
             id (iddb/getid pid provider)]
-        (if (nil? (:provider_id id)) (c/sync-provider-id pid provider) nil)
-        (cond (= github-c/PROVIDER provider) (github-c/sync-repos pid))))
+        (if (nil? caster)
+            ;; technically dont need auth bc predefined repos pulled in, just for safety. If call sets specific repose then need auth
+            {:status 401 :error "invalid provider to sync id with"}
+            (do  ;; TODO cond->> refactor
+                (if (nil? (:provider_id id)) (c/sync-provider-id pid provider) nil)
+                (cond (= github-c/PROVIDER provider) (github-c/sync-repos pid))))))
 
 (defn track-commits
     [ctx args val]
@@ -71,8 +105,9 @@
 ;; Music Providers
 (defn get-playlists
     [ctx args val]
-    (let [pid (get-signer ctx) provider (:provider args)
-            id (iddb/getid pid provider)]
+    (let [pid (get-signer ctx)
+        provider (:provider args)
+        id (iddb/getid pid provider)]
         ;; if provider not synced yet then get player id before continuing
         (if (nil? (:provider_id id)) (c/sync-provider-id pid provider) nil)
         (cond (= spotify-c/PROVIDER provider)

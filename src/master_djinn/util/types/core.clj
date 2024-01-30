@@ -97,11 +97,17 @@
 
 (defn spell->uuid
   "UUID namespace hierarchy:
-  resource provider -> resource owner (player-id) -> resource type -> resource id (on provider) -> transmuter-version-number
+  player id -> spell name-> time spell cast started -> incantation-version-number
   "
-  ;; TODO ideally pass in standardized :Action object and then destructure so API is simpler
   [player provider spell-name time version]
     (uuid --uuid/+null+ player provider spell-name time version))
+
+(defn widget->uuid
+"UUID namespace hierarchy:
+  player id -> data provider -> common widget id e.g. 'spotify-pin-playlist' -> widget-version-number
+  "
+[player provider widget-id version]
+    (uuid --uuid/+null+ player provider widget-id version))
   
 ;;; generate Sets for common types for easy lookups
 (def is-action-type?

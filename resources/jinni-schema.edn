@@ -56,6 +56,7 @@
             :AndroidHealthConnect
             :Github
             :Spotify
+            :MaliksMajik
         ]}
     }
 
@@ -68,7 +69,26 @@
             :fields {
                 :_raw_query {:type String }
                 :signature {:type (non-null String) }
-                ;; :nonce {:type String }
+                ;; :nonce {:type String :description "hash of variables for request"}
+            }}
+
+         :WidgetSettingInput
+            {:description ""
+            :fields {
+                :id {:type (non-null String) :description "common global identifier for :Widget type e.g. spotify-pin-playist`"}
+                :provider {:type (non-null :Providers)}
+                :priority {:type Int :description "Hierarchy of widget in user profile setting. Relative, non-sequential e.g. can have two priority (1)s then an (8)"}
+                
+                ;; optional config per widget
+                :provider_id {:type String :description "what to display from provider"}
+                ;; avatar viewer
+                :mood {:type (list String) :description "what to display from provider"}
+                :stats {:type (list String) :description "what to display from provider"}
+                :intentions {:type (list String) :description "what to display from provider"}
+                ;; frontend params if needed?
+                ;; :path {:type String :description "what to display from provider"}
+                ;; :routeName {:type String :description "what to display from provider"}
+                ;; :title {:type String :description "what to display from provider"}
             }}
         :RawInputData
             {:description "Any unprocessed data collected from data providers. GraphQL doesnt have a general <any> or <object> type so this is a catch all."
@@ -128,6 +148,25 @@
             :url {:type String} ;; link to view data on resource
             :creators {:type (list Avatar)}
         }}
+        :Widget ;; TODO figure out how to make non-duplicate with input object
+            {:description ""
+            :fields {
+                :id {:type (non-null String) :description "common global identifier for :Widget type e.g. 'spotify-pin-playist`"}
+                :uuid {:type (non-null String) :description "unique global identifier for :Widget for player, provider, id and version"}
+                :provider {:type (non-null :Providers)}
+                :priority {:type Int :description "Hierarchy of widget in user profile setting. Relative, non-sequential e.g. can have two priority (1)s then an (8)"}
+                
+                ;; optional config per widget
+                :provider_id {:type String :description "what to display from provider"}
+                ;; avatar viewer
+                :mood {:type (list String) :description "what to display from provider"}
+                :stats {:type (list String) :description "what to display from provider"}
+                :intentions {:type (list String) :description "what to display from provider"}
+                ;; frontend params if needed?
+                ;; :path {:type String :description "what to display from provider"}
+                ;; :routeName {:type String :description "what to display from provider"}
+                ;; :title {:type String :description "what to display from provider"}
+            }}
         :Query {:fields {
             :players {:type (list :Avatar)}
             :get_playlists
@@ -160,10 +199,17 @@
             
             :jinni_activate
                 {:type       (non-null ID)
-                :description "registers a new jinni using ZKP that you have received a majik card"
+                :description "Registers a new jinni using ZKP that you have received a majik card"
                 :args       {:verification {:type :SignedRequest} ;; TODO ZKP?
                             :majik_msg {:type (non-null String)} ;; Signed player_id by majik card
                             :player_id {:type (non-null String)}}} ;; 0x ETH address they will sign messages from
+            
+            :jinni_set_widget
+                {:type       (list (non-null ID))
+                :description "Creates or updates settings for a widget to custyomize a players homepage.
+                            Returns null if item for widget not equipped or invalid config"
+                :args       {:verification {:type (non-null :SignedRequest)} ;; TODO ZKP?
+                            :widgets {:type (list (non-null :WidgetSettingInput))}}} ;; 0x ETH address they will sign messages from
                 
             :sync_provider_id
                 {:type       String
@@ -173,7 +219,7 @@
                             :player_id {:type (non-null String)}}} ;; 0x ETH address
             :sync_repos
                 {:type       (list :Resource)
-                :description "adds github /gitlab/radicle repos as :Resources to player used for tracking commits as game :Actions"
+                :description "Adds github /gitlab/radicle repos as :Resources to player used for tracking commits as game :Actions"
                 :args       {:verification {:type :SignedRequest}
                             :provider {:type (non-null String)}
                             :player_id {:type (non-null String)}}} ;; 0x ETH address

@@ -53,8 +53,8 @@
   "CREATE CONSTRAINT unique_action_uuid FOR (a:Action) REQUIRE a.uuid IS UNIQUE")
 
 ;; Mistral embed API only does 1024 dimension
-;; cosine is better for text content/similarity 
 ;; https://docs.mistral.ai/platform/endpoints#embedding-models
+;; cosine is better for text content/similarity 
 (neo4j/defquery define-divination-invariants
   "CREATE VECTOR INDEX divination-embeds IF NOT EXISTS
   FOR (d:Divination)
@@ -62,15 +62,34 @@
   OPTIONS  {indexConfig: {
     `vector.dimensions`: 1024,
     `vector.similarity_function`: 'cosine'
-  }")
+  }
+")
 
 (neo4j/defquery get-all-players
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
-(neo4j/defquery get-player-actions"
-  MATCH  (u:Avatar { id: $player_id })-[:ACTS]->(a:Action)
-  WHERE  a.startTime >= $starttime AND a.endTime <= $endtime
+(neo4j/defquery get-player-actions "
+  MATCH  (u:Avatar {id: $player_id})-[:ACTS]->(a:Action)
+  WHERE  a.startTime >= $start_time AND a.endTime <= $end_time
   RETURN COLLECT(a) as actions
+")
+
+(neo4j/defquery get-player-widgets"
+  MATCH  (u:Avatar {id: $player_id})-[:USES]->(w:Widget)
+  RETURN COLLECT(w) as widgets
+")
+
+;; TODO delete all existing widgets before setting?
+;; MATCH (p)-[wr:USES]->(w:Widget); DELETE wr, w; UNWIND
+(neo4j/defquery set-widget-settings "
+  MATCH (p:Avatar {id: $player_id})
+  
+  UNWIND $widgets AS widget
+  
+  MERGE (p)-[wr:USES]->(w:Widget {id: widget.id})
+  SET w = widget
+
+  RETURN COLLECT(w.uuid) as widgets
 ")
 
 (neo4j/defquery get-last-action-time "
