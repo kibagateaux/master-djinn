@@ -81,8 +81,11 @@
 
 ;; TODO delete all existing widgets before setting?
 ;; MATCH (p)-[wr:USES]->(w:Widget); DELETE wr, w; UNWIND
+
+;; MERGE allows player to create :Avatar during onboarding before verified by 
+;; Good growth tactic, can have people confirm integrations/widgets before allowing to play the game.
 (neo4j/defquery set-widget-settings "
-  MATCH (p:Avatar {id: $player_id})
+  MERGE (p:Avatar {id: $player_id})
   
   UNWIND $widgets AS widget
   

@@ -191,7 +191,7 @@
             :submit_data
                 {:type        (list ID)
                 :description "Submit new game action data from players and return :Action UUIDs created"
-                :args       {:verification {:type :SignedRequest} ;; non-null for now
+                :args       {:verification {:type (non-null :SignedRequest)}
                             :raw_data {:type (list :RawInputData)}
                             :provider {:type (non-null :Providers)}
                             :action_type {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health

@@ -16,8 +16,10 @@
         REQUIRE a.uuid IS UNIQUE;
 ")
 
+;; Set UUID to not create duplicate avatar that only has id from setting :Widgets
 (neo4j/defquery create-player "
-    MERGE (p:Avatar:Human { id: $player.id, uuid: $player.uuid })
+    MERGE (p:Avatar:Human { id: $player.id })
+    SET p.uuid = $player.uuid
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
     MERGE (p)-[:BONDS {since: $now}]->(j:Avatar:Jinn { id: $jinni.id, uuid: $jinni.uuid })
     RETURN $jinni.uuid as jinni
