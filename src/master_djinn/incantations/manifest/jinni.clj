@@ -19,6 +19,18 @@
         :uuid (avatar->uuid jinni_id)
         :birthday (now)}})))
 
+
+(defn create-summoning-circle
+  [player_id jubmoji_id]
+  
+  )
+
+(defn join-summoning-circle
+  [player_id jubmoji_id]
+  
+  )
+
+
 ;; TODO group djinn
 ;; func 1. (short term)
 ;; player submits proof from a jubmoji card (card signed their address)
@@ -33,6 +45,7 @@
 ;; create new jinni with first human being player submitting proof
 ;; https://segment.com/docs/connections/sources/catalog/libraries/server/clojure/
 ;; associate player with group in analytics
+
 
 (defn activate-widget
   [player_id widgets]

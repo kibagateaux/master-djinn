@@ -56,21 +56,32 @@
 ;; https://docs.mistral.ai/platform/endpoints#embedding-models
 ;; cosine is better for text content/similarity 
 (neo4j/defquery define-divination-invariants
-  "CREATE VECTOR INDEX divination-embeds IF NOT EXISTS
+  "CREATE VECTOR INDEX `divination-embeds` IF NOT EXISTS
   FOR (d:Divination)
-  ON (d.embed)
+  ON (d.embeds)
   OPTIONS  {indexConfig: {
     `vector.dimensions`: 1024,
     `vector.similarity_function`: 'cosine'
-  }
+  }}
 ")
+
+;;; GETTERS
 
 (neo4j/defquery get-all-players
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
 (neo4j/defquery get-player-actions "
   MATCH  (u:Avatar {id: $player_id})-[:ACTS]->(a:Action)
-  WHERE  a.startTime >= $start_time AND a.endTime <= $end_time
+  WHERE  datetime(a.start_time) >= datetime($start_time)
+    AND datetime(a.end_time) <= datetime($end_time)
+  RETURN COLLECT(a) as actions
+")
+
+(neo4j/defquery get-jinni-actions "
+  MATCH (j:Jinni {uuid: $jinni_id})-[:BONDS]->(p:Avatar),
+        (p)-[:ACTS]->(a:Action) WHERE
+            datetime(a.start_time) >= datetime($start_time) AND
+            datetime(a.end_time) <= datetime($end_time)
   RETURN COLLECT(a) as actions
 ")
 

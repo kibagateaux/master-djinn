@@ -24,17 +24,16 @@
   ;;   (let [signer (get-signer ctx)])
   ;;     ;; if signer !== target_player [] else db
   ;;     (:widgets (db/call db/get-player-widgets {:player_id (:id val)})))
-  
+
   :Query/get_playlists i/get-playlists
 
-
-  
 
   ;;; Mutations
   ;; general game actions
   :Mutation/submit_data trans/multiplexer
   :Mutation/sync_provider_id i/sync-provider-id
   :Mutation/jinni_activate i/jinni-activate
+  :Mutation/jinni_evolution i/jinni-evolution
   :Mutation/jinni_set_widget i/jinni-activate-widget
   ;; Code
   :Mutation/sync_repos i/sync-repos

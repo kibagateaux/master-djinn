@@ -57,6 +57,7 @@
             :Github
             :Spotify
             :MaliksMajik
+            :MistralDalle
         ]}
     }
 
@@ -148,6 +149,21 @@
             :url {:type String} ;; link to view data on resource
             :creators {:type (list Avatar)}
         }}
+        :Divination
+            ;; TODO is :Acrtion in DB but fields are mix of both :Action and :Resource
+            ;; :implements [:Action]
+            {:description ""
+            :fields {
+                :uuid {:type (non-null String) :description "global unique identifier"}
+                :image {:type (non-null String) :description "binary image in json format to edit on next :Divination" }
+                :hash {:type (non-null String) :description "hash of avatar widget settings creating unique analysis prompt to share across :Divinations" }
+                :diffs {:type (non-null String) :description "How different body parts changed in divination based on prompt analysis" }
+                :start_time {:type (non-null String) :description "when :Divination process started" }
+                :end_time {:type (non-null String) :description "when :Divination process ended" }
+                ;; for initial :Divination with new intentions
+                :prompt {:type String :description "analysis prompt used to read player data into jinni variation. nil if no new prompt" }
+                :embed {:type String :description "LLM embeds for analysing prompts used. nil if no new prompt" }
+            }}
         :Widget ;; TODO figure out how to make non-duplicate with input object
             {:description ""
             :fields {
@@ -203,7 +219,15 @@
                 :args       {:verification {:type :SignedRequest} ;; TODO ZKP?
                             :majik_msg {:type (non-null String)} ;; Signed player_id by majik card
                             :player_id {:type (non-null String)}}} ;; 0x ETH address they will sign messages from
+            :jinni_evolution
+                {:type       ID ;; Divination :Action uuid, nil if nothing generated
+                :description "Runs custom data analysis on players actions based on intentions they have set. Returns URL of new jinni image."
+                :args       {:verification {:type :SignedRequest} ;; unneccesary if pulling from settings. 
+                            :jinni_id {:type (non-null String)}
+ 
+                            }}
             
+
             :jinni_set_widget
                 {:type       (list (non-null ID))
                 :description "Creates or updates settings for a widget to custyomize a players homepage.

@@ -1,6 +1,7 @@
 ;; GQL resolvers wrapper around spells that return data or http errors
 (ns master-djinn.util.gql.incantations
     (:require [com.walmartlabs.lacinia.resolve :as resolve]
+            [master-djinn.incantations.divine.mistral-dalle :as mistral-d]
             [master-djinn.incantations.manifest.jinni :as j]
             [master-djinn.incantations.manifest.spotify :as spotify-m]
             [master-djinn.incantations.conjure.spotify :as spotify-c]
@@ -81,6 +82,17 @@
             ((set (keys providers)) (keyword provider)) ;; ensure valid provider
                 (c/sync-provider-id player_id provider)
             :else {:status 400 :error "invalid provider to sync id with"})))
+
+;; Tomogatchi Evolutions
+(defn jinni-evolution
+    "Allow anyone to initiate an evolution of a players jinni using their
+    configured settings in maliksmajik-avatar-viewer widget"
+    [ctx args val]
+    (let [jid (:jinni_id args)]
+        (if (nil? jid) {:status 400 :error "no jinni specified for evolution"}
+        ;; TODO pull provider from widget settings and decide which to use
+        (mistral-d/see-current-me jid))))
+
 
 ;; Code Providers
 (defn sync-repos
