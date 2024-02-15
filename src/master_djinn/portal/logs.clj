@@ -13,7 +13,9 @@
 (defonce analytics (if-let [secret (:segment-client-secret (load-config))]
   (segment/initialize secret)))
 
-(defn map->sentry [m]
+(defn map->sentry
+  "{:k v :k2 v2} -> [['k' 'v'] ['k2' 'v2']]"
+  [m]
   (mapcat (fn [[k v]] [(name k) (str v)]) m))
 
 (defn handle-error

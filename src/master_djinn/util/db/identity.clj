@@ -19,9 +19,14 @@
 ;; Set UUID to not create duplicate avatar that only has id from setting :Widgets
 (neo4j/defquery create-player "
     MERGE (p:Avatar:Human { id: $player.id })
-    SET p.uuid = $player.uuid
+    SET p = $player
+    
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
-    MERGE (p)-[:BONDS {since: $now}]->(j:Avatar:Jinn { id: $jinni.id, uuid: $jinni.uuid })
+    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
+    
+    SET j = $jinni
+    SET rj.since = $now
+    
     RETURN $jinni.uuid as jinni
 ")
 
@@ -46,11 +51,6 @@
     RETURN ID(id) as id
 ")
 
-(neo4j/defquery match-nonce-to-avatar "
-    MATCH (p:Avatar)-[:HAS]->(id:Identity {nonce: $nonce})
-    RETURN p as player
-")
-
 (neo4j/defquery sync-provider-id "
     MATCH (p:Avatar { id: $pid })-[:HAS]->(id:Identity {provider: $provider})
     SET id.provider_id = $provider_id
@@ -64,3 +64,9 @@
 
 (defn getid [player_id provider]
     (:id (db/call get-identity {:pid player_id :provider provider})))
+
+;; used for oauth flow to ensure callback is from right provider and authorized by player
+(neo4j/defquery match-nonce-to-avatar "
+    MATCH (p:Avatar)-[:HAS]->(id:Identity {nonce: $nonce})
+    RETURN p as player
+")

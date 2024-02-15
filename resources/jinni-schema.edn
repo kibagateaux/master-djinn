@@ -122,16 +122,16 @@
             :name {:type String}
             :birthday {:type String}
             :homies {:type (list :Avatar)}
+            :actions {:type (list :Action)}
         }}
         :Action {:fields {
             ;; make interface if we need abstract for incipient/consequential
             ;; :implements [:Action]
-            
             :id {:type (non-null String)}
             :desc {:type String}
             :action_type {:type (non-null String)}
-            :startTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
-            :endTime {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
+            :start_time {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
+            :end_time {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
             :provider {:type (non-null :Providers)}
             :player {:type :Avatar} ;; Action may have multiple players? or no player if its projected?
         }}

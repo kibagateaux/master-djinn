@@ -39,8 +39,8 @@
               ;; TODO check if signer is valid :Identity here?
               ;; technically non-player signers could be authorized to access their data
 
-              ;; (log/identify-player pid) ; MUST identify player otherwise tracks silently fail
-              ;; (log/track-player pid "Query Sent" {:query (:_raw_query verification)})
+              (log/identify-player pid) ; MUST identify player otherwise tracks silently fail
+              (log/track-player pid "Query Sent" {:query (:_raw_query verification)})
               ctx)
           ;; else pass along as normal GQL query
           context)))}))

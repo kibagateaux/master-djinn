@@ -79,21 +79,6 @@
   RETURN COLLECT(w) as widgets
 ")
 
-;; TODO delete all existing widgets before setting?
-;; MATCH (p)-[wr:USES]->(w:Widget); DELETE wr, w; UNWIND
-
-;; MERGE allows player to create :Avatar during onboarding before verified by 
-;; Good growth tactic, can have people confirm integrations/widgets before allowing to play the game.
-(neo4j/defquery set-widget-settings "
-  MERGE (p:Avatar {id: $player_id})
-  
-  UNWIND $widgets AS widget
-  
-  MERGE (p)-[wr:USES]->(w:Widget {id: widget.id})
-  SET w = widget
-
-  RETURN COLLECT(w.uuid) as widgets
-")
 
 (neo4j/defquery get-last-action-time "
   MATCH (:Avatar {id: $player_id})-[:ACTS {type: \"DID\"}]->(a:Action)<-[:ATTESTS]-(:Provider {provider: $provider})
@@ -102,6 +87,39 @@
   ORDER BY a.start_time DESC LIMIT 1
   
   RETURN a.start_time as start_time
+")
+
+(neo4j/defquery get-last-divination "
+  MATCH (j:Jinn {id: $jinni_id})-[:ACTS]->(d:Action:Divination),
+    (j)-[:USES]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
+  
+  WITH d, w
+  ORDER BY d.start_time DESC LIMIT 1
+
+  WITH d, w
+  MATCH (d2:Action:Divination)
+  WHERE d2.hash = d.hash AND d2.prompt IS NOT NULL
+  
+  RETURN w as settings, d as action, d2.prompt as prompt
+")
+
+;;; SETTERS
+
+;; Creates player+jinni but no details until create-player called
+;; TODO delete all existing widgets before setting?
+;; MATCH (p)-[wr:USES]->(w:Widget); DELETE wr, w; UNWIND
+;; MERGE allows player to create :Avatar during onboarding before verified by 
+;; Good growth tactic, can have people confirm integrations/widgets before allowing to play the game.
+(neo4j/defquery set-widget-settings "
+  MERGE (p:Avatar:Human {id: $player_id})
+  MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
+  
+  UNWIND $widgets AS widget
+  
+  MERGE (j)-[wr:USES]->(w:Widget {id: widget.id})
+  SET w = widget
+
+  RETURN COLLECT(w.uuid) as widgets
 ")
 
 ;; TODO Ideally CREATE in unind could be a merge for automatic dedupe but cant get that query to work with putting object in directly to create
