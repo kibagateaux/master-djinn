@@ -77,8 +77,9 @@
   RETURN COLLECT(a) as actions
 ")
 
+;; TODO directed -:Bonds->
 (neo4j/defquery get-jinni-actions "
-  MATCH (j:Jinni {uuid: $jinni_id})-[:BONDS]->(p:Avatar),
+  MATCH (j:Jinn {uuid: $jinni_id})-[:BONDS]-(p:Avatar),
         (p)-[:ACTS]->(a:Action) WHERE
             datetime(a.start_time) >= datetime($start_time) AND
             datetime(a.end_time) <= datetime($end_time)
@@ -101,18 +102,32 @@
 ")
 
 (neo4j/defquery get-last-divination "
-  MATCH (j:Jinn {id: $jinni_id})-[:ACTS]->(d:Action:Divination),
-    (j)-[:USES]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
+  MATCH (j:Jinn {uuid: $jinni_id}),
+  (j)-[:USES]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
+  
+  OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
   
   WITH d, w
   ORDER BY d.start_time DESC LIMIT 1
 
   WITH d, w
-  MATCH (d2:Action:Divination)
+  OPTIONAL MATCH (d2:Action:Divination)
   WHERE d2.hash = d.hash AND d2.prompt IS NOT NULL
   
   RETURN w as settings, d as action, d2.prompt as prompt
 ")
+
+(neo4j/defquery create-divination "
+  MATCH (j:Jinn {uuid: $jinni_id })
+  MERGE (p:Provider {provider: $provider})
+  MERGE (j)-[:ACTS {type: 'SEES'}]->(:a:Action:Divination {uuid: $action.data.uuid})
+  MERGE (p)-[:ATTESTS]->(a)
+
+  SET a = $action.data
+  
+  RETURN a.uuid AS id
+")
+
 
 ;;; SETTERS
 

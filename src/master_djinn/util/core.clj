@@ -17,6 +17,13 @@
         now (java.time.ZonedDateTime/now utc)]
     (.format formatter now)))
 
+(defn update-time [ts]
+  (clojure.instant/parse-timestamp ts "timestamp")) 
+  ;; if need regex not string name 
+  ;; (def ^:private timestamp #"(\d\d\d\d)(?:-(\d\d)(?:-(\d\d)(?:[T](\d\d)(?::(\d\d)(?::(\d\d)(?:[.](\d+))?)?)?)?)?)?(?:[Z]|([-+])(\d\d):(\d\d))?")
+  ;; worse case use lib https://github.com/dm3/clojure.java-time
+
+
 ;; (defn iso->unix
 ;;   "takes ISO 8601 time and converts to milliseconds since UNIX epoch"
 ;;   [ts]

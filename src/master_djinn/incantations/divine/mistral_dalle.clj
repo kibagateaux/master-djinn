@@ -7,80 +7,75 @@
             [master-djinn.util.core :refer [now json->map map->json]]
             [master-djinn.util.db.identity :as iddb]))
 
-;; prompt pipeline
-;; 1. generate prompt that will analyze actions
-;;     inputs: intentions, stats
-
-;; 2. generate prompt that will output changes in avatar
-;;     inputs: analysis prompt, action data
-
-;; 3. generate dalle prompt that makes variations to image based on changes
-;;     inputs: changes, 
-
-;; 4. DALLE generates variation of image
-
-
-;; RETURNS
-;; -  hash of avatar config + analysis prompt (saved in widget config so we dont have to regenerate analysis prompt everytime if config (mainly intentions) doesnt change
-;; -  divination uuid
-;; -  url of new image on DALLE
-;; -  map of ± attributes/body parts
 (defonce PROVIDER "MistralDalle")
-(defonce INITIAL_DIVI {
-    :settings {
 
-    }
-    :action {
-        :start_time db/PORTAL_DAY
-        :end_time db/PORTAL_DAY
-    }
-    :prompt nil
-})
 (defonce MIN_DIVINATION_INTERVAL_DAY 3)
 (defonce MIN_DIVINATION_INTERVAL_SEC (* MIN_DIVINATION_INTERVAL_DAY (* 24 (* 60 60))))
-(defonce LLM_PERSONA "
+
+(defonce LLM_ANALYSIS_PERSONA "
     You are a world renowned cognitive behavioral psychologist,
-    traditional Chinese medicine physician that is private doctor for Xi Xi Ping,
-    and a global adminstrator and teacher of Montessori Schools.
+    traditional Chinese medicine physician that is private doctor for Xi Jinping,
+    and 2053 teacher of the year globally for Montessori Schools.
+
     You are conducting research on how to help people self-actualize in their daily life
-    by giving them tools to reflect on who they want to be, how they get there, and how their current actions align with that.
+    by giving them tools to reflect on who they want to be, how they get there, and how their current actions align with intentions.
     Be concise, analytical, insightful, holistic, empathetic, and think from your test subject's perspective.
 \n")
  
 
 (defonce LLM_ANALYSIS_FORMAT "\n
     Return an object detailing what parts of your research patients bodies that have progressed
-    or regressed based on their actions taken compared to the intentions they told you.
-    Use a score of -1 to 1 with 1 representing massive progress in short amount of time and
-    0.1 representing small but consistent progress over time and -1 means massive performance regression.
-    An example output object is:
-    ```{:brain .2
-        :eyes -.1
-        :heart .1
-        :arms .1
-        :posture -0.2}```
-    
-    Only output the object otherwise your research will fail!
-") ;; TODO add mapping of :Provider -> body parts + weightings?
+    or regressed based on your analysis how their actions conform to their intentions.
 
-(defonce LLM_REWARD "\n
+    Use a score of -1 to 1 to show how much a body part should grow.
+    1 representing massive progress in short amount of time,
+    0.1 representing small but consistent progress over time,
+    -1 means a massive abrupt performance regression.
+    
+    Here is an example formatted output:
+    ```{
+        :results {
+            :brain 0.2
+            :eyes -0.1
+            :heart 0.1
+            :posture -0.2
+        }
+        :reason \"\"
+    }```
+    
+    You response MUST EXACTLY fulfill your research experiments requirements below otherwise your experiment will fail!!!:
+    - ONLY output the requested object format
+    - ONLY use the actions and intentions explicitly provided in your analysis
+    - Cite which actions and data sources justify your final analysis
+")
+
+(defonce LLM_ANALYSIS_REWARD "\n
     If your research analysis yields consistent and reliable results
     that signficanlty improves subjects physical, social, and cognitive health
     you will be awarded a Nobel Prize in Economics and a $10M prize!!!
 ")
 
 
-(defonce LLM_AUGMENT_FORMAT "\n
+(defonce LLM_AUGMENT_PERSONA "\n
     You are a generative artist that specicalizes in DALLE prompting.
     Your signature style is 'cute tamagotchi pets with pastel colors in 8-bit pixel style'
     
-    You are being commissioned by ;; a government research institure to 
-    Your client wants you to modify one of your prior works to reflect how their pet looks today
-    They have provided you with 
+    You are being commissioned by a long-term wealthy benefactor to modify one of your prior works to reflect how their pet looks today
+")
+
+
+(defonce LLM_AUGMENT_FORMAT "\n
+    They have provided you with the 
+
     Generate a DALLE prompt that uses
-    
+")
+
+(defonce LLM_AUGMENT_REWARD "\n
     If your client likes your drawing they will give you a $10M bonus.
 ")
+
+(defn parse-mistral-response [res]
+    (:content (:message (first (:choices (json->map (:body res)))))))
 
 (defn prompt-text [prompt]
     (client/post "https://api.mistral.ai/v1/chat/completions" (assoc (portal/oauthed-request-config (:mistral-api-key (load-config))) :body  (map->json {
@@ -115,34 +110,9 @@
             bbbbbd (clojure.pprint/pprint "divibne:mistral:image-b64:raw:" b64-img)]
         b64-img))
 
-(defn run-evolution
-    [jinni-id settings last-divi actions]
-    (try (let [version "0.0.1" start-time (now)
-                analysis-output (prompt-text (str LLM_PERSONA (:prompt last-divi) LLM_ANALYSIS_FORMAT LLM_REWARD))
-                aaaa (println "divi:mistral:run-evo:analysis \n\n" analysis-output)
-                ;; image-augmentation-prompt (prompt-text (str analysis-output LLM_ANALYSIS_FORMAT LLM_REWARD))
-                ;; new-image (prompt-image (:image last-divi) image-augmentation-prompt) ;; TODO add moods here to affect face and posture
-                uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" start-time version)
-                ]
-                ;; (db/call db/batch-create-actions [{
-                ;;     :player_id jinni-id
-                ;;     :provider PROVIDER
-                ;;     :player_relation "SEES"
-                ;;     :action_type "Divination"
-                ;;     :data (merge {
-                ;;         :uuid uuid
-                ;;         :provider PROVIDER
-                ;;         :start_time start-time
-                ;;         :end_time (now)
-                ;;         :image new-image} last-divi)}])
-                        )
-            (catch Exception e
-                (println "divine:mistral:generation:ERROR" e)
-                (log/handle-error e "Failed to run divination" {:provider PROVIDER})
-            )))
             
 ;; 1. 
-(defn get-new-prompt
+(defn get-new-analysis-prompt
     "check if intentions have changed since last divination
     if so then get new embeddings otherwise return last values
     returns old if no prompt should be generated or [prompt, embeds[]] if new intentions"
@@ -164,27 +134,77 @@
                     ;;             :input inputs
                     ;;         }))))
                     ;; aaaa (println "divi:mistral:new-prompt:embeds" embeds)
-                    analysis-prompt (prompt-text (str
-                        LLM_PERSONA
+                    prompt-response (prompt-text (str
+                        LLM_ANALYSIS_PERSONA
                         "Your research subject's intentions are: " (clojure.string/join "," (:intentions settings))
-                        "They are optimizing for these attribute: " (clojure.string/join "," (:stats settings))
-                        "Generate a personalized LLM prompt for this test subject that will take data about
-                        their daily activities in a standard format as input, analyze and compare their actions
-                        against their stated goals/intentions, and see if those actions improve their target attributes.
+                        "They are optimizing for these attributes: " (clojure.string/join "," (:stats settings))
+                        "Using the intentions and attributes of your test subject write a personalized LLM prompt from their perspective. 
+                        Before writing their prompt, think through why they set those intentions, what they expect to get out of it, 
+                        what actions they would expect to see, metrics to track progress, and anything else relevant to manifesting their self-actualization.
+                        
+                        Your prompt MUST take data about their daily activities as input,
+                        analyze and compare your actions against their intentions and target attributes.
+                        
+                        An example prompt is 'Based on my intentions of `Learn a new skill monthly` and `Practice mindfulness regularly`
+                            look for actions that involve introspection, require focus, or consistent practice over time.'
+                        
                         You MUST only output the personalized prompt by itself.
                         "
-                        LLM_REWARD))
+                        ;; An example prompt is `Based on your intentions of 'sexy physique' your phyiscal activity levels were insufficient leading to muscular atrophy
+                        ;;     however you did a lot a commits to github which was not in your intentions so did not affect experiment results`
+                        LLM_ANALYSIS_REWARD))
+                    ;; aaaa (println "divi:mistral:new-prompt:res \n\n" prompt-response)
+                    analysis-prompt (parse-mistral-response prompt-response)
                     aaaa (println "divi:mistral:new-prompt:prompt \n\n" analysis-prompt)]
-                (merge {:hash new-hash :prompt analysis-prompt :embeds []} divi)) ;; TODO :embed embeds
+                (merge divi {:hash new-hash :prompt analysis-prompt :embeds []})) ;; TODO :embed embeds
     ))
         ;; (catch Exception e
         ;;     (println "divine:mistral:new-prompt:ERR" e)
         ;;     (log/handle-error e "Failed to generate new prompt and embeds" {:provider PROVIDER})
         ;;     [nil nil]))) ;; failure to generate new prompt. do not proceed with evolution
 
+(defn run-evolution
+    [jinni-id settings last-divi actions]
+    (try (let [version "0.0.1" start-time (now)
+                analysis-response (prompt-text (str
+                    LLM_ANALYSIS_PERSONA
+                    (:prompt last-divi)
+                    "Actions to analyze: ```" actions "```"
+                    LLM_ANALYSIS_FORMAT
+                    LLM_ANALYSIS_REWARD))
+                analysis-output (parse-mistral-response analysis-response)
+                aaaa (println "divi:mistral:run-evo:analysis \n\n" analysis-output)
+                ;; parse structured object in response and convert from string to clj map
+                aaaa (println "divi:mistral:run-evo:re-find \n\n" (re-find  #"(?is)```.*(\{.*:results.*\}).*```" analysis-output))
+                result (clojure.edn/read-string (nth (re-find  #"(?is)```.*(\{.*:results.*\}).*```" analysis-output) 1))
+                aaaa (println "divi:mistral:run-evo:result \n\n" result)
+
+                ;; image-augmentation-prompt (prompt-text (str LLM_AUGMENT_PERSONA analysis-output LLM_AUGMENT_FORMAT LLM_ANALYSIS_REWARD))
+                ;; new-image (prompt-image (:image last-divi) image-augmentation-prompt) ;; TODO add moods here to affect face and posture
+                uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" start-time version)
+                data (merge last-divi {
+                        :uuid uuid
+                        :provider PROVIDER
+                        :start_time start-time
+                        :end_time (now)
+                        ;; :image new-image
+                        })
+                ]
+                ;; TODO also add hash to widget settings so next run can compare new seetings/hash to existing hash
+                ;; Maybe just make a specific `add-divination` query. keep :Action format just make Cypher cleaner
+                (db/call db/create-divination {
+                    :jinni_id jinni-id
+                    :provider PROVIDER
+                    :data data})
+                )
+            (catch Exception e
+                (println "divine:mistral:generation:ERROR" e)
+                (log/handle-error e "Failed to run divination" {:provider PROVIDER})
+            )))
+
 (defn see-current-me
     [jinni-id]
-    (let [divi-meta (or (db/call db/get-last-divination {:jinni_id jinni-id}) INITIAL_DIVI)]
+    (let [divi-meta (db/call db/get-last-divination {:jinni_id jinni-id})]
             ;; TODO how to handle first divi on player? (compare) should work fine but need default image
             ;; maybe (or (bd/call lastdivi) {:prompt "" :action { :start_time db/PORTAL_DAY } :settings {:}})
         ;; (println "divine:mistral:see-current:time-since-last:" (compare (:start_time (:action divi-meta)) MIN_DIVINATION_INTERVAL_SEC))
@@ -195,9 +215,14 @@
             (try (let [settings (:settings divi-meta)
                 aaa (println "divine:mistral:see-current:settings:"settings)
                 divi (assoc (:action divi-meta) :prompt (:prompt divi-meta)) ;; merge text prompt from first run of intentions into last divination data
-                new-divi-meta (get-new-prompt settings divi)
-                actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time (:start_time divi) :end_time (now)})]
-                ;; (run-evolution jinni-id settings new-divi-meta actions)
+                new-divi-meta (get-new-analysis-prompt settings divi)
+                aaaa (println "divi:mistral:see-current:new-divi  \n\n" new-divi-meta)
+                actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time (or (:start_time divi) db/PORTAL_DAY) :end_time (now)})
+                sample-data (take 5 actions) ;; for testing to not use too much context and run up bills
+                aaaa (println "divi:mistral:see-current:actions  \n\n" (count sample-data) sample-data)
+                ]
+                
+                (run-evolution jinni-id settings new-divi-meta sample-data)
                 )
             (catch Exception e
                 (println "divine:mistral:see-current:ERROR" e)

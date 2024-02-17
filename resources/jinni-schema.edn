@@ -157,7 +157,7 @@
                 :uuid {:type (non-null String) :description "global unique identifier"}
                 :image {:type (non-null String) :description "binary image in json format to edit on next :Divination" }
                 :hash {:type (non-null String) :description "hash of avatar widget settings creating unique analysis prompt to share across :Divinations" }
-                :diffs {:type (non-null String) :description "How different body parts changed in divination based on prompt analysis" }
+                :analysis {:type (non-null String) :description "How different body parts changed in divination and reasons why based on analysis prompt" }
                 :start_time {:type (non-null String) :description "when :Divination process started" }
                 :end_time {:type (non-null String) :description "when :Divination process ended" }
                 ;; for initial :Divination with new intentions
