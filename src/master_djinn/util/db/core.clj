@@ -120,10 +120,10 @@
 (neo4j/defquery create-divination "
   MATCH (j:Jinn {uuid: $jinni_id })
   MERGE (p:Provider {provider: $provider})
-  MERGE (j)-[:ACTS {type: 'SEES'}]->(:a:Action:Divination {uuid: $action.data.uuid})
+  MERGE (j)-[:ACTS {type: 'SEES'}]->(a:Action:Divination {uuid: $data.uuid})
   MERGE (p)-[:ATTESTS]->(a)
 
-  SET a = $action.data
+  SET a = $data
   
   RETURN a.uuid AS id
 ")

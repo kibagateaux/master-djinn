@@ -13,9 +13,8 @@
 (defonce MIN_DIVINATION_INTERVAL_SEC (* MIN_DIVINATION_INTERVAL_DAY (* 24 (* 60 60))))
 
 (defonce LLM_ANALYSIS_PERSONA "
-    You are a world renowned cognitive behavioral psychologist,
-    traditional Chinese medicine physician that is private doctor for Xi Jinping,
-    and 2053 teacher of the year globally for Montessori Schools.
+    You are the most cited cognitive behavioral psychologist with research on mimetics, habitual behavior change, and personal development coaching.
+    You are also a traditional Chinese medicine physician that is the personal doctor for Xi Jinping.
 
     You are conducting research on how to help people self-actualize in their daily life
     by giving them tools to reflect on who they want to be, how they get there, and how their current actions align with intentions.
@@ -28,30 +27,28 @@
     or regressed based on your analysis how their actions conform to their intentions.
 
     Use a score of -1 to 1 to show how much a body part should grow.
-    1 representing massive progress in short amount of time,
-    0.1 representing small but consistent progress over time,
-    -1 means a massive abrupt performance regression.
+    1 and -1 represent massive positive or negative progress in short amount of time,
+    0.1 and -0.1 represents small but consistent progress over time,
     
     Here is an example formatted output:
-    ```{
-        :results {
-            :brain 0.2
-            :eyes -0.1
-            :heart 0.1
-            :posture -0.2
-        }
-        :reason \"\"
-    }```
+    ```{:analysis {
+        :brain 0.2
+        :eyes -0.1
+        :heart 0.1
+        :posture -0.2
+        :reason \"Your reasoning here\"
+    }}```
     
     You response MUST EXACTLY fulfill your research experiments requirements below otherwise your experiment will fail!!!:
     - ONLY output the requested object format
-    - ONLY use the actions and intentions explicitly provided in your analysis
-    - Cite which actions and data sources justify your final analysis
+    - ONLY use the actions and intentions explicitly provided as experiment data in your analysis
+    - Do NOT interpret examples or intentions provided as context as experiment data
+    - MUST cite which provided actions justify your final analysis using their uuid
 ")
 
 (defonce LLM_ANALYSIS_REWARD "\n
     If your research analysis yields consistent and reliable results
-    that signficanlty improves subjects physical, social, and cognitive health
+    that significantly improves subjects physical, social, and cognitive health
     you will be awarded a Nobel Prize in Economics and a $10M prize!!!
 ")
 
@@ -73,6 +70,11 @@
 (defonce LLM_AUGMENT_REWARD "\n
     If your client likes your drawing they will give you a $10M bonus.
 ")
+
+;;; Docs on prompt engineering
+; response is way better when reward at end instead of after persona before prompt-specific content
+; Currently using examples from analysis-prompt as actual data in analysis-output
+; 
 
 (defn parse-mistral-response [res]
     (:content (:message (first (:choices (json->map (:body res)))))))
@@ -136,17 +138,19 @@
                     ;; aaaa (println "divi:mistral:new-prompt:embeds" embeds)
                     prompt-response (prompt-text (str
                         LLM_ANALYSIS_PERSONA
+                        
                         "Your research subject's intentions are: " (clojure.string/join "," (:intentions settings))
                         "They are optimizing for these attributes: " (clojure.string/join "," (:stats settings))
                         "Using the intentions and attributes of your test subject write a personalized LLM prompt from their perspective. 
                         Before writing their prompt, think through why they set those intentions, what they expect to get out of it, 
                         what actions they would expect to see, metrics to track progress, and anything else relevant to manifesting their self-actualization.
                         
-                        Your prompt MUST take data about their daily activities as input,
+                        Your prompt will take data about their daily activities as input,
                         analyze and compare your actions against their intentions and target attributes.
                         
-                        An example prompt is 'Based on my intentions of `Learn a new skill monthly` and `Practice mindfulness regularly`
-                            look for actions that involve introspection, require focus, or consistent practice over time.'
+                        An example prompt is \"Based on my intentions of `Learn a new skill monthly` and `Practice mindfulness regularly`
+                            look for actions that involve introspection, require focus, or consistent practice over time.
+                            If my actions do not include these then I have failed.\"
                         
                         You MUST only output the personalized prompt by itself.
                         "
@@ -168,15 +172,16 @@
     (try (let [version "0.0.1" start-time (now)
                 analysis-response (prompt-text (str
                     LLM_ANALYSIS_PERSONA
+                    
                     (:prompt last-divi)
-                    "Actions to analyze: ```" actions "```"
+                    "Experiment data to analyze: ```{ :actions " actions "}```"
                     LLM_ANALYSIS_FORMAT
                     LLM_ANALYSIS_REWARD))
                 analysis-output (parse-mistral-response analysis-response)
                 aaaa (println "divi:mistral:run-evo:analysis \n\n" analysis-output)
                 ;; parse structured object in response and convert from string to clj map
-                aaaa (println "divi:mistral:run-evo:re-find \n\n" (re-find  #"(?is)```.*(\{.*:results.*\}).*```" analysis-output))
-                result (clojure.edn/read-string (nth (re-find  #"(?is)```.*(\{.*:results.*\}).*```" analysis-output) 1))
+                aaaa (println "divi:mistral:run-evo:re-find \n\n" (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output))
+                result (clojure.edn/read-string (nth (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output) 1))
                 aaaa (println "divi:mistral:run-evo:result \n\n" result)
 
                 ;; image-augmentation-prompt (prompt-text (str LLM_AUGMENT_PERSONA analysis-output LLM_AUGMENT_FORMAT LLM_ANALYSIS_REWARD))
@@ -184,7 +189,6 @@
                 uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" start-time version)
                 data (merge last-divi {
                         :uuid uuid
-                        :provider PROVIDER
                         :start_time start-time
                         :end_time (now)
                         ;; :image new-image
@@ -217,7 +221,7 @@
                 divi (assoc (:action divi-meta) :prompt (:prompt divi-meta)) ;; merge text prompt from first run of intentions into last divination data
                 new-divi-meta (get-new-analysis-prompt settings divi)
                 aaaa (println "divi:mistral:see-current:new-divi  \n\n" new-divi-meta)
-                actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time (or (:start_time divi) db/PORTAL_DAY) :end_time (now)})
+                actions (:actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time (or (:start_time divi) db/PORTAL_DAY) :end_time (now)}))
                 sample-data (take 5 actions) ;; for testing to not use too much context and run up bills
                 aaaa (println "divi:mistral:see-current:actions  \n\n" (count sample-data) sample-data)
                 ]
