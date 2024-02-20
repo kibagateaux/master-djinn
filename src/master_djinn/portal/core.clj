@@ -221,3 +221,21 @@
   {:accept :json :async? false ;; TODO bottleneck but not important with minimal users
   :headers  {"Authorization" (str "Bearer " access-token)
               "Content-Type" "application/json"}})
+
+
+(defonce campaign-redirects {
+  :zuqf2 "https://explorer.gitcoin.co/?utm_source=jinni.health&utm_medium=redirect&utm_campaign=zuqf2&utm_content=jinni-health-donations#/round/10/0xd875fa07bedce182377ee54488f08f017cb163d4/0xd875fa07bedce182377ee54488f08f017cb163d4-6"
+})
+
+(defn handle-redirects
+  "checks hardcoded map for campaign name and which url to redirect to"
+   [request]
+    (let [qs (get-in request [:query-params]) {:keys [campaign]} qs]
+          (cond
+            (not campaign) {:status 400 :body (map->json {:message "Please select a valid campaign to be redirect to" :options campaign-redirects})}
+            (not ((keyword campaign) campaign-redirects)) {:status 400 :body "No campaign registered with name"}
+            :else (do 
+              (log/identify-player "url_redirect")
+              (log/track-player "url_redirect" "Campaign Redirect" {:campaign ((keyword campaign) campaign-redirects)})
+            {:status 301 :headers {"Location" ((keyword campaign) campaign-redirects)}}
+            ))))
