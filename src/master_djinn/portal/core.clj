@@ -230,12 +230,11 @@
 (defn handle-redirects
   "checks hardcoded map for campaign name and which url to redirect to"
    [request]
-    (let [qs (get-in request [:query-params]) {:keys [campaign]} qs]
+    (let [qs (get-in request [:query-params]) {:keys [name]} qs]
           (cond
-            (not campaign) {:status 400 :body (map->json {:message "Please select a valid campaign to be redirect to" :options campaign-redirects})}
-            (not ((keyword campaign) campaign-redirects)) {:status 400 :body "No campaign registered with name"}
+            (not name) {:status 400 :body (map->json {:message "No portal selected. Please select from options" :options (keys campaign-redirects)})}
+            (not ((keyword name) campaign-redirects)) {:status 400 :body "Not a registered Jinn portal"}
             :else (do 
               (log/identify-player "url_redirect")
-              (log/track-player "url_redirect" "Campaign Redirect" {:campaign ((keyword campaign) campaign-redirects)})
-            {:status 301 :headers {"Location" ((keyword campaign) campaign-redirects)}}
-            ))))
+              (log/track-player "url_redirect" "Campaign Redirect" {:campaign ((keyword name) campaign-redirects)})
+            {:status 301 :headers {"Location" ((keyword name) campaign-redirects)}}))))

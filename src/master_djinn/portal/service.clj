@@ -71,7 +71,7 @@
         routes (into #{["/graphql" :post interceptors :route-name ::graphql-api]
                       ["/graphiql" :get (p2/graphiql-ide-handler gql-server-config) :route-name ::graphql-ide]
                       [oauth-cb-path :get (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-get]
-                      ["/redirects" :get (conj [(body-params/body-params)] id/handle-redirects) :route-name ::campaign-redirects]
+                      ["/portals" :get (conj [(body-params/body-params)] id/handle-redirects) :route-name ::campaign-redirects]
                       ;; [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
                       }
                   (p2/graphiql-asset-routes (:gql-asset-path gql-server-config)))]
