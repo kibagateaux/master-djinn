@@ -91,6 +91,12 @@
   RETURN COLLECT(w) as widgets
 ")
 
+(neo4j/defquery get-player-providers "
+  MATCH  (p:Avatar:Human {id: $player_id})-[:ACTS]-(a:Action),
+    (a)<-[:ATTESTS]-(d:Provider)
+  RETURN COLLECT(DISTINCT d.provider) as providers
+")
+
 
 (neo4j/defquery get-last-action-time "
   MATCH (:Avatar {id: $player_id})-[:ACTS {type: \"DID\"}]->(a:Action)<-[:ATTESTS]-(:Provider {provider: $provider})

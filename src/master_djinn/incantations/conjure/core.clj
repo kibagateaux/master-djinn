@@ -6,7 +6,8 @@
             [master-djinn.portal.logs :as log]
             [master-djinn.util.core :refer [now]]
             [master-djinn.util.core :refer [json->map]]
-            [master-djinn.util.db.identity :as iddb]))
+            [master-djinn.util.db.identity :as iddb]
+            [master-djinn.incantations.conjure.github :as github-c]))
 
 ;; Also figure out best way to use clj-http. ideally async bc then everything is in tail but had issues with that 
 ;; creating response in (let) then accessing is ok but not concurrent and i could see how it might not handle errors great
@@ -61,3 +62,20 @@
                     :provider provider
                     :provider_id provider-id})
                 provider-id))))) ;; return just provider id according to graphql spec
+
+(defonce conjure-spells {
+    :AndroidHealthConnect (fn [pid])
+    :Github github-c/track-commits})
+
+(defn conjure-data
+    "@DEV: does NOT require auth because simple stateless function that mirrors data from external db"
+    [player-id]
+        (cond
+            (nil? player-id) {:status 400 :error "Must input player to sync id with"}
+            :else (flatten (map
+                (fn [provider] (let [conjure ((keyword provider) conjure-spells)]
+                    ;; check if spell available for provider before calling
+                    ;; return [] if no provider for simple flatten
+                    (if (nil? conjure) [] (:ids (conjure player-id)))))
+                ;; @DEV: implicit standard of only 1 arg that is player_id and returns {:ids uuid[]} for conjure funcs
+                (:providers (db/call db/get-player-providers {:player_id player-id}))))))

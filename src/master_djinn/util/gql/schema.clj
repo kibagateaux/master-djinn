@@ -31,7 +31,9 @@
   ;;; Mutations
   ;; general game actions
   :Mutation/submit_data trans/multiplexer
+  :Mutation/conjure_data i/conjure-data
   :Mutation/sync_provider_id i/sync-provider-id
+  ;; meta game actions
   :Mutation/jinni_activate i/jinni-activate
   :Mutation/jinni_evolution i/jinni-evolution
   :Mutation/jinni_set_widget i/jinni-activate-widget

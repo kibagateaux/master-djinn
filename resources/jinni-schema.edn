@@ -212,6 +212,11 @@
                             :provider {:type (non-null :Providers)}
                             :action_type {:type (non-null String)} ;; Non-normalized action name from data provider. e.g. Step for android health
                             :player_id {:type (non-null String)}}}  ;; 0x ETH address
+            :conjure_data
+                {:type        (list ID)
+                :description "Fetch all existing integrations for a player and get all data since last conjuring"
+                :args       {:verification {:type :SignedRequest}
+                            :player_id {:type (non-null String)}}}  ;; 0x ETH address
             
             :jinni_activate
                 {:type       (non-null ID)

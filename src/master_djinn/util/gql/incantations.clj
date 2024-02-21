@@ -83,6 +83,16 @@
                 (c/sync-provider-id player_id provider)
             :else {:status 400 :error "invalid provider to sync id with"})))
 
+
+(defn conjure-data
+    "@DEV: does NOT require auth because simple stateless function that mirrors data from external db"
+    [ctx args val]
+    (println "util:gql:incant:conj-data" args val)
+    (let [{:keys [player_id]} args]
+        (cond
+            (nil? player_id) {:status 400 :error "Must input player to sync id with"}
+            :else (c/conjure-data player_id))))
+
 ;; Tomogatchi Evolutions
 (defn jinni-evolution
     "Allow anyone to initiate an evolution of a players jinni using their
