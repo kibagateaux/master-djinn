@@ -17,16 +17,18 @@
 ")
 
 ;; Set UUID to not create duplicate avatar that only has id from setting :Widgets
+;; Adds trust network metadata of which master djinn approved the player
 (neo4j/defquery create-player "
     MERGE (p:Avatar:Human { id: $player.id })
     SET p = $player
     
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
     MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
-    
+    MERGE (p)<-[:ATTESTS]-(Provider {id: $master_id})
+
     SET j = $jinni
     SET rj.since = $now
-    
+
     RETURN $jinni.uuid as jinni
 ")
 

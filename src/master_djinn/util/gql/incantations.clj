@@ -41,7 +41,7 @@
     ;;   (not= (:player_id args) pid) (println "Signer !== Registrant")
     ;;   (not (MASTER_DJINNS djinn)) (println "majik msg not from powerful enough djinn")
       ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
-      :else (j/jinni-activate pid jid))))
+      :else (j/jinni-activate pid jid djinn))))
 
 (defn jinni-activate-widget
     ;; TODO clojure.spec inputs and outputs

@@ -7,9 +7,10 @@
             [master-djinn.util.db.identity :as iddb]))
 
 (defn jinni-activate
-  [player_id jinni_id]
+  [player_id jinni_id master_id]
   (:jinni (db/call iddb/create-player {
       :now (now)
+      :master_id master_id
       :player {
         :id player_id
         :uuid (avatar->uuid player_id)
