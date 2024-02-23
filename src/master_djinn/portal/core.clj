@@ -224,17 +224,33 @@
 
 
 (defonce campaign-redirects {
-  :zuqf2 "https://explorer.gitcoin.co/?utm_source=jinni.health&utm_medium=redirect&utm_campaign=zuqf2&utm_content=jinni-health-donations#/round/10/0xd875fa07bedce182377ee54488f08f017cb163d4/0xd875fa07bedce182377ee54488f08f017cb163d4-6"
+  ; @DEV: must include `?` query param for pass throughs to work
+  ;; or have default utm per campaign that get added if none passed into OG redirect link?
+  :zuqf2 "https://explorer.gitcoin.co/#/round/10/0xd875fa07bedce182377ee54488f08f017cb163d4/0xd875fa07bedce182377ee54488f08f017cb163d4-6?utm_source=jinni.health&utm_medium=redirect&utm_campaign=zuqf2&utm_content=jinni-health-donations"
+  :test-android "https://play.google.com/apps/testing/com.jinnihealth?"
+  :install-android "https://play.google.com/store/apps/details?id=com.jinnihealth"
+  :install-github "https://github.com/marketplace/jinni-health?"
+  :handofgod "https://jinni.health/install?utm_source=maliksmajik-hand&utm_medium=redirect&utm_campaign=godshand"
+  :blog "https://nootype.substack.com/t/jinni?utm_source=jinni.health&utm_medium=redirect&utm_campaign=knowledge-must-be-seen"
+  :waitlist "https://tally.so/r/wg9xJK?"
 })
+
+(defn coll->qs 
+"takes a map {:key val} or vector of [[key val]] pairs and turns them into url querystring parameters
+e.g. [[:utm_campaign 2024-pirate-week] [:utm_source roatan-yacht-club-qr]] -> utm_campaign=2024-pirate-week&utm_source=roatan-yacht-club-qr"
+  [coll]
+  (clojure.string/join "&" (for [[k v] (or coll {})] (str (name k) "=" v))))
 
 (defn handle-redirects
   "checks hardcoded map for campaign name and which url to redirect to"
    [request]
-    (let [qs (get-in request [:query-params]) {:keys [name]} qs]
+    (let [qs (:query-params request) name (:name qs)]
+      (println "portal rediurects" name qs)
           (cond
             (not name) {:status 400 :body (map->json {:message "No portal selected. Please select from options" :options (keys campaign-redirects)})}
             (not ((keyword name) campaign-redirects)) {:status 400 :body "Not a registered Jinn portal"}
             :else (do 
               (log/identify-player "url_redirect")
-              (log/track-player "url_redirect" "Campaign Redirect" {:campaign ((keyword name) campaign-redirects)})
-            {:status 301 :headers {"Location" ((keyword name) campaign-redirects)}}))))
+              (log/track-player "url_redirect" "Campaign Redirect" qs)
+              ;; TODO if (= '?' (last (redirect)) '' '&'
+            {:status 301 :headers {"Location" (str ((keyword name) campaign-redirects) "&" (coll->qs qs))}}))))
