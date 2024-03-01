@@ -183,6 +183,13 @@
                 ;; :routeName {:type String :description "what to display from provider"}
                 ;; :title {:type String :description "what to display from provider"}
             }}
+        :HomeConfig {
+            :description ""
+            :fields {
+                :widgets {:type (list :Widget) :description "customized widget configuration for homepage setup"}
+                :jinni_image {:type String :description "most recent image of their jinni"}
+            }
+        }
         :Query {:fields {
             :players {:type (list :Avatar)}
             :get_playlists
@@ -191,6 +198,12 @@
                 :args       {:verification {:type :SignedRequest}
                             :provider {:type (non-null String)} ;; Spotify
                             :target_player {:type (non-null String)}}}
+            :get_home_config
+                {:type       :HomeConfig
+                :description "gets players most recent jinni image and widgets config.
+                            Private to player ot not leak data about data stored about them via widgets configured"
+                :args       {:verification {:type (non-null :SignedRequest)}
+                            :player_id {:type (non-null String)}}}
 
             ;; :jinni {:type (non-null :Avatar)
             ;;     :args {:player_id {:type String}}}

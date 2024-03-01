@@ -5,21 +5,23 @@ description: System design and step-by-step process of reading player data and g
 journey
     title Jinni AI Divination Process Diagram
     section Aggregate Data
+      Store Player Intentions: 5: JINNI API
+      LLM Generates Analysis Prompt Based On Intentions: 1: JINNI API, OPEN AI API
       Equip Items: 1: Player
-      Call Integrations: 3: JINNI API
-      Store Action Data: 3: JINNI API
+      Conjure Data From Integrations: 3: JINNI API
+      Store Player Actions: 3: JINNI API
     section Read Data
-      Get Intentions: 5: JINNI API
-      Get Actions: 5: JINNI API
+      Get Last Divination: 5: JINNI API
+      Get Recent Player Actions: 5: JINNI API
     section Analyze Data
-      ChatGPT Create Prompt To Analyze Based On Intentions: 1: JINNI API, OPEN AI API
-      ChatGPT Analyze Action Data: 1: JINNI API, OPEN AI API
-      ChatGPT Output Action Analysis: 1: JINNI API, OPEN AI API
+      Run Analysis Prompt On Player Actions: 1: JINNI API, OPEN AI API
+      Store Analysis Output: 5: JINNI API
     section Generate Image
-      Get Current Jinni Image: 5: JINNI API
-      ChatGPT Generate DALLE Prompt: 5: JINNI API, OPEN AI API
-      Generate New Jinni Image: 2: JINNI API, OPEN AI API
-      Save New Jinni Image: 5: JINNI API, OPEN AI API
+      Run Augmentation Prompt On Analysis Output: 1: JINNI API, OPEN AI API
+      Store DALLE Prompt From Augmentation Output: 5: JINNI API
+      Evolve Jinni Using Augmentation Output: 1: JINNI API, OPEN AI API
+      Store Jinni Evolution: 5: JINNI API
     section Internalization
-      View New Jinni: 1: Player
+      Player Views New Jinni: 1: Player
       Analyze How Actions Affected Jinni: 3: Player
+      Player Sets New Intentions: 1: Player

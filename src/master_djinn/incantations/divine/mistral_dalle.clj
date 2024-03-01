@@ -1,5 +1,6 @@
 (ns master-djinn.incantations.divine.mistral-dalle
-    (:require [clj-http.client :as client]
+    (:require [clojure.java.io :as io]
+            [clj-http.client :as client]
             [master-djinn.util.types.core :refer [load-config action->uuid normalize-action-type]]
             [master-djinn.util.db.core :as db]
             [master-djinn.portal.logs :as log]
@@ -58,7 +59,7 @@
     You are a generative artist that specicalizes in DALLE prompting.
     Your signature style is 'cute tamagotchi pets with pastel colors in 8-bit pixel style'
     
-    You are being commissioned by a long-term wealthy benefactor to modify one of your prior works to reflect how their pet looks today.
+    You are being commissioned by your long-term wealthy patron to modify one of your prior works to reflect how their avatar looks today.
 ")
 
 
@@ -74,12 +75,14 @@
     }}```
     1 and -1 represent massive positive or negative changes to the image and 0.1 or -0.1 means slight changes.
      
-
-     You must only output an object with the following format: `{:prompt \"insert_your_dalle_prompt_here\"}`
+    You MUST output
+    - An LLM prompt to a DALLE model to augment your image. DO NOT output an image directly
+    - ONLY an object with the format: `{:prompt \"Based on the analysis data provided your avatar will {insert_your_prompt_here}\"}`
 ")
 
 (defonce LLM_AUGMENT_REWARD "\n
-    If your client likes your drawing they will give you a $10M bonus and commission another artwork from you.
+    If your patron likes the image your prompt generates they will give you a 
+    $10M bonus and commission another artwork from you.
 ")
 
 ;;; Docs on prompt engineering
@@ -87,8 +90,26 @@
 ; Currently using examples from analysis-prompt as actual data in analysis-output
 ; 
 
+(defn image-to-base64
+  [image]
+  (let [encoder (java.util.Base64/getEncoder)]
+    (.encodeToString encoder image)))
+
 (defn parse-mistral-response [res]
     (:content (:message (first (:choices (json->map (:body res)))))))
+(defn parse-dalle-response [res]
+    (:content (:message (first (:choices (json->map (:body res))))))
+)
+
+;; convert b64 text to png file format for OpenAI to consume
+;; https://stackoverflow.com/a/35556044s
+;; (defn b64->png [b64] b64)
+
+(defn file->bytes [path]
+  (with-open [in (io/input-stream path)
+              out (java.io.ByteArrayOutputStream.)]
+    (io/copy in out)
+    (.toByteArray out)))
 
 (defn prompt-text [prompt]
     (client/post "https://api.mistral.ai/v1/chat/completions" (assoc (portal/oauthed-request-config (:mistral-api-key (load-config))) :body  (map->json {
@@ -102,20 +123,68 @@
     retuns binary of new image"
     [og-image prompt]
     (let [api-key (:openai-api-key (load-config))
-            image-res (client/post "https://api.openai.com/v1/images/edits" (assoc (portal/oauthed-request-config api-key) :body  (map->json {
-                        :model "dall-e-2" ;; only model that supports image edits
-                        :n 1 ;; amount of images to generate TODO 4 and let people choose
-                        :size "256x256" ;; pixel size. Small while testing in beta
-                        ;; :size "1024x1024"
-                        
-                        ;; receive image back and manually store
-                        ;; https://community.openai.com/t/using-image-url-in-images-edits-request/27247/2
-                        :response_format "b64_json" 
-                        
-                        :image og-image
-                        ;; TODO allow multiple messages or system messages?
-                        :prompt prompt})))
-            bbbd (clojure.pprint/pprint "divibne:mistral:image-res:raw:" image-res)
+            config (portal/oauthed-request-config api-key)
+            headers (merge (:headers config) {"Content-Type" "multipart/form-data"})
+            ;; TRY as :multipart
+            request (merge (assoc config :headers headers) {
+                :multipart-charset "UTF-8"
+                :multipart [
+                            ;; {:name "Content/type" :content "multipart/form-data"}
+                            ;; {:name "Content/type" :content "multipart/form-data"}
+                            {:name "model" :content "dall-e-2" :mime-type "text/plain"} ;; only model that supports image edits
+                            {:name "n" :content "1" :mime-type "text/plain"} ;; amount of images to generate TODO 4 and let people choose
+                            {:name "size" :content "256x256" :mime-type "text/plain"} ;; pixel size. Small while testing in beta. Move to "1024x1024"
+                            ;; receive image back and manually store
+                            ;; https://community.openai.com/t/using-image-url-in-images-edits-request/27247/2
+                            {:name "response_format":content "b64_json" :mime-type "text/plain"} 
+                            {:name "image" :content "000" :mime-type "image/png" :encoding "UTF-8"}
+                            ;; {:name "image" :content og-image}
+                            {:name "prompt" :content prompt :mime-type "text/plain"}]
+                })
+
+            ;; TRY as :body
+            ;; request (merge (assoc config :headers headers) {
+            ;;         :multipart-charset "UTF-8"
+            ;;             :body  (map->json {
+            ;;                 :model "dall-e-2" ;; only model that supports image edits
+            ;;                 :n 1 ;; amount of images to generate TODO 4 and let people choose
+            ;;                 :size "256x256" ;; pixel size. Small while testing in beta
+            ;;                 ;; :size "1024x1024"
+
+            ;;                 ;; receive image back and manually store
+            ;;                 ;; https://community.openai.com/t/using-image-url-in-images-edits-request/27247/2
+            ;;                 :response_format "b64_json" 
+                            
+            ;;                 ;; :image og-image
+            ;;                 :image "000"
+            ;;                 ;; TODO allow multiple messages or system messages?
+            ;;                 :prompt prompt})})
+            
+            ;; TRY as :form-params
+            ;; request (merge (assoc config :headers headers) {
+            ;;         ;; :multipart-charset "UTF-8"
+            ;;             :form-params {
+            ;;                 :model "dall-e-2" ;; only model that supports image edits
+            ;;                 :n 1 ;; amount of images to generate TODO 4 and let people choose
+            ;;                 :size "256x256" ;; pixel size. Small while testing in beta
+            ;;                 ;; :size "1024x1024"
+
+            ;;                 ;; receive image back and manually store
+            ;;                 ;; https://community.openai.com/t/using-image-url-in-images-edits-request/27247/2
+            ;;                 :response_format "b64_json" 
+                            
+            ;;                 :image og-image
+            ;;                 ;; :image "000"
+            ;;                 ;; TODO allow multiple messages or system messages?
+            ;;                 :prompt prompt}})
+
+            ;; bbbd (println "\n\ndivibne:mistral:image:req:")
+            ;; bbbd (println "\n\ndivibne:mistral:image:req:" (take (vec og-image) 100))
+            ;; bbbd (clojure.pprint/pprint request)
+            image-res (client/post "https://api.openai.com/v1/images/edits" request)
+            bbbd (println "divibne:mistral:image-res:raw:" image-res)
+            bbbd (clojure.pprint/pprint image-res)
+            ;;OR  response.data.data[0].b64_json
             img-url (:url (first (:data image-res)))
             asaaa (println "divibne:mistral:image-url:" img-url)
             b64-img (client/get img-url (portal/oauthed-request-config api-key))
@@ -132,9 +201,10 @@
     [settings divi]
     (println "divine:mistral:new-prompt:hash" (:hash settings) (:hash divi))
     (let [inputs (concat (:intentions settings) (:mood settings) (:stats settings))
-            new-hash (hash inputs)
-            pppp (println "divine;mistral:new-prompt:inputs" new-hash (:hash divi))]
-    (if (and (= new-hash (:hash divi) (some? (:hash divi))))
+            new-hash (hash inputs)]
+    (println "divine;mistral:new-prompt:inputs" new-hash (:hash divi))
+    (println "dinive:mistrla:new-prompt:should-reprompt?" (= new-hash (:hash divi) (some? (:hash divi))))
+    (if (and (= new-hash (:hash divi)) (some? (:hash divi)))
         ;; if settings the same and theres an existing prompt, return old settings
         divi
         ;; if new intentions then generate new analysis prompt/embeds to evaluate against them
@@ -186,32 +256,48 @@
 (defn run-evolution
     [jinni-id settings last-divi actions]
     (try (let [version "0.0.1" start-time (now)
-                analysis-response (prompt-text (str
-                    LLM_ANALYSIS_PERSONA
-                    (:prompt last-divi)
-                    "-------------"
-                    "Experiment data to analyze: ```{ :actions " actions "}```"
-                    "-------------"
-                    LLM_ANALYSIS_FORMAT
-                    LLM_ANALYSIS_REWARD))
-                analysis-output (parse-mistral-response analysis-response)
+                ;; analysis-response (prompt-text (str
+                ;;     LLM_ANALYSIS_PERSONA
+                ;;     (:prompt last-divi)
+                ;;     "-------------"
+                ;;     "Experiment data to analyze: ```{ :actions " actions "}```"
+                ;;     "-------------"
+                ;;     LLM_ANALYSIS_FORMAT
+                ;;     LLM_ANALYSIS_REWARD))
+                ;; analysis-output (parse-mistral-response analysis-response)
                 ;; aaaa (println "divi:mistral:run-evo:analysis \n\n" analysis-output)
                 ;; parse structured object in response and convert from string to clj map
                 ;; aaaa (println "divi:mistral:run-evo:re-find \n\n" (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output))
-                result (clojure.edn/read-string (nth (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output) 1))
-                aaaa (println "divi:mistral:run-evo:result \n\n" result)
+                ;; result (clojure.edn/read-string (nth (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output) 1))
+                ;; aaaa (println "divi:mistral:run-evo:result \n\n" result)
 
-                image-augmentation-prompt (prompt-text (str LLM_AUGMENT_PERSONA analysis-output LLM_AUGMENT_FORMAT LLM_ANALYSIS_REWARD))
-                img-prompt (parse-mistral-response image-augmentation-prompt)
-                aaaa (println "divi:mistral:run-evo:img \n\n" img-prompt)
-                ;; image-res (prompt-image (:image last-divi) image-augmentation-prompt) ;; TODO add moods here to affect face and posture
-                ;; new-image (:image (json->map (:body image-res)))
+                result "{:analysis {:nutrition 0.1, :exercise 0.5, :creativity 0.3, :relationships 0.2, :reason Subject has consistently made healthy food choices, increased exercise frequency, engaged in daily creative activities, and nurtured relationships with supportive individuals. This alignment with intentions is contributing to overall progress towards self-actualization.}}"
+                img-result "{:prompt \"Based on the analysis data provided, your avatar will have a brighter and more vibrant color palette to reflect your increased creativity and improved nutrition. The eyes will sparkle with a slightly larger pupil to represent your enhanced focus and energy from increased exercise. The heart shape will be fuller and more defined, symbolizing the growth and nurturing of your relationships. Your posture will appear more upright and confident, reflecting your newfound self-assurance and progress towards self-actualization.\"}"
+                ;; image-augmentation-prompt (prompt-text (str
+                ;;     LLM_AUGMENT_PERSONA
+                ;;     "Patron's augmentation requests:" result
+                ;;     LLM_AUGMENT_FORMAT
+                ;;     LLM_ANALYSIS_REWARD
+                ;; ))
+                ;; img-prompt (parse-mistral-response image-augmentation-prompt)
+                ;; aaaa (println "divi:mistral:run-evo:img-prompt \n\n" img-prompt)
+                ;; img-result (clojure.edn/read-string (nth (re-find  #"(?is).*(\{.*:prompt.*\}).*" img-prompt) 1))
+                ;; aaaa (println "divi:mistral:run-evo:img-output \n\n" img-result)
+                ;; TODO default image. May need to append `data:image/png;base64,` before raw base64 data to ensure that
+                base-img (or (:image last-divi) (-> "base-avatars/blub.txt" io/resource slurp))
+                aaaa (println "divi:mistral:run-evo:base-img \n\n" (:image last-divi) (some? base-img))
+                image-resp (prompt-image base-img img-result) ;; TODO add moods here to affect face and posture
+                aaaa (println "divi:mistral:run-evo:img-res \n\n" image-resp)
+                new-image (:image (json->map (:body image-resp)))
+                aaaa (println "divi:mistral:run-evo:img-b64 \n\n" new-image)
+                new-image2 (parse-dalle-response image-resp)
+                aaaa (println "divi:mistral:run-evo:img b64-2 \n\n" new-image2)
                 uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" start-time version)
                 data (merge last-divi {
                         :uuid uuid
                         :start_time start-time
                         :end_time (now)
-                        ;; :image new-image
+                        :image new-image
                         })
                 ]
                 ;; TODO also add hash to widget settings so next run can compare new seetings/hash to existing hash

@@ -218,11 +218,14 @@
   "For sending requests on behalf of a user to an OAuth2 server
   User must have completed oauth flow and have an :Identity in db already for service being called"
   [access-token]
-  {:accept :json :async? false ;; TODO bottleneck but not important with minimal users
+  {
+    :accept :json 
+  :async? false ;; TODO bottleneck but not important with minimal users
   :headers  {"Authorization" (str "Bearer " access-token)
               "Content-Type" "application/json"}})
 
 
+;; Jinni App  specific convenience
 (defonce campaign-redirects {
   ; @DEV: must include `?` query param for pass throughs to work
   ;; or have default utm per campaign that get added if none passed into OG redirect link?
@@ -247,7 +250,7 @@ e.g. [[:utm_campaign 2024-pirate-week] [:utm_source roatan-yacht-club-qr]] -> ut
     (let [qs (:query-params request) name (:name qs)]
       (println "portal rediurects" name qs)
           (cond
-            (not name) {:status 400 :body (map->json {:message "No portal selected. Please select from options" :options (keys campaign-redirects)})}
+            (not name) {:status 301 :headers {"Location" "https://jinni.health?utm_campaign=bad-portal&utm_source=portal-redirect"}}
             (not ((keyword name) campaign-redirects)) {:status 400 :body "Not a registered Jinn portal"}
             :else (do 
               (log/identify-player "url_redirect")

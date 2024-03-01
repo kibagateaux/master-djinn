@@ -160,12 +160,13 @@
                   repos)
           _ (track-spell {:stage "response"})
           ;;  first (println "C:Github:travk-commits:res" (first reqs))   
+          
             actions (flatten (map (fn [res] (let [repo (-> res :body json->map :data :repository)
                                 prepo (clojure.pprint/pprint repo)
                                 ;; commits (-> repo :refs :nodes :target :history :nodes)  ; (flatten) assumes no vals in graph tree above commit
                                 pcom (println "\n\n parsing commits on repo" (:name repo) "\n\n")
-                                
                                 commits (flatten (map #(->> % :target :history :nodes) (->> repo :refs :nodes))) ; get array of commits nested in array of git branches
+                                ;; TODO filter by author === (provider_id id) before transmuting
                                 pcom (println "\n\n transmuting on repo" (:name repo) (count commits) "\n\n")
                                 ;; pcom (clojure.pprint/pprint commits)
                                 ]
