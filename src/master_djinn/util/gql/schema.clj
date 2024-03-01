@@ -25,6 +25,7 @@
   ;;     ;; if signer !== target_player [] else db
   ;;     (:widgets (db/call db/get-player-widgets {:player_id (:id val)})))
 
+  :Query/get_home_config i/get-home-config
   :Query/get_playlists i/get-playlists
 
 

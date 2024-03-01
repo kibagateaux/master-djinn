@@ -79,3 +79,10 @@
                     (if (nil? conjure) [] (:ids (conjure player-id)))))
                 ;; @DEV: implicit standard of only 1 arg that is player_id and returns {:ids uuid[]} for conjure funcs
                 (:providers (db/call db/get-player-providers {:player_id player-id}))))))
+
+(defn get-home-config [player-id]
+    (let [res (db/call db/get-home-config player-id)]
+        (clojure.pprint/pprint res)
+        res
+    )
+)

@@ -71,6 +71,23 @@
         ;; TODO clojure.spec/conform widgets ::widgets
         :else (j/activate-widget pid widgets))))
 
+
+(defn get-home-config
+    ;; TODO clojure.spec inputs and outputs
+    "theoretically not jinni specific. Standard way of expressing gameplay preferences regardless of host or playground"
+    [ctx args val]
+    (let [pid (get-signer ctx)
+        target_player (:player_id args)]    
+    (cond
+        (nil? pid) (do 
+            (println "Gql:Resolv:GetHomeConfig:ERROR - Unsigned API request")
+            {:status 401 :body (map->json { :error "Player must give their majik"})})
+        (not= pid target_player) (do 
+            (println "Gql:Resolv:GetHomeConfig:ERROR - signer id != target player id")
+            {:status 403 :body (map->json { :error "Caster is not bonded to target player"})})
+        ;; TODO clojure.spec/conform :HomeConfig
+        :else (c/get-home-config pid))))
+
 (defn sync-provider-id
     "@DEV: does NOT require auth because simple stateless function that mirrors data from external db"
     [ctx args val]

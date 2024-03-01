@@ -77,9 +77,28 @@
   RETURN COLLECT(a) as actions
 ")
 
-;; TODO directed -:Bonds->
+(neo4j/defquery get-home-config "
+  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinn:P2P),
+        (j)-[:USES]->(w:Widget)
+  OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
+  
+  WITH w, d
+  ORDER BY d.start_time DESC LIMIT 1
+  
+  RETURN COLLECT(w) as widgets, d as divi
+")
+
+(neo4j/defquery get-player-data "
+  MATCH (p:Avatar)-[rj]-(j:Jinn),
+    (j)-[rw]-(w:Widget),
+    (p)-[ra]-(a:Action),
+    (j)-[rd]-(d:Divination)
+
+  RETURN p, j , w, a, rw, rj, ra, d, rd
+")
+
 (neo4j/defquery get-jinni-actions "
-  MATCH (j:Jinn {uuid: $jinni_id})-[:BONDS]-(p:Avatar),
+  MATCH (j:Jinn {uuid: $jinni_id})-[:BONDS]->(p:Avatar),
         (p)-[:ACTS]->(a:Action) WHERE
             datetime(a.start_time) >= datetime($start_time) AND
             datetime(a.end_time) <= datetime($end_time)
@@ -146,6 +165,7 @@
   MERGE (p:Avatar:Human {id: $player_id})
   MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
   
+  WITH j
   UNWIND $widgets AS widget
   
   MERGE (j)-[wr:USES]->(w:Widget {id: widget.id})
