@@ -70,6 +70,9 @@
 (neo4j/defquery get-all-players
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
+(neo4j/defquery get-all-jinn
+  "MATCH (j:Jinn) RETURN COLLECT(j.id) as jinn")
+
 (neo4j/defquery get-player-actions "
   MATCH  (u:Avatar {id: $player_id})-[:ACTS]->(a:Action)
   WHERE  datetime(a.start_time) >= datetime($start_time)
@@ -98,7 +101,7 @@
 ")
 
 (neo4j/defquery get-jinni-actions "
-  MATCH (j:Jinn {uuid: $jinni_id})-[:BONDS]->(p:Avatar),
+  MATCH (j:Jinn {id: $jinni_id})-[:BONDS]->(p:Avatar),
         (p)-[:ACTS]->(a:Action) WHERE
             datetime(a.start_time) >= datetime($start_time) AND
             datetime(a.end_time) <= datetime($end_time)
@@ -116,7 +119,6 @@
   RETURN COLLECT(DISTINCT d.provider) as providers
 ")
 
-
 (neo4j/defquery get-last-action-time "
   MATCH (:Avatar {id: $player_id})-[:ACTS {type: \"DID\"}]->(a:Action)<-[:ATTESTS]-(:Provider {provider: $provider})
   
@@ -127,7 +129,7 @@
 ")
 
 (neo4j/defquery get-last-divination "
-  MATCH (j:Jinn {uuid: $jinni_id}),
+  MATCH (j:Jinn {id: $jinni_id}),
   (j)-[:USES]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
   
   OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
@@ -143,7 +145,7 @@
 ")
 
 (neo4j/defquery create-divination "
-  MATCH (j:Jinn {uuid: $jinni_id })
+  MATCH (j:Jinn {id: $jinni_id })
   MERGE (p:Provider {provider: $provider})
   MERGE (j)-[:ACTS {type: 'SEES'}]->(a:Action:Divination {uuid: $data.uuid})
   MERGE (p)-[:ATTESTS]->(a)

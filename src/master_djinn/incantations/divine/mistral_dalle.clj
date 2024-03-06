@@ -77,6 +77,7 @@
      
     You MUST output
     - An LLM prompt to a DALLE model to augment your image. DO NOT output an image directly
+    - Provide clear, concise step-bystep instructions on how you want your artwork modified
     - ONLY an object with the format: `{:prompt \"Based on the analysis data provided your avatar will {insert_your_prompt_here}\"}`
 ")
 

@@ -115,10 +115,10 @@
     "Allow anyone to initiate an evolution of a players jinni using their
     configured settings in maliksmajik-avatar-viewer widget"
     [ctx args val]
-    (let [jid (:jinni_id args)]
-        (if (nil? jid) {:status 400 :error "no jinni specified for evolution"}
+    (if-let [jid (:jinni_id args)]
         ;; TODO pull provider from widget settings and decide which to use
-        (mistral-d/see-current-me jid))))
+        (mistral-d/see-current-me jid)
+        (map #(mistral-d/see-current-me %) (:jinn (db/call db/get-all-jinn)))))
 
 
 ;; Code Providers

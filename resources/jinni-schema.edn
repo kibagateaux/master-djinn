@@ -241,7 +241,7 @@
                 {:type       ID ;; Divination :Action uuid, nil if nothing generated
                 :description "Runs custom data analysis on players actions based on intentions they have set. Returns URL of new jinni image."
                 :args       {:verification {:type :SignedRequest} ;; unneccesary if pulling from settings. 
-                            :jinni_id {:type (non-null String)}
+                            :jinni_id {:type String}
  
                             }}
             
