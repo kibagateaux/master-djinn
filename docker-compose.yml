@@ -8,6 +8,8 @@ services:
       - '80:80'
       - '8888:8888'
     env_file: ./.env
+    volumes:
+      - avatars:/resources/avatars
   # telemetry:
   #   image: jaegertracing/all-in-one
   #   command:  --collector.otlp.enabled=true
@@ -16,3 +18,11 @@ services:
   #     - '16686:16686'
   #     - '4317:4317'
   #   env_file: ./.env
+
+volumes:
+  avatars:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/avatars
