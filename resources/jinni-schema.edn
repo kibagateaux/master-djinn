@@ -201,7 +201,7 @@
             :get_home_config
                 {:type       :HomeConfig
                 :description "gets players most recent jinni image and widgets config.
-                            Private to player ot not leak data about data stored about them via widgets configured"
+                            Private to player to not leak data about data stored about them via widgets configured"
                 :args       {:verification {:type (non-null :SignedRequest)}
                             :player_id {:type (non-null String)}}}
 

@@ -14,6 +14,25 @@
 
 ;; TODO rename "integrations" or somethig more general
 
+(defn see-jinn-handler
+  "get the latests image for a jinn, reads the file on this server
+  and serves it for display purposes on frontend <img> tags
+  @DEV: requires GET request  w/ query param argument ?jid=xxxx-xxxx-xx-xxxx-xxx"
+  [request]
+  (let [qs (get-in request [:query-params])
+        {:keys [jid]} qs
+        divi (db/call db/get-last-divination (or jid ""))]
+    (println "view pfp handler" jid)
+    (cond
+      (nil? jid)            {:status 400 :error "must provide jinn id"}
+      (nil? divi)           {:status 404 :error "Invalid jinn id"}
+      (nil? (:image divi))  {:status 400 :error "No pgp for jinn on last divination"} ;; shouldnt be possible but just in case
+      :else                 ()
+      ;; TODO read file (not slurp, need binary not string) and return. 
+      ;; must set header content type to png
+      ;; only used for display purposes
+      )))
+
 (defonce oauth-providers {
   :Spotify {
     :id                 "Spotify"
