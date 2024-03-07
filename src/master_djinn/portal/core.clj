@@ -21,7 +21,7 @@
   [request]
   (let [qs (get-in request [:query-params])
         {:keys [jid]} qs
-        divi (db/call db/get-last-divination (or jid ""))]
+        divi (db/call db/get-last-divination {:jinni_id (or jid "")})]
     (println "view pfp handler" jid)
     (cond
       (nil? jid)            {:status 400 :error "must provide jinn id"}

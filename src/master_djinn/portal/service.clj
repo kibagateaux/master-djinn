@@ -2,7 +2,7 @@
 (ns master-djinn.portal.service
   (:require [io.pedestal.http :as http]
             [io.pedestal.http.route :as route]
-            [master-djinn.util.gql.schema :as schema]
+            [master-djinn.portal.gql.schema :as schema]
             [master-djinn.portal.core :as id]
             [master-djinn.util.crypto :refer [handle-signed-POST-query]]
             [com.walmartlabs.lacinia.pedestal2 :as p2]

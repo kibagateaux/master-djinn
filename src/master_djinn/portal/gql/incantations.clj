@@ -1,5 +1,5 @@
 ;; GQL resolvers wrapper around spells that return data or http errors
-(ns master-djinn.util.gql.incantations
+(ns master-djinn.portal.gql.incantations
     (:require [com.walmartlabs.lacinia.resolve :as resolve]
             [master-djinn.incantations.divine.mistral-dalle :as mistral-d]
             [master-djinn.incantations.manifest.jinni :as j]
@@ -8,6 +8,7 @@
             [master-djinn.incantations.conjure.github :as github-c]
             [master-djinn.incantations.conjure.core :as c]
             [master-djinn.portal.core :as portal]
+            [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as iddb]
             [master-djinn.util.core :refer [get-signer map->json]]
             [master-djinn.util.types.core :refer [load-config uuid avatar->uuid]]

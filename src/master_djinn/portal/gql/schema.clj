@@ -1,11 +1,11 @@
-(ns master-djinn.util.gql.schema
+(ns master-djinn.portal.gql.schema
   (:require
     [master-djinn.util.core :refer [get-signer]]
     [master-djinn.util.types.core :refer [types]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.util :as util]
     [master-djinn.incantations.transmute.core :as trans]
-    [master-djinn.util.gql.incantations :as i]
+    [master-djinn.portal.gql.incantations :as i]
     [master-djinn.util.db.core :as db]))
 
 (def resolver-map {
