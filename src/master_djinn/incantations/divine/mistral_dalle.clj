@@ -113,7 +113,7 @@
     (.toByteArray out)))
 
 (defn prompt-text [prompt]
-    (client/post "https://api.mistral.ai/v1/chat/completions" (assoc (portal/oauthed-request-config (:mistral-api-key (load-config))) :body  (map->json {
+    (client/post "https://openrouter.ai/api/v1/chat/completions" (assoc (portal/oauthed-request-config (:mistral-api-key (load-config))) :body  (map->json {
                         :model "mistral-tiny"
                         ;; TODO allow multiple messages or system messages?
                         :messages [{:role "user" :content prompt}]}))))

@@ -241,7 +241,11 @@
     :accept :json 
   :async? false ;; TODO bottleneck but not important with minimal users
   :headers  {"Authorization" (str "Bearer " access-token)
-              "Content-Type" "application/json"}})
+              "Content-Type" "application/json"
+              ;; For Open Router but add as default incase others use it. should be ignored by default
+              "HTTP-Referer" (or (:api-domain (load-config)) "scryer.jinni.health")
+              "X-Title" "Jinni Health" }})
+              
 
 
 ;; Jinni App  specific convenience
