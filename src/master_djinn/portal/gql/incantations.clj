@@ -1,7 +1,7 @@
 ;; GQL resolvers wrapper around spells that return data or http errors
 (ns master-djinn.portal.gql.incantations
     (:require [com.walmartlabs.lacinia.resolve :as resolve]
-            [master-djinn.incantations.divine.mistral-dalle :as mistral-d]
+            [master-djinn.incantations.divine.openrouter-dalle :as openrouter-d]
             [master-djinn.incantations.manifest.jinni :as j]
             [master-djinn.incantations.manifest.spotify :as spotify-m]
             [master-djinn.incantations.conjure.spotify :as spotify-c]
@@ -118,8 +118,8 @@
     [ctx args val]
     (if-let [jid (:jinni_id args)]
         ;; TODO pull provider from widget settings and decide which to use
-        (mistral-d/see-current-me jid)
-        (map #(mistral-d/see-current-me %) (:jinn (db/call db/get-all-jinn)))))
+        (openrouter-d/see-current-me jid)
+        (map #(openrouter-d/see-current-me %) (:jinn (db/call db/get-all-jinn)))))
 
 
 ;; Code Providers

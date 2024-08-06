@@ -253,6 +253,7 @@
   ; @DEV: must include `?` query param for pass throughs to work
   ;; or have default utm per campaign that get added if none passed into OG redirect link?
   :zuqf2 "https://explorer.gitcoin.co/#/round/10/0xd875fa07bedce182377ee54488f08f017cb163d4/0xd875fa07bedce182377ee54488f08f017cb163d4-6?utm_source=jinni.health&utm_medium=redirect&utm_campaign=zuqf2&utm_content=jinni-health-donations"
+  :zuqf3 "https://explorer-maci.gitcoin.co/#/round/10/54/0xe829aaf8cac4d20e2234e98c17ece8404959770d?utm_source=jinni.health&utm_medium=redirect&utm_campaign=zuqf2&utm_content=jinni-health-donations"
   :test-android "https://play.google.com/apps/testing/com.jinnihealth?"
   :install-android "https://play.google.com/store/apps/details?id=com.jinnihealth"
   :install-github "https://github.com/marketplace/jinni-health?"
@@ -262,8 +263,8 @@
 })
 
 (defn coll->qs 
-"takes a map {:key val} or vector of [[key val]] pairs and turns them into url querystring parameters
-e.g. [[:utm_campaign 2024-pirate-week] [:utm_source roatan-yacht-club-qr]] -> utm_campaign=2024-pirate-week&utm_source=roatan-yacht-club-qr"
+  "takes a map {:key val} or vector of [[key val]] pairs and turns them into url querystring parameters
+  e.g. [[:utm_campaign 2024-pirate-week] [:utm_source roatan-yacht-club-qr]] -> utm_campaign=2024-pirate-week&utm_source=roatan-yacht-club-qr"
   [coll]
   (clojure.string/join "&" (for [[k v] (or coll {})] (str (name k) "=" v))))
 

@@ -10,6 +10,13 @@ services:
     env_file: ./.env
     volumes:
       - avatars:/resources/avatars
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ./ollama:/root/.ollama
+    restart: always
+    environment:
+      - MODEL_NAME=llama3  # Specify the model you want to use
   # telemetry:
   #   image: jaegertracing/all-in-one
   #   command:  --collector.otlp.enabled=true

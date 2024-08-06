@@ -5,6 +5,7 @@
 
 (defn json->map [j] (json/read-str j :key-fn keyword))
 (defn map->json [m] (json/write-str m))
+(defn prettify [j] (json/pprint (json/read-str j {:key-fn keyword})))
 
 (defn get-signer
   "extract API request signer injected by /util/crypto pedestal interceptor"

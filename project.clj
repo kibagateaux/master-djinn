@@ -19,9 +19,9 @@
                 ;; Database
                 [danlentz/clj-uuid "0.1.9"]
                 [gorillalabs/neo4j-clj "4.1.0"]
-                [joplin.core "0.3.11"] ;; TODO constraints on init
+                [joplin.core "0.3.11"] ;; not used atm TODO migrations + constraints
                 ;; Cryptography
-                [org.web3j/core "4.10.3"]
+                [org.web3j/core "4.10.3"] ;; TODO only need ecrecover not fullnode
                 ;; Testing
                 [org.clojure/core.specs.alpha "0.1.24"]
                 [org.clojure/spec.alpha "0.1.143"]
@@ -37,7 +37,7 @@
                 [io.grpc/grpc-stub "1.60.1"]
                 [io.grpc/grpc-protobuf "1.60.1"]
                 [io.grpc/grpc-netty "1.60.1"]
-                ;; tbh no idea where these came from. pretty sure part of pedestal template. Look at other projects to see if we can delete
+                ;; tbh no idea where these came from. pretty sure part of pedestal template. Look at other projects to see if we can delete. Kinda need to toel i thnk
                 [ch.qos.logback/logback-classic "1.2.10" :exclusions [org.slf4j/slf4j-api]]
                 [org.slf4j/jul-to-slf4j "1.7.35"]
                 [org.slf4j/jcl-over-slf4j "1.7.35"]
