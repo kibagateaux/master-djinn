@@ -42,6 +42,8 @@
                 [org.slf4j/jul-to-slf4j "1.7.35"]
                 [org.slf4j/jcl-over-slf4j "1.7.35"]
                 [org.slf4j/log4j-over-slf4j "1.7.35"]]
+                ;; openai shit for clojure
+                [net.clojars.wkok/openai-clojure "0.18.1"]
   :plugins [[lein-environ "0.4.0"]]
   :resource-paths ["config", "resources"]
   :aliases {"serve" ["run" "-m" "master-djinn.server/-main"]
