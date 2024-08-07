@@ -5,6 +5,7 @@
             [master-djinn.util.db.core :as db]
             [master-djinn.portal.logs :as log]
             [master-djinn.portal.core :as portal]
+            [wkok.openai-clojure.api :as api]
             [clojure.data.codec.base64 :as b64]
             [master-djinn.util.core :refer [now json->map map->json prettify]]
             [master-djinn.util.db.identity :as iddb])
