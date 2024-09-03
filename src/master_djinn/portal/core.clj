@@ -13,25 +13,12 @@
   (:import java.util.Base64))
 
 ;; TODO rename "integrations" or somethig more general
+(defn get-content-type [file]
+  (cond
+    (.endsWith file ".png") "image/png"
+    (.endsWith file ".gif") "image/gif"
+    :else "application/octet-stream")) ;; idk ai generated
 
-(defn see-jinn-handler
-  "get the latests image for a jinn, reads the file on this server
-  and serves it for display purposes on frontend <img> tags
-  @DEV: requires GET request  w/ query param argument ?jid=xxxx-xxxx-xx-xxxx-xxx"
-  [request]
-  (let [qs (get-in request [:query-params])
-        {:keys [jid]} qs
-        divi (db/call db/get-last-divination {:jinni_id (or jid "")})]
-    (println "view pfp handler" jid)
-    (cond
-      (nil? jid)            {:status 400 :error "must provide jinn id"}
-      (nil? divi)           {:status 404 :error "Invalid jinn id"}
-      (nil? (:image divi))  {:status 400 :error "No pgp for jinn on last divination"} ;; shouldnt be possible but just in case
-      :else                 ()
-      ;; TODO read file (not slurp, need binary not string) and return. 
-      ;; must set header content type to png
-      ;; only used for display purposes
-      )))
 
 (defonce oauth-providers {
   :Spotify {
@@ -238,13 +225,14 @@
   User must have completed oauth flow and have an :Identity in db already for service being called"
   [access-token]
   {
-    :accept :json 
+  :accept :json 
   :async? false ;; TODO bottleneck but not important with minimal users
   :headers  {"Authorization" (str "Bearer " access-token)
               "Content-Type" "application/json"
               ;; For Open Router but add as default incase others use it. should be ignored by default
-              "HTTP-Referer" (or (:api-domain (load-config)) "scryer.jinni.health")
-              "X-Title" "Jinni Health" }})
+              ;; "HTTP-Referer" (or (:api-domain (load-config)) "scryer.jinni.health")
+              ;; "X-Title" "Jinni Health" 
+              }})
               
 
 

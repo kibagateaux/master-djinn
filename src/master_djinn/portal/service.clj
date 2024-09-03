@@ -5,6 +5,7 @@
             [master-djinn.portal.gql.schema :as schema]
             [master-djinn.portal.core :as id]
             [master-djinn.util.crypto :refer [handle-signed-POST-query]]
+            [master-djinn.incantations.divine.openrouter-dalle :refer [get-jinn-img-handler]] ;; TODO codesmell all server should be in portal.core but circular reference
             [com.walmartlabs.lacinia.pedestal2 :as p2]
             [com.walmartlabs.lacinia.pedestal :refer [inject]]
             [com.walmartlabs.lacinia.pedestal.internal :as lp-internal]
@@ -64,20 +65,17 @@
 (defn create-gql-service
   [compiled-schema options]
   (log/init-otel!)
-  (println "P:gql-]servce:is]-remote?" (if (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health") 80 8888) (:api-domain (load-config)) )
+  (println "P:gql-servce:is-remote?" (if (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health") 80 8888) (:api-domain (load-config)) )
   (let [interceptors (gql-interceptors compiled-schema)
         {:keys [port host oauth-init-path oauth-cb-path oauth-refresh-path]} options
-        ;; aaaa (println "custom gql" interceptors)
         routes (into #{["/graphql" :post interceptors :route-name ::graphql-api]
                       ["/graphiql" :get (p2/graphiql-ide-handler gql-server-config) :route-name ::graphql-ide]
                       [oauth-cb-path :get (conj [(body-params/body-params)] id/oauth-callback-handler) :route-name ::oauth-callback-get]
-                      ["/avatars" :get (conj [(body-params/body-params)] id/see-jinn-handler) :route-name ::see-jinn]
+                      ["/avatars/:jid" :get (conj [(body-params/body-params)] get-jinn-img-handler) :route-name ::see-jinn]
                       ["/portals" :get (conj [(body-params/body-params)] id/handle-redirects) :route-name ::campaign-redirects]
                       ;; [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
                       }
                   (p2/graphiql-asset-routes (:gql-asset-path gql-server-config)))]
-    ;; (println "custom gql" gql-server-config)
-    ;; (println "custom gql" (:host gql-server-config))
     (-> {:env :dev
          ::http/routes routes
          ::http/port port
