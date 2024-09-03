@@ -52,7 +52,7 @@
     :oauth-init-path "/oauth/init"
     :oauth-cb-path "/oauth/callback"
     :oauth-refresh-path "/oauth/refresh"
-    :gql-asset-path "/assets/graphiql" ;; TODO figure out what thismeans
+    :gql-asset-path "/assets/graphiql" ;; TODO figure out what this means
     :port (if (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health") 80 8888)
     :host (or (:api-host (load-config)) "0.0.0.0") ;; jetty defaults to serving on 0.0.0.0
 })

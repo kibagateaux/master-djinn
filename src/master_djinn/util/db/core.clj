@@ -128,20 +128,18 @@
   RETURN a.start_time as start_time
 ")
 
+;; get active divination widget
 (neo4j/defquery get-last-divination "
   MATCH (j:Jinn {id: $jinni_id}),
   (j)-[:USES]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
+  WHERE w.priority > 0
   
   OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
   
   WITH d, w
   ORDER BY d.start_time DESC LIMIT 1
-
-  WITH d, w
-  OPTIONAL MATCH (d2:Action:Divination)
-  WHERE d2.hash = d.hash AND d2.prompt IS NOT NULL
   
-  RETURN w as settings, d as action, d2.prompt as prompt
+  RETURN w as widget, d as action
 ")
 
 (neo4j/defquery create-divination "

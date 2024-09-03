@@ -128,7 +128,8 @@
         :Action {:fields {
             ;; make interface if we need abstract for incipient/consequential
             ;; :implements [:Action]
-            :id {:type (non-null String)}
+            :id {:type (non-null String) :description "common global identifier for :Action type e.g. 'walking`"}
+            :uuid {:type (non-null String) :description "unique global identifier for :Widget for player, provider, id and version"}
             :desc {:type String}
             :action_type {:type (non-null String)}
             :start_time {:type (non-null String)} ;; ISO string '2023-06-20T23:53:15.405Z'
@@ -150,35 +151,35 @@
             :creators {:type (list Avatar)}
         }}
         :Divination
-            ;; TODO is :Acrtion in DB but fields are mix of both :Action and :Resource
-            ;; :implements [:Action]
-            {:description ""
+            {:description "Custom action.data for :Action:Divination nodes"
             :fields {
-                :uuid {:type (non-null String) :description "global unique identifier"}
-                :image {:type (non-null String) :description "binary image in json format to edit on next :Divination" }
-                :hash {:type (non-null String) :description "hash of avatar widget settings creating unique analysis prompt to share across :Divinations" }
-                :analysis {:type (non-null String) :description "How different body parts changed in divination and reasons why based on analysis prompt" }
-                :start_time {:type (non-null String) :description "when :Divination process started" }
-                :end_time {:type (non-null String) :description "when :Divination process ended" }
-                ;; for initial :Divination with new intentions
-                :prompt {:type String :description "analysis prompt used to read player data into jinni variation. nil if no new prompt" }
-                :embed {:type String :description "LLM embeds for analysing prompts used. nil if no new prompt" }
+                :hash  {:type (non-null String) :description "Player widget settings used for divination" }
+                :image {:type (non-null String) :description "path to jinni image for this div. Can be derived from start_time but here for forwards compatibility incase naming convention changes." }
+                :analysis {:type (non-null String) :description "Quantified result of analysis prompt how different body parts should change in divination" }
             }}
         :Widget ;; TODO figure out how to make non-duplicate with input object
-            {:description ""
+            {:description "Custom"
             :fields {
                 :id {:type (non-null String) :description "common global identifier for :Widget type e.g. 'spotify-pin-playist`"}
                 :uuid {:type (non-null String) :description "unique global identifier for :Widget for player, provider, id and version"}
                 :provider {:type (non-null :Providers)}
-                :priority {:type Int :description "Hierarchy of widget in user profile setting. Relative, non-sequential e.g. can have two priority (1)s then an (8)"}
+                :priority {:type Int :description "
+                    Hierarchy of widget in user profile setting.
+                    Relative, non-sequential e.g. can have two priority (1)s then an (8)
+                    (0) represents archived, kept for historical purposes."}
                 
                 ;; optional config per widget
-                :provider_id {:type String :description "what to display from provider"}
+
+                :provider_id {:type String :description "Players' ID on provider if needed for widget functionality (denormalized)"}
                 ;; avatar viewer
-                :mood {:type (list String) :description "what to display from provider"}
-                :stats {:type (list String) :description "what to display from provider"}
-                :intentions {:type (list String) :description "what to display from provider"}
-                ;; frontend params if needed?
+                :mood {:type (list String) :description "Players' preferred jinni personaity and behaviour"}
+                :stats {:type (list String) :description "What players are optimizing for in the game of life"}
+                :intentions {:type (list String) :description "Over-arching desires/strategies/goals for players' in their life "}
+                :hash {:type (non-null String) :description "hash of avatar widget settings creating unique analysis prompt to share across :Divinations" }
+                :prompt {:type String :description "analysis prompt used to read player data into jinni variation. nil if no new prompt" }
+                :embed {:type String :description "LLM embeds for analysing prompts used. nil if no new prompt" }
+                
+                ;; ?? frontend params if needed?
                 ;; :path {:type String :description "what to display from provider"}
                 ;; :routeName {:type String :description "what to display from provider"}
                 ;; :title {:type String :description "what to display from provider"}
@@ -259,6 +260,7 @@
                 :args       {:verification {:type :SignedRequest}
                             :provider {:type (non-null String)}
                             :player_id {:type (non-null String)}}} ;; 0x ETH address
+
             :sync_repos
                 {:type       (list :Resource)
                 :description "Adds github /gitlab/radicle repos as :Resources to player used for tracking commits as game :Actions"

@@ -363,6 +363,7 @@
             ;; aaaa (println "divi:mistral:new-prompt:embeds" embed-response)
             ;; embeds (reduce #(concat %1 (:embedding %2)) [] (:data (json->map (:body embed-response))))
             ;; aaaa (println "divi:mistral:new-prompt:embeds" embeds)
+            ;; asfas  (println "FUCK ME WE REPROMPTED")
             prompt-response (prompt-text (str
                 LLM_ANALYSIS_PERSONA
                 "Their intentions: " (clojure.string/join "," (:intentions settings))
