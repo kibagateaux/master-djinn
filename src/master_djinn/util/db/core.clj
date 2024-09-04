@@ -82,7 +82,7 @@
 ")
 
 (neo4j/defquery get-home-config "
-  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinni:P2P),
+  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinni:p2p),
         (j)-[:USES]->(w:Widget)
   OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
   
@@ -164,7 +164,7 @@
 ;; Good growth tactic, can have people confirm integrations/widgets before allowing to play the game.
 (neo4j/defquery set-widget-settings "
   MERGE (p:Avatar:Human {id: $player_id})
-  MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:P2P)
+  MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:p2p)
   
   WITH j
   UNWIND $widgets AS widget

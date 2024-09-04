@@ -27,7 +27,7 @@
     
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
     MERGE (p)<-[:ATTESTS]-(:Provider {id: $master_id})
-    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:P2P)
+    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:p2p)
 
     ON CREATE
         SET j = $jinni

@@ -37,6 +37,7 @@
   ;; meta game actions
   :Mutation/jinni_activate i/jinni-activate
   :Mutation/jinni_evolution i/jinni-evolution
+  :Mutation/jinni_join_circle i/jinni-join-summoning-circle
   :Mutation/jinni_set_widget i/jinni-activate-widget
   ;; Code
   :Mutation/sync_repos i/sync-repos

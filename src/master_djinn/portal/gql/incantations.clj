@@ -73,10 +73,9 @@
         :else (j/activate-widget pid widgets))))
 
 
-(defn join-summoning-circle
+(defn jinni-join-summoning-circle
      "If proof of acceptance (majik_msg) is not included then treated as an application and jinni_id for an existing circle is required 
      If signer is the same as player_id then creates a new circle for them if one does not exist already
-
      "
     [ctx args val]
     (let [{:keys [majik_msg player_id jinni_id]} args

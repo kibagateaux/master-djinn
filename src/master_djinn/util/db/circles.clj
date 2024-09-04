@@ -4,7 +4,7 @@
 
 (neo4j/defquery get-summoning-circle "
   OPTIONAL MATCH (p:Avatar:Human)-[:HAS]->(:Jubmoji {provider_id: $pid}),
-    (p)-[:SUMMONS]->(j:Jinni:P2C)
+    (p)-[:SUMMONS]->(j:Jinni:p2c)
   RETURN  p AS summoner, j AS jinni
 ")
 
@@ -13,10 +13,10 @@
 ;; would have to make :Jubmoji the summoner then which feels weird if its not an agent
 
 ;; Can only create circle if you have been vouched by master djinn
-;; (p)--(j) merge assumes only one P2C per player (intentional for now)
-;; ON CREATE ensures 1 player->jubmoji and 1 player-> P2C + prevents accidental overriding
+;; (p)--(j) merge assumes only one p2c per player (intentional for now)
+;; ON CREATE ensures 1 player->jubmoji and 1 player-> p2c + prevents accidental overriding
 (neo4j/defquery create-summoning-circle "
-  MATCH (p:Avatar:Human {id: $pid})<-[:BONDS]-(:Jinni:P2P)
+  MATCH (p:Avatar:Human {id: $pid})<-[:BONDS]-(:Jinni:p2p)
   WITH p
   WHERE p IS NOT NULL
   MERGE (p)-[:HAS]->(id:Identity:Ethereum:Jubmoji)
@@ -25,7 +25,7 @@
     SET id.provider = 'Ethereum'
     SET id.provider_id = $signer
     WITH p
-    MERGE (p)-[rj:SUMMONS]->(j:Jinni:P2C)
+    MERGE (p)-[rj:SUMMONS]->(j:Jinni:p2c)
     MERGE (j)-[rp:BONDS]->(p)
     SET rj.timesetamp = $now
     SET rp.since = $now
@@ -34,22 +34,22 @@
 
 ;; only create rj if p + j already exist. Do not overide existing rj data
 (neo4j/defquery join-summoning-circle "
-  MATCH (p:Avatar:Human {id: $pid}), (j:Jinni:P2C {jid: $jid})
+  MATCH (p:Avatar:Human {id: $pid}), (j:Jinni:p2c {jid: $jid})
   WITH p, j
   MERGE (p)-[rj:BONDS]->(j)
   ON CREATE SET rj.since = $now
 ")
 
 (neo4j/defquery apply-summoning-circle "
-  MATCH (p:Avatar:Human {id: $pid}), (j:Jinni:P2C {jid: $jid})
+  MATCH (p:Avatar:Human {id: $pid}), (j:Jinni:p2c {jid: $jid})
   WITH p, j
   MERGE (p)-[rj:DESIRES]->(j)
   ON CREATE SET rj.since = $now
 ")
 
-;; TODO jid as input once multi P2C per player
+;; TODO jid as input once multi p2c per player
 (neo4j/defquery get-circle-applicants "
-  MATCH (:Avatar:Human {id: $pid})-[:SUMMONS]->(j:Jinni:P2C),
+  MATCH (:Avatar:Human {id: $pid})-[:SUMMONS]->(j:Jinni:p2c),
     (p:Avatar:Human)-[:DESIRES]->(j)
   
   RETURN COLLECT(p.id)
