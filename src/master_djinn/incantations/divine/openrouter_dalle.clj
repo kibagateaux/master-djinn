@@ -11,7 +11,8 @@
             [master-djinn.util.db.identity :as iddb])
   (:import [javax.imageio ImageIO]
            [java.awt.image BufferedImage]
-           [java.util Base64]))
+           [java.util Base64]
+           [java.time.format DateTimeFormatter]))
 
 ;; (defn log-request [request file-path]
 ;;     (let [file (io/file file-path)]
@@ -409,7 +410,7 @@
         (if false ; TODO (= 1 (compare (:start_time (:action divi-meta)) MIN_DIVINATION_INTERVAL_SEC))
             (get-last-divi-img jinni-id) ; dont run evolutions more than once every 3 days.
             (try (let [
-                new-prompt (get-new-analysis-prompt widget (:hash divi))
+                new-prompt (get-new-analysis-prompt widget (:hash divi-meta))
                 ;; aaa (println "divine:mistral:see-current:divi:" divi)
                 updated-widget (merge widget new-prompt)
 
@@ -436,7 +437,7 @@
   @DEV: requires GET request  w/ query param argument ?jid=xxxx-xxxx-xx-xxxx-xxx"
   [request]
   (let [jid (get-in request [:path-params :jid])
-        [path (see-current-me jid)]
+        path (see-current-me jid)]
     (println "view pfp handler" jid path)
     (cond
       (nil? jid)            {:status 400 :error "must provide jinn id"}
