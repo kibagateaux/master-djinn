@@ -47,8 +47,10 @@
     (db/call cdb/join-summoning-circle {:pid player-id :jid jinni-id}))
 
 (defn apply-summoning-circle
+  "Do not auto create npc account.
+  Must have already been vouched for and joined a circle to apply for more.
+  Allows players to async/remotely ask to join a summoning circle that alreay exists"
   [player-id summoner jinni-id]
-    (db/call iddb/create-npc {:player {:id player-id :uuid (avatar->uuid player-id)} :summoner summoner})
     (db/call cdb/apply-summoning-circle {:pid player-id :jid jinni-id}))
 
 

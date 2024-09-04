@@ -12,10 +12,13 @@
 ;; much cooler if on jinni then it can be passed around. 
 ;; would have to make :Jubmoji the summoner then which feels weird if its not an agent
 
+;; Can only create circle if you have been vouched by master djinn
 ;; (p)--(j) merge assumes only one P2C per player (intentional for now)
-;; ON CREATE SET ensures 1 player->jubmoji and 1 player-> P2C + prevents accidental overriding
+;; ON CREATE ensures 1 player->jubmoji and 1 player-> P2C + prevents accidental overriding
 (neo4j/defquery create-summoning-circle "
-  MATCH (p:Avatar:Human {id: $pid}),
+  MATCH (p:Avatar:Human {id: $pid})<-[:BONDS]-(:Jinni:P2P)
+  WITH p
+  WHERE p IS NOT NULL
   MERGE (p)-[:HAS]->(id:Identity:Ethereum:Jubmoji)
 
   ON CREATE

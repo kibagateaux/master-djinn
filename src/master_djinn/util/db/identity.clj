@@ -27,7 +27,7 @@
     
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
     MERGE (p)<-[:ATTESTS]-(:Provider {id: $master_id})
-    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
+    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:P2P)
 
     ON CREATE
         SET j = $jinni
@@ -44,7 +44,7 @@
     MERGE (p)<-[:ATTESTS]-(:Provider {id: $summoner})
 ")
 
-;; TODO should? add rel for (:Avatar:Jinn {id: "master-djinn"})-[:ATTESTS]->(:Identity)
+;; TODO should? add rel for (:Avatar:Jinni {id: "master-djinn"})-[:ATTESTS]->(:Identity)
 ;; and add status metadata - requested, verifying, verified, etc. ? Allows other Avatar to attest to identities
 (neo4j/defquery init-player-identity "
     MATCH (p:Avatar { id: $pid })

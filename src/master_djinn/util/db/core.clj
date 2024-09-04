@@ -71,7 +71,7 @@
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
 (neo4j/defquery get-all-jinn
-  "MATCH (j:Jinn) RETURN COLLECT(j.id) as jinn")
+  "MATCH (j:Jinni) RETURN COLLECT(j.id) as jinn")
 
 
 (neo4j/defquery get-player-actions "
@@ -82,7 +82,7 @@
 ")
 
 (neo4j/defquery get-home-config "
-  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinn:P2P),
+  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinni:P2P),
         (j)-[:USES]->(w:Widget)
   OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
   
@@ -93,7 +93,7 @@
 ")
 
 (neo4j/defquery get-player-data "
-  MATCH (p:Avatar)-[rj]-(j:Jinn),
+  MATCH (p:Avatar)-[rj]-(j:Jinni),
     (j)-[rw]-(w:Widget),
     (p)-[ra]-(a:Action),
     (j)-[rd]-(d:Divination)
@@ -102,7 +102,7 @@
 ")
 
 (neo4j/defquery get-jinni-actions "
-  MATCH (j:Jinn {id: $jinni_id})-[:BONDS]->(p:Avatar),
+  MATCH (j:Jinni {id: $jinni_id})-[:BONDS]->(p:Avatar),
         (p)-[:ACTS]->(a:Action) WHERE
             datetime(a.start_time) >= datetime($start_time) AND
             datetime(a.end_time) <= datetime($end_time)
@@ -131,7 +131,7 @@
 
 ;; get active divination widget
 (neo4j/defquery get-last-divination "
-  MATCH (j:Jinn {id: $jinni_id}),
+  MATCH (j:Jinni {id: $jinni_id}),
   (j)-[:USES]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
   WHERE w.priority > 0
   
@@ -144,7 +144,7 @@
 ")
 
 (neo4j/defquery create-divination "
-  MATCH (j:Jinn {id: $jinni_id })
+  MATCH (j:Jinni {id: $jinni_id })
   MERGE (p:Provider {provider: $provider})
   MERGE (j)-[:ACTS {type: 'SEES'}]->(a:Action:Divination {uuid: $data.uuid})
   MERGE (p)-[:ATTESTS]->(a)
@@ -164,7 +164,7 @@
 ;; Good growth tactic, can have people confirm integrations/widgets before allowing to play the game.
 (neo4j/defquery set-widget-settings "
   MERGE (p:Avatar:Human {id: $player_id})
-  MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
+  MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:P2P)
   
   WITH j
   UNWIND $widgets AS widget
