@@ -73,6 +73,7 @@
 (neo4j/defquery get-all-jinn
   "MATCH (j:Jinn) RETURN COLLECT(j.id) as jinn")
 
+
 (neo4j/defquery get-player-actions "
   MATCH  (u:Avatar {id: $player_id})-[:ACTS]->(a:Action)
   WHERE  datetime(a.start_time) >= datetime($start_time)

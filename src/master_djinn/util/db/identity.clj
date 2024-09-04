@@ -18,18 +18,30 @@
 
 ;; Set UUID to not create duplicate avatar that only has id from setting :Widgets
 ;; Adds trust network metadata of which master djinn approved the player
+;; (p)--(j) erge assumes only one jinni per player (intentional for now)
+;; ON CREATE SET to prevent acciental overriding
 (neo4j/defquery create-player "
+    MERGE (p:Avatar:Human { id: $player.id })
+    ON CREATE
+        SET p = $player
+    
+    MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
+    MERGE (p)<-[:ATTESTS]-(:Provider {id: $master_id})
+    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
+
+    ON CREATE
+        SET j = $jinni
+        SET rj.since = $now
+
+    RETURN $jinni.uuid as jinni
+")
+
+(neo4j/defquery create-npc "
     MERGE (p:Avatar:Human { id: $player.id })
     SET p = $player
     
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
-    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinn:P2P)
-    MERGE (p)<-[:ATTESTS]-(Provider {id: $master_id})
-
-    SET j = $jinni
-    SET rj.since = $now
-
-    RETURN $jinni.uuid as jinni
+    MERGE (p)<-[:ATTESTS]-(:Provider {id: $summoner})
 ")
 
 ;; TODO should? add rel for (:Avatar:Jinn {id: "master-djinn"})-[:ATTESTS]->(:Identity)

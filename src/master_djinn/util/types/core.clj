@@ -65,6 +65,16 @@
   [domain & namespaces]
   (str (reduce #(--uuid/v5 %1 %2) (or domain --uuid/+null+) namespaces)))
 
+(defn juuid
+  "domain = initial UUID to scope namespaces within. SHOULD ALWAYS be --uuid/+null+
+  recursively apply namespaces to UUID creating a hierarchy
+  We dont use app/server specific namespaces so players can
+  self-host their data yet be in sync with centralized db and service providers
+  "
+  [player_id]
+  ;; TODO timestamp not random so deterministic?
+  (uuid nil player_id (str (java.util.UUID/randomUUID))))
+
 ;; TODO maybe should be env vars but even if self-hosted these should be the same.
 ;; Not relevant until people start making new games which is very far in the future
 (defonce PLAYGROUND_UUID (--uuid/v5 --uuid/+namespace-url+ "https://jinni.health/"))
