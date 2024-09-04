@@ -6,12 +6,14 @@
             [master-djinn.portal.logs :as log]
             [master-djinn.portal.core :as portal]
             [wkok.openai-clojure.api :as oai]
-            [clojure.data.codec.base64 :as b64]
+            ;; [clojure.data.codec.base64 :as b64]
             [master-djinn.util.core :refer [now json->map map->json prettify]]
             [master-djinn.util.db.identity :as iddb])
   (:import [javax.imageio ImageIO]
            [java.awt.image BufferedImage]
+           [java.io ByteArrayInputStream]
            [java.util Base64]
+           [java.time Instant ZoneId ZonedDateTime]
            [java.time.format DateTimeFormatter]))
 
 ;; (defn log-request [request file-path]
@@ -93,11 +95,13 @@
         :reason \"Your reasoning here\"
     }}```
     
-    You response MUST EXACTLY fulfill your research experiments requirements below otherwise your experiment will fail!!!:
-    - ONLY output the requested object format
-    - ONLY use explicitly provided experiment data in your analysis not prior knowledge
-    - Do NOT interpret examples or intentions provided as context as experiment data
-    - If insuffieicnt data for an analysis, give negative scores
+    You response MUST EXACTLY fulfill your research experiments requirements below otherwise your experiment will fail!!!
+    1. ONLY output the requested object format
+    2. ONLY use explicitly provided experiment data in your analysis not prior knowledge
+    3. DO NOT interpret examples or intentions provided as experiment data
+    4. If insuffieicnt data for an analysis, give negative scores
+    5. DO NOT hallucinate
+    6. DO NOT provide extra ouputs
 ")
 ;; - MUST cite which provided actions justify your final analysis using their `:uuid` field
 
@@ -162,6 +166,7 @@
 
     retuns binary of new png image"
     [og-image prompt]
+    (println "DALLE Edit prompt : " prompt)
     (let [image-res (oai/create-image-edit {
                 :image (io/file og-image) ;; TODO need rgb->rgba  func for sending or does library handle that?
                 :prompt prompt
@@ -169,10 +174,8 @@
                 :size "1024x1024"}
                 {:api-key (:openai-api-key (load-config))
                 :organization "jinni-health"})
-            img-url (:url (first (:data image-res)))
-            asaaa (println "divibne:mistral:image-url:" img-url)
-            new-img (client/get img-url)] ;; no auth required so no config in request
-        new-img))
+            img-url (:url (first (:data image-res)))]
+            img-url))
 
 (defn get-last-divi-img
     "checks if jinni already has already been divined
@@ -185,7 +188,7 @@
         files (->> (file-seq (io/file jinni-dir))
                     (filter #(.isFile %))
                     (map #(.getName %))
-                    (map #(iso-formatter %))
+                    (map #(.format % iso-formatter))
                     (filter #(re-matches #"\d{4}-\d{2}-\d{2}.png" %)) ; TODO check that im actually saving in this file format
                     (sort-by #(java.time.LocalDateTime/parse (clojure.string/replace % #"\.png" "")))) ; this should work but getting ISO timestamp not short date
         ;; TODO check that this actually sorts chronologically
@@ -193,6 +196,7 @@
     (if (nil? d-img) ; if no past divinations return base model else lastest chronological divination
         "resources/avatars/base/blub.png"
         (str jinni-dir "/" (last files) ".png"))))
+
 
 ;; (defn rgb->rgba
 ;;     [png-data]
@@ -217,27 +221,77 @@
 ;;         (ImageIO/write rgba-image "png" output-stream)
 ;;         (.toByteArray output-stream))))
 
+;; (defn rgb->rgba
+;;     "OpenAI are dicks and require RGBA type but return RGB from the API so we have to convert on every response for the next evolution.
+;;     RGBA allows for transparency so we can add masks for editing? but we dont use the functionality"
+;;     [img-file]
+;;     (println "rgba-?" img-file)
+;;     (let [width (.getWidth img-file)
+;;             height (.getHeight img-file)
+;;             rgba-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)]
+;;         (doseq [x (range width)
+;;                 y (range height)]
+;;         (let [rgb (.getRGB img-file x y)
+;;                 alpha (bit-and rgb 0xFF000000)]
+;;             (.setRGB rgba-image x y (bit-or (bit-and rgb 0x00FFFFFF) alpha))))
+;;         rgba-image))
 
 (defn rgb->rgba
-    "OpenAI are dicks and require RGBA type but return RGB from the API so we have to convert on every response for the next evolution.
-    RGBA allows for transparency so we can add masks for editing? but we dont use the functionality"
-    [image]
-    (let [width (.getWidth image)
-            height (.getHeight image)
-            rgba-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)]
-        (doseq [x (range width)
-                y (range height)]
-        (let [rgb (.getRGB image x y)
-                alpha (bit-and rgb 0xFF000000)]
-            (.setRGB rgba-image x y (bit-or (bit-and rgb 0x00FFFFFF) alpha))))
-        ;; TODO move file save outside of transform func
-        ;; (ImageIO/write rgba-image "png" (java.io.File. output-path))
-        rgba-image))
+  "Converts an RGB image to RGBA format"
+  [image]
+  (let [width (.getWidth image)
+        height (.getHeight image)
+        rgba-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)]
+    (doseq [x (range width)
+            y (range height)]
+      (let [rgb (.getRGB image x y)
+            r (bit-and (unsigned-bit-shift-right rgb 16) 0xFF)
+            g (bit-and (unsigned-bit-shift-right rgb 8) 0xFF)
+            b (bit-and rgb 0xFF)
+            a 0xFF
+            rgba (unchecked-int (bit-or (bit-shift-left a 24)
+                                        (bit-shift-left r 16)
+                                        (bit-shift-left g 8)
+                                        b))]
+        (.setRGB rgba-image x y rgba)))
+    rgba-image))
+
+;; (defn rgb->rgba
+;;   "Converts an RGB image to RGBA format"
+;;   [image]
+;;   (let [width (.getWidth image)
+;;         height (.getHeight image)
+;;         rgba-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)]
+;;     (doseq [x (range width)
+;;             y (range height)]
+;;       (let [rgb (.getRGB image x y)
+;;             r (bit-and (bit-shift-right rgb 16) 0xFF)
+;;             g (bit-and (bit-shift-right rgb 8) 0xFF)
+;;             b (bit-and rgb 0xFF)
+;;             a 0xFF]
+;;         (.setRGB rgba-image x y (bit-or (bit-shift-left a 24)
+;;                                         (bit-shift-left r 16)
+;;                                         (bit-shift-left g 8)
+;;                                         b))))
+;;     rgba-image))
 
 (defn ensure-dir [dir-path]
   (let [dir (io/file dir-path)]
     (when-not (.exists dir)
       (.mkdirs dir))))
+
+(defn load-img
+  "Loads an image from a given URL string and returns a BufferedImage"
+  [url-string]
+  (-> (client/get url-string {:as :byte-array})
+      :body
+      (ByteArrayInputStream.)
+      (ImageIO/read)))
+
+(defn save-image
+  "Saves a BufferedImage to a file"
+  [image output-path]
+  (ImageIO/write image "png" (io/file output-path)))
 
 (defn save-divi-img
     "
@@ -246,17 +300,20 @@
     saves image to resources/avatars/{jinni-id}/{YYYY-MM-DD}.png
     returns file path where image was saved
     "
-    [jid image now]
+    [jid img-url now]
     (let [dir (str "resources/avatars/" jid)
-            day  (-> (java.time.LocalDateTime/parse now)
-                    (.toLocalDate)
-                    (.toString))
-            
+        formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd")
+        day (-> (ZonedDateTime/parse now)
+                (.withZoneSameInstant (ZoneId/of "UTC"))
+                (.toLocalDate)
+                (.format formatter))
         file-path (str dir "/" day ".png")
         asdfasf (println "jinni dir - " dir file-path)]
         (ensure-dir dir)
-        (with-open [stream (io/output-stream file-path)]
-            (.write stream (rgb->rgba image)))))
+        (save-image (rgb->rgba (load-img img-url)) file-path)
+        ;; (with-open [stream (io/output-stream file-path)]
+        ;;     (.write stream (rgb->rgba (load-img img-url))))
+            ))
 
 ;; Step #2
 (defn run-evolution
@@ -266,7 +323,7 @@
                     LLM_ANALYSIS_PERSONA
                     (:prompt settings)
                     "-------------"
-                    "Experiment data to analyze: ```{ :actions " actions "}```"
+                    "Experiment data to analyze: ```{ :actions " (doall actions) "}```"
                     "-------------"
                     LLM_ANALYSIS_FORMAT
                     LLM_ANALYSIS_REWARD))
@@ -302,7 +359,7 @@
                 ;; base-img (bytes->b64 (file->bytes img-path))
                 ;; aaaa (println "divi:mistral:run-evo:base-img \n\n" (nil? base-img) (take 50 base-img))
                 ;; base-img (io/file img-path)
-                new-image (prompt-image img-path augment-prompt) ;; TODO add moods here to affect face and posture
+                new-image-url (prompt-image img-path (:prompt augment-prompt)) ;; TODO add moods here to affect face and posture
                 ;; aaaa (println "divi:mistral:run-evo:img-res \n\n" image-resp)
                 ;; new-image (:image (json->map (:body image-resp)))
                 ;; aaaa (println "divi:mistral:run-evo:img-b64 \n\n" new-image)
@@ -325,7 +382,7 @@
                     :provider PROVIDER
                     :data data})
                 ;; TODO!!! (if (not= (:hash widget) (:hash last-divi ) (db/call db/set-intentions widget))
-                new-image)
+                new-image-url)
             (catch Exception e
                 (println "divine:mistral:generation:ERROR" e)
                 (log/handle-error e "Failed to run divination" {:provider PROVIDER})
@@ -398,38 +455,52 @@
     Passes prompts and data to analysis/generation engine
     Returns url of most uptodate jinni image"
     [jinni-id]
-    (let [divi-meta (db/call db/get-last-divination {:jinni_id jinni-id})
-        {:keys [action widget]} divi-meta ; meta cant be null bc must have widget
-        last-divi-time (or (:start_time action db/PORTAL_DAY))
-        kkk (println "divine:mistral:see-current:time-since-last:" (:start_time action) last-divi-time)
-        run-evo? (compare last-divi-time MIN_DIVINATION_INTERVAL_SEC)] ;; TODO probs throws nil error on divi-meta
-        (println "divine:mistral:see-current:run-evo+setttings:" run-evo? widget)
-      ;; (nil? (:image divi))  {:status 400 :error "No pfp for jinn on last divination"} ;; shouldnt be possible but just in case
-            ;; TODO Add 3 days to start_time, probs direct java. add to utils.core
-            ;; convert to UNIX, + MIN_DIVINATION_INTERVAL_SEC, convert back to ISO
-        (if false ; TODO (= 1 (compare (:start_time (:action divi-meta)) MIN_DIVINATION_INTERVAL_SEC))
-            (get-last-divi-img jinni-id) ; dont run evolutions more than once every 3 days.
-            (try (let [
-                new-prompt (get-new-analysis-prompt widget (:hash divi-meta))
-                ;; aaa (println "divine:mistral:see-current:divi:" divi)
-                updated-widget (merge widget new-prompt)
+    (let [file  (save-divi-img
+            "my-test-jinni-id2"
+            "https://oaidalleapiprodscus.blob.core.windows.net/private/org-5UhygDKOgyJZIMbTnIBZoAgd/user-6P7ggpeSMtH8hPYW5yoc7Hv3/img-sqYjYgHgtD8gf2HyuJN6S5tR.png?st=2024-09-04T09%3A30%3A32Z&se=2024-09-04T11%3A30%3A32Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-09-03T23%3A31%3A58Z&ske=2024-09-04T23%3A31%3A58Z&sks=b&skv=2024-08-04&sig=1iq5QmI4sh7MRtS6s9Bag/4d8dHziO808POns53pkbE%3D"
+            (now))
+        path "resources/avatars/my-test-jinni-id2/2024-09-04.png"]
+        path))
+    ;; (let [divi-meta (db/call db/get-last-divination {:jinni_id jinni-id})
+    ;;     {:keys [action widget]} divi-meta ; meta cant be null bc must have widget
+    ;;     last-divi-time (or (:start_time action db/PORTAL_DAY))
+    ;;     kkk (println "divine:mistral:see-current:time-since-last:" (:start_time action) last-divi-time)
+    ;;     time-diff (- (.getEpochSecond (java.time.Instant/parse (now))) 
+    ;;                 (.getEpochSecond (java.time.Instant/parse last-divi-time)))
+    ;;     kkk (println "divine:mistral:see-current:time-since-last:" time-diff MIN_DIVINATION_INTERVAL_SEC)
+    ;;     run-evo? (> time-diff MIN_DIVINATION_INTERVAL_SEC)] ;; TODO probs throws nil error on divi-meta
+    ;;     (println "divine:mistral:see-current:run-evo+setttings:" run-evo? widget)
+    ;;   ;; (nil? (:image divi))  {:status 400 :error "No pfp for jinn on last divination"} ;; shouldnt be possible but just in case
+    ;;         ;; TODO Add 3 days to start_time, probs direct java. add to utils.core
+    ;;         ;; convert to UNIX, + MIN_DIVINATION_INTERVAL_SEC, convert back to ISO
+    ;;     (if false ; (not run-evo?)
+    ;;         (get-last-divi-img jinni-id) ; dont run evolutions more than once every 3 days.
+    ;;         (try (let [
+    ;;             ;; TODO make more fault tolerant btw all external calls to save intermediary results to divination
+    ;;             ;; e.g. 1. save :Action:Divi here so we know it was initiated and when to pull data from incase an evo isnt run again for a while
+    ;;             ;; 2. new prompt save to wiget
+    ;;             ;; 3. after analysis save result to :Divi
+    ;;             new-prompt (get-new-analysis-prompt widget (:hash divi-meta))
+    ;;             ;; aaa (println "divine:mistral:see-current:divi:" divi)
+    ;;             updated-widget (merge widget new-prompt)
 
-                aaaa (println "divi:mistral:see-current:new-divi  \n\n" updated-widget)
-                at-taqa (:actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time  last-divi-time :end_time (now)}))
-                sample-data (take 5 at-taqa) ;; sample for testing to not use too much context and run up bills
-                ;; new-me (run-evolution jinni-id widget updated-widget actions)
-                new-me (run-evolution jinni-id updated-widget action sample-data)
-                path (save-divi-img jinni-id new-me (now))]
-                aaaa (println "divi:mistral:see-current:save-new-me  \n\n" jinni-id path)
+    ;;             aaaa (println "divi:mistral:see-current:new-divi  \n\n" updated-widget)
+    ;;             at-taqa (:actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time  last-divi-time :end_time (now)}))
+    ;;             sample-data (take 5 at-taqa) ;; sample for testing to not use too much context and run up bills
+    ;;             ;; new-me (run-evolution jinni-id widget updated-widget actions)
+    ;;             new-me-url (run-evolution jinni-id updated-widget action sample-data)
+    ;;             asfasfa (println "run-evo:new-me-url" new-me-url)
+    ;;             path (save-divi-img jinni-id new-me-url (now))]
+    ;;             aaaa (println "divi:mistral:see-current:save-new-me-url  \n\n" jinni-id path)
 
-                ;; TODO update jinni widget  (if (:prompt new-prompt) (db/call ))
+    ;;             ;; TODO update jinni widget  (if (:prompt new-prompt) (db/call ))
 
-                 ;; TODO might need to strip /resource/. Might be better to return url from (save-divi-img) seems 
-                ;; (str "https://" (:api-domain (load-config)) "/" path))
-                path) ;; TODO file or path or url ?
-            (catch Exception e
-                (println "divine:mistral:see-current:ERROR" e)
-                (log/handle-error e "Failed to run divination" {:provider PROVIDER}))))))
+    ;;              ;; TODO might need to strip /resource/. Might be better to return url from (save-divi-img) seems 
+    ;;             ;; (str "https://" (:api-domain (load-config)) "/" path))
+    ;;             path) ;; TODO file or path or url ?
+    ;;         (catch Exception e
+    ;;             (println "divine:mistral:see-current:ERROR" e)
+    ;;             (log/handle-error e "Failed to run divination" {:provider PROVIDER}))))))
 
 (defn get-jinn-img-handler
   "get the latests image for a jinn, reads the file on this server
@@ -437,14 +508,17 @@
   @DEV: requires GET request  w/ query param argument ?jid=xxxx-xxxx-xx-xxxx-xxx"
   [request]
   (let [jid (get-in request [:path-params :jid])
+        ; TODO should return (get-last-divi-img) immediately to user, then run (see-current-me) and upate frontend somehow with new image
         path (see-current-me jid)]
     (println "view pfp handler" jid path)
     (cond
       (nil? jid)            {:status 400 :error "must provide jinn id"}
       (nil? path)           {:status 404 :error "Jinn does not exist"} ; if no default base img then no player
       (.exists (io/file path))
-            (-> (io/file path) ; send img directly to save locally for offline access. Player can also share directly to socials then
+      (let [resp (-> (io/file path) ; send img directly to save locally for offline access. Player can also share directly to socials then
                 (io/input-stream)
                 (assoc :headers {"Content-Type" "image/png"})
-                (ring.util.response/response))
+                (ring.util.response/response))]
+            (println "avatar image respoinse" resp))
+            
       :else                 {:status 400 :body "Unknown divination error"})))
