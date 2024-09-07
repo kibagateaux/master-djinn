@@ -18,8 +18,7 @@
         ;; :birthday (:birthday args)
       } :jinni {
         :id jinni-id
-        :uuid (avatar->uuid jinni-id)
-        :birthday (now)}})))
+        :uuid (avatar->uuid jinni-id)}})))
 
 
 (defn get-summoning-circle

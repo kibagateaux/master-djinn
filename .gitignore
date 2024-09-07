@@ -3,6 +3,11 @@ profiles.clj
 resources/env.edn
 *.env
 
+# App specific
+# save base avatars but not generated player images
+resources/avatars
+!resources/avatars/base
+
 # Java related
 pom.xml
 pom.xml.asc
