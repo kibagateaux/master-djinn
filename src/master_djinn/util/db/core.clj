@@ -109,8 +109,8 @@
   RETURN COLLECT(a) as actions
 ")
 
-(neo4j/defquery get-player-widgets"
-  MATCH  (u:Avatar {id: $player_id})-[:USES]->(w:Widget)
+(neo4j/defquery get-player-widgets "
+  MATCH (u:Avatar {id: $player_id})<-[:BONDS]-(j:Jinni:p2p)-[:USES]->(w:Widget)
   RETURN COLLECT(w) as widgets
 ")
 
@@ -133,7 +133,7 @@
 (neo4j/defquery get-last-divination "
   MATCH (j:Jinni {id: $jinni_id}),
   (j)-[:USES]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
-  WHERE w.priority > 0
+  WHERE w.priority > 0 OR w.priority IS NULL
   
   OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
   
@@ -157,14 +157,10 @@
 
 ;;; SETTERS
 
-;; Creates player+jinni but no details until create-player called
-;; TODO delete all existing widgets before setting?
-;; MATCH (p)-[wr:USES]->(w:Widget); DELETE wr, w; UNWIND
-;; MERGE allows player to create :Avatar during onboarding before verified by 
-;; Good growth tactic, can have people confirm integrations/widgets before allowing to play the game.
+;; works on any jinni even if not player not verified so can set intentions in onboarding
+;; must already be created via create-npc before setting widgets
 (neo4j/defquery set-widget-settings "
-  MERGE (p:Avatar:Human {id: $player_id})
-  MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:p2p)
+  MATCH (j:Jinni {id: $jinni_id})
   
   WITH j
   UNWIND $widgets AS widget

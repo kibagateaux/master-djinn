@@ -256,7 +256,8 @@
                 {:type       (list (non-null ID))
                 :description "Creates or updates settings for a widget to custyomize a players homepage.
                             Returns null if item for widget not equipped or invalid config"
-                :args       {:verification {:type (non-null :SignedRequest)} ;; TODO ZKP?
+                :args       {:verification {:type (non-null :SignedRequest)}
+                            :jinni_id {:type (non-null String) :description "Jinni for player to update wigets on. If p2c then must be summoner"} 
                             :widgets {:type (list (non-null :WidgetSettingInput))}}} ;; 0x ETH address they will sign messages from
                 
             :sync_provider_id

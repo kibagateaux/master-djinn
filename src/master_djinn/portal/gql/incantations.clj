@@ -49,6 +49,7 @@
     [ctx args val]
     (let [pid (get-signer ctx)
         widgets (:widgets args)
+        jid (:jinni_id args)
         ;; provider (:provider setting)
         ;; id (iddb/getid pid provider)
         ]
@@ -70,7 +71,7 @@
             (println "Gql:Resolv:ActivateWidget:ERROR - Must provider :Widget configs to set")
             {:status 400 :body (map->json { :error "No :Widgets provided"})})
         ;; TODO clojure.spec/conform widgets ::widgets
-        :else (j/activate-widget pid widgets))))
+        :else (j/activate-widget pid jid widgets))))
 
 
 (defn jinni-join-summoning-circle
@@ -82,7 +83,7 @@
         signer (get-signer ctx)
         ; TODO if no circle yet then only target-player a.k.a creator in majik-msg. if circle exists then creator signs jinni + player
         jubmoji (ecrecover majik_msg (str "summon:" (if jinni_id (str jinni_id "." player_id) player_id)))
-        {:keys [jinni summoner]} (j/get-summoning-circle jubmoji)] ;; TODO incl :jid jid to join specific circle
+        {:keys [jinni summoner]} (j/get-summoning-circle jubmoji)]
         (println "joining circle player, jubmoji, summoner" player_id " : " jubmoji " : " (:id (or summoner {})))
         (cond
             (and (not= signer player_id) (not= signer (:id summoner)))
@@ -164,10 +165,11 @@
 ;; Tomogatchi Evolutions
 (defn jinni-evolution
     "Allow anyone to initiate an evolution of a players jinni using their
-    configured settings in maliksmajik-avatar-viewer widget"
+    configured settings in maliksmajik-avatar-viewer widget.
+    If no jinni specified then tries to upate entire game state."
     [ctx args val]
     (if-let [jid (:jinni_id args)]
-        ;; TODO pull provider from widget settings and decide which to use
+        ;; TODO pull provider from widget settings and route to proper file
         (openrouter-d/see-current-me jid)
         (map #(openrouter-d/see-current-me %) (:jinn (db/call db/get-all-jinn)))))
 

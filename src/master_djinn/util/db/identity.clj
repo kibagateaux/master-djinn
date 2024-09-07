@@ -19,6 +19,7 @@
 ;; Set UUID to not create duplicate avatar that only has id from setting :Widgets
 ;; Adds trust network metadata of which master djinn approved the player
 ;; (p)--(j) erge assumes only one jinni per player (intentional for now)
+;; if player was NPC before then convert to full player preserving their existing game state.
 ;; ON CREATE SET to prevent acciental overriding
 (neo4j/defquery create-player "
     MERGE (p:Avatar:Human { id: $player.id })
@@ -27,21 +28,39 @@
     
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
     MERGE (p)<-[:ATTESTS]-(:Provider {id: $master_id})
-    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:p2p)
+    
+    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni)
+    ON CREATE 
+        SET j = $jinni, 
+            j:p2p,
+            rj.since = $now
+    ON MATCH 
+        SET j:p2p,
+        REMOVE j:NPC
 
-    ON CREATE
-        SET j = $jinni
-        SET rj.since = $now
 
     RETURN $jinni.uuid as jinni
 ")
 
+;; creates npc avatar so we can save their widget config when they first download the game
+;; they convert from npc to p2p when vouched by master jinn and preserving widgets and action data
+;; ideally npc would have no jinni but bc of how widgets work and want onboarding UX to explain game and such its required
 (neo4j/defquery create-npc "
     MERGE (p:Avatar:Human { id: $player.id })
     SET p = $player
     
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
+
+    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:NPC)
+    ON CREATE
+        SET rj.since = $now
+        SET j = $jinni
+
+    CASE WHEN $summoner IS NOT NULL
     MERGE (p)<-[:ATTESTS]-(:Provider {id: $summoner})
+    END
+
+    RETURN j.id as jid
 ")
 
 ;; TODO should? add rel for (:Avatar:Jinni {id: "master-djinn"})-[:ATTESTS]->(:Identity)
@@ -53,6 +72,13 @@
     WITH id
     CALL apoc.create.addLabels(id, [$provider]) YIELD node
     RETURN ID(node) as id
+")
+
+(neo4j/defquery get-player-attesters "
+    MATCH (p:Avatar { id: $pid })
+    MATCH (p)<-[:ATTESTS]->(pr:Provider)
+    
+    RETURN COLLECT(pr) as attesters
 ")
 
 ;; set attributes individually to not erase other identity data e.g. username
