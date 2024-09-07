@@ -144,13 +144,6 @@
             (log/handle-error err "Failure avatar evolution prompt" {:provider PROVIDER})
             (throw (RuntimeException. (str "err avatar evo img prompt" (.getMessage err)))))))
 
-;; (defn get-dir-files [base-path target-dir file-format]
-;;   (->> (io/file base-path)
-;;        file-seq
-;;        (filter #(and (.isDirectory %)
-;;                      (= (.getName %) target-dir)))
-;;        first))
-
 (defn get-last-divi-img
     "checks if jinni already has already been divined
     if so returns last generated image
@@ -158,15 +151,9 @@
     [jinni-id]
   (let [jinni-dir (str "resources/avatars/" jinni-id)
         aaa (println "get last divi 4 avatar - " jinni-dir)
-        
-        ;; TODO i think this is greedy match. so first alphanumeric jinni id in dir that mateches gets returned
-        ;; e.g. avatars/me and avatars/me2 if running on me2 will always return me's pictures
-        ;; finish impl and use  get-dir-files 
         files (->> (file-seq (io/file jinni-dir))
                     (filter #(.isFile %))
                     (map #(.getName %))
-                    ;; (map #(.format % iso-formatter))
-                    ;; (map #(.format iso-formatter % )) ;; shouldnt need to format. already formatted on save
                     (filter #(re-matches #"\d{4}-\d{2}-\d{2}.png" %)) ; ensure ISO format for sorting
                     (map #(java.time.LocalDate/parse (clojure.string/replace % #"\.png" "")))
                     (sort-by identity #(compare %1 %2))) ; this should work but getting ISO timestamp not short date
@@ -282,10 +269,6 @@
                 ;; :image should be full path
                 img-path (get-last-divi-img jinni-id)
                 sanfuai (println "divi:mistral:run-evo:base-img \n\n" img-path)
-                ;; base-img (bytes->b64 (file->bytes img-path))
-                ;; aaaa (println "divi:mistral:run-evo:base-img \n\n" (nil? base-img) (take 50 base-img))
-                ;; base-img (io/file img-path)
-
                 new-image-url (prompt-image img-path augment-prompt) ;; TODO#0  add (:moods settings)  here to affect face and posture TODO#1 (:prompt (edn/read-string augement-prompt))
                 ;; aaaa (println "divi:mistral:run-evo:img-res \n\n" image-resp)
                 ;; new-image (:image (json->map (:body image-resp)))
@@ -295,11 +278,10 @@
                 ;; TODO save image-resp to file system (save-divi-img jinni-id image-resp (now))
                 ;; aaaa (println "divi:mistral:run-evo:img b64-2 \n\n" new-image)
                 uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" start-time version)
-                data (merge last-divi {
-                        :uuid uuid
-                        :start_time (or (:end_time last-divi) start-time)
-                        :end_time (now)})
-                ]
+                data {:uuid uuid
+                    :start_time (or (:end_time last-divi) start-time)
+                    :end_time (now)}]
+                    
                 sanfuai (println "divi:mistral:run-evo:divi-diff \n\n" last-divi data)
 
                 ;; TODO also add hash to widget settings so next run can compare new seetings/hash to existing hash
@@ -329,15 +311,15 @@
         which was not in your intentions so did not affect experiment results`
     @returns 
     TODO "
-    [settings divi]
-    (println "new-ana-prompt" settings divi)
+    [settings]
+    (println "new-ana-prompt" settings)
     (let [inputs (concat (:intentions settings) (:mood settings) (:stats settings))
             new-hash (hash inputs)
             ;; new hash and reprompt on first divi since saving settings incl.
             ;; incl. first ever divi per player where (:hash divi) is null 
-            reprompt? (or (not= new-hash (:hash divi)) (nil? (:hash divi)))]
-    (println "divine:mistral:new-prompt:hash" reprompt? (:hash settings) (:hash divi))
-    (if true ; (not reprompt?)
+            reprompt? (or (not= new-hash (:hash settings)) (nil? (:hash settings)))]
+    (println "divine:mistral:new-prompt:hash" reprompt? (:hash settings) new-hash)
+    (if (not reprompt?) ; (not reprompt?)
         {} ;; if existing divi and same settings, return existing prompt
         (try
          (let [
@@ -369,8 +351,9 @@
                 
                 You MUST only output the personalized prompt by itself."
                 LLM_ANALYSIS_REWARD))
-            analysis-prompt (parse-text-response prompt-response)]
-            {:hash new-hash :prompt analysis-prompt :embeds []}) ;; TODO#1 :embed embeds
+            analysis-prompt (parse-text-response prompt-response)]  ;; TODO#1 :embed embeds
+            asfas  (println "new prompt" new-hash analysis-prompt)
+            {:hash new-hash :prompt analysis-prompt :embeds []})
         (catch Exception e
             (println "divine:mistral:new-prompt:ERR" e)
             (log/handle-error e "Failed to generate new prompt and embeds" {:provider PROVIDER})
@@ -394,8 +377,8 @@
     ;;     path "avatars/my-test-jinni-id2/2024-09-04.png"]
     ;;     path))
 
-    (get-last-divi-img jinni-id)
     (let [divi-meta (db/call db/get-last-divination {:jinni_id jinni-id})
+        now- (now)
         {:keys [action widget]} divi-meta ; meta cant be null bc must have widget
         last-divi-time (or (:start_time action db/PORTAL_DAY))
         kkk (println "divine:mistral:see-current:time-since-last:" (:start_time action) last-divi-time)
@@ -415,14 +398,16 @@
                 ;; 2. new prompt save to wiget
                 ;; 3. after analysis save result to :Divi
 
-                new-prompt (get-new-analysis-prompt widget (:hash divi-meta))
-                ;; aaa (println "divine:mistral:see-current:divi:" divi)
-                updated-widget (merge widget new-prompt)
-                aaaa (println "divi:mistral:see-current:new-divi  \n\n" updated-widget)
-                at-taqa (:actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time  last-divi-time :end_time (now)}))
-                sample-data (take 5 at-taqa) ;; sample for testing to not use too much context and run up bills
+                aaaa (println "divi:mistral:see-current:new-divi  \n\n" divi-meta)
+                new-prompt-config (get-new-analysis-prompt widget)
+                ;; TODO only if not empty? 
+                _ (db/call db/update-divination (merge {:jid jinni-id}  new-prompt-config)) ; could return new widget from db but id rather make it async and call not dependency. does that make sense tho if we're running everything based on that? 
+                updated-widget (merge widget new-prompt-config)
+                aaaa (println "divi:mistral:see-current:old+new-widget  \n\n" widget updated-widget)
+                ;; aaaa (println "divi:mistral:see-current:new-divi  \n\n" updated-widget)
+                at-taqa (:actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time last-divi-time :end_time now-}))
                 ;; new-me (run-evolution jinni-id widget updated-widget actions)
-                new-me-url (run-evolution jinni-id updated-widget action sample-data)
+                new-me-url (run-evolution jinni-id updated-widget action at-taqa)
                 ;; TODO if branch here. save somesome to db then proceed if not nil
                 asfasfa (println "run-evo:new-me-url" new-me-url)
 
@@ -430,8 +415,9 @@
 
                 ;; TODO what if new-me-url is nil? already saved ivi action to DB just not saving/returning img for players
 
-                path (save-divi-img jinni-id new-me-url (now))]
-                (println "divi:mistral:see-current:save-new-me-url  \n\n" jinni-id path)
+                ;; path ""]
+                path (save-divi-img jinni-id new-me-url now-)]
+                ;; (println "divi:mistral:see-current:save-new-me-url  \n\n" jinni-id path)
 
                 ;; TODO update jinni widget  (if (:prompt new-prompt) (db/call ))
 

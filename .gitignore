@@ -5,7 +5,7 @@ resources/env.edn
 
 # App specific
 # save base avatars but not generated player images
-resources/avatars
+resources/avatars/*
 !resources/avatars/base
 
 # Java related

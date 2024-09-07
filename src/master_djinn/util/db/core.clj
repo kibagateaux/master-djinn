@@ -171,6 +171,13 @@
   RETURN COLLECT(w.uuid) as widgets
 ")
 
+(neo4j/defquery update-divination "
+  MATCH (j:Jinni {id: $jid})-[]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
+  SET w.prompt = $prompt, w.hash = $hash, w.embeds = $embeds
+
+  RETURN w as widget
+")
+
 ;; TODO Ideally CREATE in unind could be a merge for automatic dedupe but cant get that query to work with putting object in directly to create
 ;; if we want multiple data providers/sources to attest to an action, will need to rethink data model and will cause issues with autoMERGEing
 ;; @DEV: relationships can only ahve 1 type. refactor.setType *overrides*. Create multiple relations if want to express :WANTS and :DID 
