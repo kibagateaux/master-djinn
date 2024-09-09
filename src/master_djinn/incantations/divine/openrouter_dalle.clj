@@ -415,36 +415,53 @@
 
                 ;; TODO what if new-me-url is nil? already saved ivi action to DB just not saving/returning img for players
 
-                ;; path ""]
-                path (save-divi-img jinni-id new-me-url now-)]
+                uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" now- version) ;; TODO diff versions for see-current-me and run-evolution
+                data {:uuid uuid
+                    :start_time (or (:end_time action) now-)
+                    :end_time now-}]
+
+                (db/call db/create-divination {
+                    :jinni_id jinni-id
+                    :provider PROVIDER
+                    :data data})
                 ;; (println "divi:mistral:see-current:save-new-me-url  \n\n" jinni-id path)
 
-                ;; TODO update jinni widget  (if (:prompt new-prompt) (db/call ))
 
                  ;; TODO might need to strip /resource/. Might be better to return url from (save-divi-img) seems 
                 ;; (str "https://" (:api-domain (load-config)) "/" path))
-                path) ;; TODO file or path or url ?
+                (save-divi-img jinni-id new-me-url now-)) ;; relative path url
             (catch Exception e
                 (println "divine:mistral:see-current:ERROR" e)
                 (log/handle-error e "Failed to run divination" {:provider PROVIDER}))))))
 
+
 (defn get-jinn-img-handler
   "get the latests image for a jinn, reads the file on this server
   and serves it for display purposes on frontend <img> tags
-  @DEV: requires GET request  w/ query param argument ?jid=xxxx-xxxx-xx-xxxx-xxx"
+  requires GET request  w/ query param argument ?jid=xxxx-xxxx-xx-xxxx-xxx
+  @DEV if mode=download then returns binary for client to store locally
+        if mode=view then server displays image directly"
   [request]
   (let [jid (get-in request [:path-params :jid])
+        mode (get-in request [:query-params :mode])
         ; TODO should return (get-last-divi-img) immediately to user, then run (see-current-me) and upate frontend somehow with new image
         path (get-last-divi-img jid)]
     (println "view pfp handler" jid path)
     (cond
       (nil? jid)            {:status 400 :error "must provide jinn id"}
       (nil? path)           {:status 404 :error "Jinn does not exist"} ; if no default base img then no player
-      (.exists (io/file path))
-      (let [resp (-> (io/file path) ; send img directly to save locally for offline access. Player can also share directly to socials then
-                (io/input-stream)
-                (assoc :headers {"Content-Type" "image/png"})
-                (ring.util.response/response))]
-            (println "avatar image respoinse" resp))
-            
-      :else                 {:status 400 :body "Unknown divination error"})))
+      (not (.exists (io/file path))) {:status 404 :error "Jinn has no divination yet"} ; should always display default
+      (= mode "download")  ; send img directly to save locally for offline access. Player can also share directly to socials then
+        ;; (let [resp (-> (io/file path)
+        ;;             (io/input-stream)
+        ;;             (assoc :headers {"Content-Type" "image/png"})
+        ;;             (ring.util.response/response))]
+        ;;         (println "avatar image respoinse" resp))
+        (-> (ring.util.response/response (io/input-stream path))
+        (ring.util.response/header "Content-Type" "application/octet-stream")
+        ;; (response/header "Content-Disposition" "attachment; filename=\"image.jpg\"")
+        )
+    (= mode "view") (-> (ring.util.response/file-response path)
+        (ring.util.response/content-type "image/png"))
+    ;; else should default to view mode for simpler devex
+      :else                 {:status 400 :body "Must provide a ?mode=view|download"})))
