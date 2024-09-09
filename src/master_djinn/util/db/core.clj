@@ -143,16 +143,38 @@
   RETURN w as widget, d as action
 ")
 
+;; ensure data is only set if divi is actually created so ont overwrite timing vars
 (neo4j/defquery create-divination "
   MATCH (j:Jinni {id: $jinni_id })
   MERGE (p:Provider {provider: $provider})
   MERGE (j)-[:ACTS {type: 'SEES'}]->(a:Action:Divination {uuid: $data.uuid})
-  MERGE (p)-[:ATTESTS]->(a)
+  
+  ON CREATE
+    SET a += $data
 
-  SET a = $data
+  MERGE (p)-[:ATTESTS]->(a)
   
   RETURN a.uuid AS id
 ")
+
+;; for progressively tracking divination e.g. initially only start-time to know its begun but then need end-time to know process finished
+(neo4j/defquery update-divination "
+  MATCH (d:Divination {uuid: $uuid})
+  SET d += $updates
+  RETURN d
+")
+
+
+; TODO new widget node, update relations
+  ;; SET w.prompt = $prompt, w.hash = $hash, w.embeds = $embeds
+(neo4j/defquery new-divination-settings "
+  MATCH (j:Jinni {id: $jid})-[]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
+
+  SET w += $updates
+
+  RETURN w as widget
+")
+
 
 
 ;;; SETTERS
@@ -169,13 +191,6 @@
   SET w = widget
 
   RETURN COLLECT(w.uuid) as widgets
-")
-
-(neo4j/defquery update-divination "
-  MATCH (j:Jinni {id: $jid})-[]->(w:Widget {id: 'maliksmajik-avatar-viewer'})
-  SET w.prompt = $prompt, w.hash = $hash, w.embeds = $embeds
-
-  RETURN w as widget
 ")
 
 ;; TODO Ideally CREATE in unind could be a merge for automatic dedupe but cant get that query to work with putting object in directly to create

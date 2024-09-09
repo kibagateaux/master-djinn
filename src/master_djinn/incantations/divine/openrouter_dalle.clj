@@ -265,30 +265,9 @@
             
 
                 img-path (get-last-divi-img jinni-id)
-                sanfuai (println "divi:mistral:run-evo:base-img \n\n" img-path)
-                new-image-url (prompt-image img-path augment-prompt) ;; TODO#0  add (:moods settings)  here to affect face and posture TODO#1 (:prompt (edn/read-string augement-prompt))
-                ;; aaaa (println "divi:mistral:run-evo:img-res \n\n" image-resp)
-                ;; new-image (:image (json->map (:body image-resp)))
-                ;; aaaa (println "divi:mistral:run-evo:img-b64 \n\n" new-image)
-                ;; new-image2 (b64->rgba (parse-dalle-response image-resp))
-                
-                ;; TODO save image-resp to file system (save-divi-img jinni-id image-resp (now))
-                ;; aaaa (println "divi:mistral:run-evo:img b64-2 \n\n" new-image)
-                uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" start-time version)
-                data {:uuid uuid
-                    :start_time (or (:end_time last-divi) start-time)
-                    :end_time (now)}]
-                    
-                sanfuai (println "divi:mistral:run-evo:divi-diff \n\n" last-divi data)
-
-                ;; TODO also add hash to widget settings so next run can compare new seetings/hash to existing hash
-                ;; Maybe just make a specific `add-divination` query. keep :Action format just make Cypher cleaner
-                (db/call db/create-divination {
-                    :jinni_id jinni-id
-                    :provider PROVIDER
-                    :data data})
-                ;; TODO!!! (if (not= (:hash widget) (:hash last-divi ) (db/call db/set-intentions widget))
-                new-image-url)
+                sanfuai (println "divi:mistral:run-evo:base-img \n\n" img-path)]
+                log-0 (println "Starting image augmentation : " jinni-id)
+                (prompt-image img-path augment-prompt))
             (catch Exception e
                 (println "divine:mistral:generation:ERROR" e)
                 (log/handle-error e "Failed to run divination" {:provider PROVIDER})
@@ -375,21 +354,23 @@
     ;;     path))
 
     (let [divi-meta (db/call db/get-last-divination {:jinni_id jinni-id})
-        now- (now)
+        version "0.0.1" now- (now) ;; TODO diff versions for see-current-me and run-evolution
         {:keys [action widget]} divi-meta ; meta cant be null bc must have widget
-        last-divi-time (or (:start_time action db/PORTAL_DAY))
-        kkk (println "divine:mistral:see-current:time-since-last:" (:start_time action) last-divi-time)
-        time-diff (- (.getEpochSecond (java.time.Instant/parse (now))) 
+        last-divi-time (or (:start_time action) db/PORTAL_DAY)
+        time-diff (- (.getEpochSecond (java.time.Instant/parse now-)) 
                     (.getEpochSecond (java.time.Instant/parse last-divi-time)))
         ;; kkk (println "divine:mistral:see-current:time-since-last:" time-diff MIN_DIVINATION_INTERVAL_SEC)
-        run-evo? (> time-diff MIN_DIVINATION_INTERVAL_SEC)] ;; TODO probs throws nil error on divi-meta
+        run-evo? (> time-diff MIN_DIVINATION_INTERVAL_SEC)
+        uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" now- version)]
         (println "divine:mistral:see-current:run-evo+setttings:" run-evo? (> time-diff MIN_DIVINATION_INTERVAL_SEC))
-      ;; (nil? (:image divi))  {:status 400 :error "No pfp for jinn on last divination"} ;; shouldnt be possible but just in case
-            ;; TODO Add 3 days to start_time, probs direct java. add to utils.core
-            ;; convert to UNIX, + MIN_DIVINATION_INTERVAL_SEC, convert back to ISO
-        (if false ; (not run-evo?)
+        (if (not run-evo?)
             (get-last-divi-img jinni-id) ; dont run evolutions more than once every 3 days.
-            (try (let [
+            (try
+                (db/call db/create-divination {
+                    :jinni_id jinni-id
+                    :provider PROVIDER
+                    :data {:uuid uuid :start_time (or (:end_time action) now-) :status "init"}})    
+                (let [
                 ;; TODO make more fault tolerant btw all external calls to save intermediary results to divination
                 ;; e.g. 1. save :Action:Divi here so we know it was initiated and when to pull data from incase an evo isnt run again for a while
                 ;; 2. new prompt save to wiget
@@ -397,29 +378,27 @@
 
                 aaaa (println "divi:mistral:see-current:new-divi  \n\n" divi-meta)
                 new-prompt-config (get-new-analysis-prompt widget)
-                ;; TODO only if not empty? 
-                _ (db/call db/update-divination (merge {:jid jinni-id}  new-prompt-config)) ; could return new widget from db but id rather make it async and call not dependency. does that make sense tho if we're running everything based on that? 
-                updated-widget (merge widget new-prompt-config)
-                aaaa (println "divi:mistral:see-current:old+new-widget  \n\n" widget updated-widget)
+
+                ;; TODO update/divi :status 're-config'. track that we have updated analysis prompt already
+
+                updated-widget (if (:hash new-prompt-config) ;; save to db if running on new config
+                    (:widget (db/call db/new-divination-settings (merge {:jid jinni-id}  new-prompt-config)))
+                    widget)  ; could be async update but want sync bc we run evo on this new config so needs to be updated in db
+                aaaa (println "divi:mistral:see-current:old+new-widget  \n\n" (remove :prompt widget) (remove :prompt updated-widget))
                 ;; aaaa (println "divi:mistral:see-current:new-divi  \n\n" updated-widget)
                 at-taqa (:actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time last-divi-time :end_time now-}))
                 new-me-url (run-evolution jinni-id updated-widget at-taqa)
                 log-0 (println "Saving augmentation results: " new-me-url)
                 path (save-divi-img jinni-id new-me-url now-)  ;; full relative path url
 
-                ;; new-me-url "https://oaidalleapiprodscus.blob.core.windows.net/private/org-5UhygDKOgyJZIMbTnIBZoAgd/user-6P7ggpeSMtH8hPYW5yoc7Hv3/img-pyUaObiej6kWsmdfnuwIT9dy.png?st=2024-09-07T07%3A36%3A00Z&se=2024-09-07T09%3A36%3A00Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-09-06T22%3A33%3A53Z&ske=2024-09-07T22%3A33%3A53Z&sks=b&skv=2024-08-04&sig=%2BL6/bboJkHOrX3aS%2BepUg3/L/lE/wRyiK0h5JHPxkm0%3D"
+                _ (db/call db/update-divination {:uuid uuid :updates {:end_time (now) :status "complete"}}) ;; fetch new time after pipeline completes and mark as complete in db
 
                 ;; TODO branch here if url nil. save somesome to db then proceed if not nil
 
-                uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" now- version) ;; TODO diff versions for see-current-me and run-evolution
-                data {:uuid uuid
-                    :start_time (or (:end_time action) now-)
-                    :end_time now-}]
+                ;; new-me-url "https://oaidalleapiprodscus.blob.core.windows.net/private/org-5UhygDKOgyJZIMbTnIBZoAgd/user-6P7ggpeSMtH8hPYW5yoc7Hv3/img-pyUaObiej6kWsmdfnuwIT9dy.png?st=2024-09-07T07%3A36%3A00Z&se=2024-09-07T09%3A36%3A00Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-09-06T22%3A33%3A53Z&ske=2024-09-07T22%3A33%3A53Z&sks=b&skv=2024-08-04&sig=%2BL6/bboJkHOrX3aS%2BepUg3/L/lE/wRyiK0h5JHPxkm0%3D"
 
-                (db/call db/create-divination {
-                    :jinni_id jinni-id
-                    :provider PROVIDER
-                    :data data})
+                ;; TODO what if new-me-url is nil? already saved ivi action to DB just not saving/returning img for players
+                ]
                 ;; (println "divi:mistral:see-current:save-new-me-url  \n\n" jinni-id path)
 
 
