@@ -21,9 +21,11 @@
 ;; TODO prompt eng test
 ;; - You vs they when describing who the analysis/result is for
 ;; - Not science persona just art/community (mostly to avoid "safety")
+;; - Cite which provided actions justify your final analysis using their `:uuid` field
 ;;
 
 (defonce PROVIDER "OpenRouterDalle")
+(defonce AVATAR_IMG_DIR "resources/avatars/")
 (defonce MIN_DIVINATION_INTERVAL_DAY 3)
 (defonce MIN_DIVINATION_INTERVAL_SEC (* MIN_DIVINATION_INTERVAL_DAY (* 24 (* 60 60))))
 
@@ -65,7 +67,6 @@
     7. MUST be formatted for clojure programming language object
     8. DO NOT provide comments in the output
 ")
-;; - MUST cite which provided actions justify your final analysis using their `:uuid` field
 
 (defonce LLM_ANALYSIS_REWARD "\n
     If your research analysis yields consistent and reliable results
@@ -82,7 +83,7 @@
 ")
 
 
-;; ```{:analysis { :brain 0.2 :eyes -0.1 :heart 0.1 :posture -0.2 :reason \"reasons for modifcation requests here\" }}```
+;; an example modification request looks like```{:analysis { :brain 0.2 :eyes -0.1 :heart 0.1 :posture -0.2 :reason \"reasons for modifcation requests here\" }}```
 (defonce LLM_AUGMENT_FORMAT "\n
     They have provided you with your original image that needs modification along with the requested modifications.
     Requested modifications have 1 and -1 for massive positive or negative changes to the image and 0.1 or -0.1 for slight changes.
@@ -132,7 +133,7 @@
     [og-image-path prompt]
     (println "DALLE Edit image/prompt : " og-image-path prompt)
     (try (let [image-res (oai/create-image-edit {
-                :image (io/file og-image-path) ;; TODO need rgb->rgba  func for sending or does library handle that?
+                :image (io/file og-image-path)
                 :prompt prompt
                 :n 1
                 :size "1024x1024"}
@@ -147,9 +148,10 @@
 (defn get-last-divi-img
     "checks if jinni already has already been divined
     if so returns last generated image
-    if not returns base model to start divination"
+    if not returns base model to start divination
+    returns full path on server file system incl. resource/"
     [jinni-id]
-  (let [jinni-dir (str "resources/avatars/" jinni-id)
+  (let [jinni-dir (str AVATAR_IMG_DIR jinni-id)
         aaa (println "get last divi 4 avatar - " jinni-dir)
         files (->> (file-seq (io/file jinni-dir))
                     (filter #(.isFile %))
@@ -157,11 +159,9 @@
                     (filter #(re-matches #"\d{4}-\d{2}-\d{2}.png" %)) ; ensure ISO format for sorting
                     (map #(java.time.LocalDate/parse (clojure.string/replace % #"\.png" "")))
                     (sort-by identity #(compare %1 %2))) ; this should work but getting ISO timestamp not short date
-        ;; TODO check that this actually sorts chronologically
-        asfajsf (println "avatar past images" files)
-        d-img (last files)] ;; TODO (str (last files )".png")
+        d-img (last files)]
     (if (nil? d-img) ; if no past divinations return base model else lastest chronological divination
-        "resources/avatars/base/blub.png"
+        (str AVATAR_IMG_DIR "base/blub.png")
         (str jinni-dir "/" (last files) ".png"))))
 
 (defn rgb->rgba
@@ -208,7 +208,7 @@
     (cond
     (nil? jid) (do (log/handle-error (ex-info "Invalid image prompt inputs: Jinni ID" {}) "divini:evo:save-img No jinni id to save img to" {:provider PROVIDER}))
     (nil? img-url) (do (log/handle-error (ex-info "Invalid image prompt inputs: Prompt" {}) "divini:evo:save-img no evo img from AI service to save" {:provider PROVIDER :jid jid}))
-    :else (let [dir (str "resources/avatars/" jid)
+    :else (let [dir (str AVATAR_IMG_DIR jid)
         formatter (DateTimeFormatter/ofPattern "yyyy-MM-dd")
         day (-> (ZonedDateTime/parse now)
                 (.withZoneSameInstant (ZoneId/of "UTC"))
@@ -222,9 +222,12 @@
 
 ;; Step #2
 (defn run-evolution
-    [jinni-id settings last-divi actions]
+    [jinni-id settings actions]
+    ;; TODO need to clean this up and refactor more stuff into see-current-me flow
+    ;; e.g. last-divi only needed for :end_time when saving to db
     (try (let [version "0.0.1" start-time (now)
                 asfaefa (println "evo actions" actions (doall actions))
+                log-0 (println "Starting analysis: " jinni-id ": now " start-time)
                 analysis-response (prompt-text (str
                     LLM_ANALYSIS_PERSONA
                     (:prompt settings)
@@ -233,16 +236,19 @@
                     "-------------"
                     LLM_ANALYSIS_FORMAT
                     LLM_ANALYSIS_REWARD))
+                
                 analysis-output (parse-text-response analysis-response)
-                ;; aaaa (println "divi:mistral:run-evo:analysis \n\n" analysis-output)
                 ;; parse structured object in response and convert from string to clj map
-                aaaa (println "divi:mistral:run-evo:analysis-raw-output \n\n" (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output))
+                ;; aaaa (println "divi:mistral:run-evo:analysis-raw-output \n\n" (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output))
                 result (clojure.edn/read-string (nth (re-find  #"(?is).*(\{.*:analysis.*\}).*" analysis-output) 1))
-                aaaa (println "divi:mistral:run-evo:analysis-result \n\n" result)
+                ;; aaaa (println "divi:mistral:run-evo:analysis-result \n\n" result)
+
+                log-0 (println "Retrieving augmentation parameters: " jinni-id)
 
                 image-augmentation-prompt (prompt-text (str
                     LLM_AUGMENT_PERSONA
                     "Patron's augmentation requests:" result ; TODO dont like raw str in prompt here. templatize for better experimentation/anayltics
+                    ;; TODO#0  add (:moods settings)  here to affect face and posture TODO#1 (:prompt (edn/read-string augement-prompt))
                     LLM_AUGMENT_FORMAT
                     LLM_ANALYSIS_REWARD
                 ))
@@ -250,23 +256,14 @@
                 ;; clean-aug-prompt (clean-text-resp (parse-text-response image-augmentation-prompt))
                 asfjnaieufn (println "divi:mistral:run-evo:raw-aug-prompt" (type raw-aug-prompt)  raw-aug-prompt)
                 
+                ;; TODO prompt eng to get this format working better so no EDN rea errors
                 augment-prompt (nth (re-find  #"(?is).*(\{.*:prompt.*\}).*" raw-aug-prompt) 1)
-
                 ;; augment-prompt (clojure.edn/read-string (nth (re-find  #"(?is).*(\{.*:prompt.*\}).*" raw-aug-prompt) 1))
-
-                ;; result "{:analysis {:nutrition 0.1, :exercise 0.5, :creativity 0.3, :relationships 0.2, :reason Subject has consistently made healthy food choices, increased exercise frequency, engaged in daily creative activities, and nurtured relationships with supportive individuals. This alignment with intentions is contributing to overall progress towards self-actualization.}}"
-                ;; augment-prompt "{:prompt \"Based on the analysis data provided, your avatar will have a brighter and more vibrant color palette to reflect your increased creativity and improved nutrition. The eyes will sparkle with a slightly larger pupil to represent your enhanced focus and energy from increased exercise. The heart shape will be fuller and more defined, symbolizing the growth and nurturing of your relationships. Your posture will appear more upright and confident, reflecting your newfound self-assurance and progress towards self-actualization.\"}"
-                
                 aaaa (println "divi:mistral:run-evo:img-output \n\n" (type augment-prompt) augment-prompt (:prompt augment-prompt))
-
                 the-prompt (clojure.edn/read-string augment-prompt)
-                
                 aaaa (println "divi:mistral:run-evo:the-prompt \n\n" (type the-prompt) the-prompt (:prompt the-prompt))
-                ;; TODO default image. May need to append `data:image/png;base64,` before raw base64 data to ensure that
-                ;; base-img (or (:image last-divi) (-> "resources/avatars/base/blub.png" io/resource slurp))
+            
 
-                ;; TODO do we need `divi.image` field if we arent storing as  b64 inside db but as png file on server? Can derive from start/end time
-                ;; :image should be full path
                 img-path (get-last-divi-img jinni-id)
                 sanfuai (println "divi:mistral:run-evo:base-img \n\n" img-path)
                 new-image-url (prompt-image img-path augment-prompt) ;; TODO#0  add (:moods settings)  here to affect face and posture TODO#1 (:prompt (edn/read-string augement-prompt))
@@ -406,14 +403,13 @@
                 aaaa (println "divi:mistral:see-current:old+new-widget  \n\n" widget updated-widget)
                 ;; aaaa (println "divi:mistral:see-current:new-divi  \n\n" updated-widget)
                 at-taqa (:actions (db/call db/get-jinni-actions {:jinni_id jinni-id :start_time last-divi-time :end_time now-}))
-                ;; new-me (run-evolution jinni-id widget updated-widget actions)
-                new-me-url (run-evolution jinni-id updated-widget action at-taqa)
-                ;; TODO if branch here. save somesome to db then proceed if not nil
-                asfasfa (println "run-evo:new-me-url" new-me-url)
+                new-me-url (run-evolution jinni-id updated-widget at-taqa)
+                log-0 (println "Saving augmentation results: " new-me-url)
+                path (save-divi-img jinni-id new-me-url now-)  ;; full relative path url
 
                 ;; new-me-url "https://oaidalleapiprodscus.blob.core.windows.net/private/org-5UhygDKOgyJZIMbTnIBZoAgd/user-6P7ggpeSMtH8hPYW5yoc7Hv3/img-pyUaObiej6kWsmdfnuwIT9dy.png?st=2024-09-07T07%3A36%3A00Z&se=2024-09-07T09%3A36%3A00Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-09-06T22%3A33%3A53Z&ske=2024-09-07T22%3A33%3A53Z&sks=b&skv=2024-08-04&sig=%2BL6/bboJkHOrX3aS%2BepUg3/L/lE/wRyiK0h5JHPxkm0%3D"
 
-                ;; TODO what if new-me-url is nil? already saved ivi action to DB just not saving/returning img for players
+                ;; TODO branch here if url nil. save somesome to db then proceed if not nil
 
                 uuid (action->uuid jinni-id PROVIDER db/MASTER_DJINN_DATA_PROVIDER "Divination" now- version) ;; TODO diff versions for see-current-me and run-evolution
                 data {:uuid uuid
@@ -427,9 +423,9 @@
                 ;; (println "divi:mistral:see-current:save-new-me-url  \n\n" jinni-id path)
 
 
-                 ;; TODO might need to strip /resource/. Might be better to return url from (save-divi-img) seems 
-                ;; (str "https://" (:api-domain (load-config)) "/" path))
-                (save-divi-img jinni-id new-me-url now-)) ;; relative path url
+                 ;; TODO actual API is /avatars not /resources/avatars. might need to manually construct url for our API or just return relative path but diff playgrounds create diff url schemes so domain is important
+                (str "https://" (:api-domain (load-config)) "/avatars/" jinni-id)) ;; dont need to add date since new one will be default anyway. let client decide mode
+
             (catch Exception e
                 (println "divine:mistral:see-current:ERROR" e)
                 (log/handle-error e "Failed to run divination" {:provider PROVIDER}))))))
@@ -444,13 +440,14 @@
   [request]
   (let [jid (get-in request [:path-params :jid])
         mode (get-in request [:query-params :mode])
+        date (get-in request [:query-params :date])
         ; TODO should return (get-last-divi-img) immediately to user, then run (see-current-me) and upate frontend somehow with new image
-        path (get-last-divi-img jid)]
+        path (if date (str AVATAR_IMG_DIR jid "/" date ".png" ) (get-last-divi-img jid))] ;; TODO if day 
     (println "view pfp handler" jid path)
     (cond
-      (nil? jid)            {:status 400 :error "must provide jinn id"}
-      (nil? path)           {:status 404 :error "Jinn does not exist"} ; if no default base img then no player
-      (not (.exists (io/file path))) {:status 404 :error "Jinn has no divination yet"} ; should always display default
+      (nil? jid)            (map->json {:body {:status 400 :error "must provide jinn id"}})
+      (nil? path)           (map->json {:body  {:status 404 :error "Jinn does not exist"}}) ; if no default base img then no player
+      (not (.exists (io/file path))) (map->json {:body {:status 404 :error "Jinn has no divination yet"}}) ; should always display default
       (= mode "download")  ; send img directly to save locally for offline access. Player can also share directly to socials then
         ;; (let [resp (-> (io/file path)
         ;;             (io/input-stream)
