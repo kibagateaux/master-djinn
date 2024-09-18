@@ -10,10 +10,30 @@
             [com.walmartlabs.lacinia.pedestal :refer [inject]]
             [com.walmartlabs.lacinia.pedestal.internal :as lp-internal]
             [io.pedestal.interceptor :refer [interceptor]]
+            ;; [ring.middleware.cors :refer [wrap-cors]]
+            [io.pedestal.http.cors :as cors]
             [io.pedestal.http.body-params :as body-params]
             [master-djinn.util.types.core :refer [load-config]]
             [master-djinn.util.core :refer [get-signer]]
             [master-djinn.portal.logs :as log]))
+
+
+(defonce isprod? (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health"))
+(defonce gql-server-config {
+    :api-path "/graphql"
+    :ide-path "/graphiql"
+    :oauth-init-path "/oauth/init"
+    :oauth-cb-path "/oauth/callback"
+    :oauth-refresh-path "/oauth/refresh"
+    :gql-asset-path "/assets/graphiql" ;; TODO figure out what this means
+    :port (if isprod? 80 8888)
+    :host (or (:api-host (load-config)) "0.0.0.0") ;; jetty defaults to serving on 0.0.0.0
+    :cors {
+      :allowed-origins (if isprod? ["https://app.jinni.health"] ["http://localhost:8081" "http://localhost:8888"])
+      :allowed-methods [:get :post :options]
+      :allowed-headers ["Content-Type" "Authorization"]
+      :max-age 3600}
+})
 
 (def ^:private signed-request-interceptor
   "checks if query includes a signed query and 
@@ -46,26 +66,24 @@
           ;; else pass along as normal GQL query
           context)))}))
 
-(defonce gql-server-config {
-    :api-path "/graphql"
-    :ide-path "/graphiql"
-    :oauth-init-path "/oauth/init"
-    :oauth-cb-path "/oauth/callback"
-    :oauth-refresh-path "/oauth/refresh"
-    :gql-asset-path "/assets/graphiql" ;; TODO figure out what this means
-    :port (if (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health") 80 8888)
-    :host (or (:api-host (load-config)) "0.0.0.0") ;; jetty defaults to serving on 0.0.0.0
-})
-
 (defn gql-interceptors [compiled-schema] 
   (-> compiled-schema
       (p2/default-interceptors nil)
       (inject signed-request-interceptor :after ::p2/graphql-data)))
 
+;; (def gql-interceptors
+;;   [cors-interceptor
+;;    (lacinia-pedestal/query-parser-interceptor compiled-schema)
+;;    (lacinia-pedestal/status-conversion-interceptor compiled-schema)
+;;    (lacinia-pedestal/graphql-data-interceptor)
+;;    lacinia-pedestal/error-response-interceptor
+;;    signed-request-interceptor])
+
+
 (defn create-gql-service
   [compiled-schema options]
   (log/init-otel!)
-  (println "P:gql-servce:is-remote?" (if (clojure.string/includes? (:api-domain (load-config)) "scryer.jinni.health") 80 8888) (:api-domain (load-config)) )
+  (println "P:gql-servce:is-remote?" isprod? (if isprod? 80 8888) (:api-domain (load-config)))
   (let [interceptors (gql-interceptors compiled-schema)
         {:keys [port host oauth-init-path oauth-cb-path oauth-refresh-path]} options
         routes (into #{["/graphql" :post interceptors :route-name ::graphql-api]
@@ -76,12 +94,14 @@
                       ;; [oauth-refresh-path :post (conj [(body-params/body-params)] id/oauth-refresh-token-handler) :route-name ::oauth-refresh]
                       }
                   (p2/graphiql-asset-routes (:gql-asset-path gql-server-config)))]
-    (-> {:env :dev
+    (-> {:env (if isprod? :prod :dev)
          ::http/routes routes
          ::http/port port
          ::http/host host
          ::http/type :jetty
-         ::http/join? false}
+         ::http/join? false
+         ::http/allowed-origins (:allowed-origins (:cors gql-server-config))
+        }
          p2/enable-graphiql
         (p2/enable-subscriptions compiled-schema gql-server-config)
         http/create-server)))

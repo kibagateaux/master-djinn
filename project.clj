@@ -16,6 +16,7 @@
                 [io.pedestal/pedestal.jetty "0.6.1"]
                 [com.walmartlabs/lacinia "1.2.1"]
                 [com.walmartlabs/lacinia-pedestal "1.2"]
+                [ring-cors "0.1.13"]
                 ;; Database
                 [danlentz/clj-uuid "0.1.9"]
                 [gorillalabs/neo4j-clj "4.1.0"]
