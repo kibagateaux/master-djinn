@@ -44,6 +44,27 @@
       ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
       :else (j/jinni-activate pid jid djinn))))
 
+(defn jinni-waitlist-npc
+    ;; TODO clojure.spec inputs and outputs
+  [ctx args val]
+  (println "waitlist npc args:" args val)
+  (let [pid (get-signer ctx)]
+    ;; TODO check that pid doesnt already have a jid already
+    (cond
+      ;; TODO throw API errors. create resolver wrapper
+      ;; TODO define in clojure.specs not code here
+      (nil? pid) (do 
+        (println "Gql:Resolv:ActivateJinni:ERROR - Unsigned API request")
+        {:status 401 :body (map->json { :error "Player must give their majik to activation"})})
+      (not= (:player_id args) pid) (do 
+        (println "Gql:Resolv:ActivateJinni:ERROR - Signer !== Registrant")
+        {:status 401 :body (map->json { :error "Signer !== Registrant"})})
+    ;;   (nil? pid) (println "Player must give their majik to activation")
+    ;;   (not= (:player_id args) pid) (println "Signer !== Registrant")
+    ;;   (not (MASTER_DJINNS djinn)) (println "majik msg not from powerful enough djinn")
+      ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
+      :else (j/jinni-waitlist-npc pid))))
+
 (defn jinni-activate-widget
     ;; TODO clojure.spec inputs and outputs
     [ctx args val]
@@ -181,10 +202,10 @@
             pid (:player_id args)
             provider (:provider args)
             id (iddb/getid pid provider)]
-        (if (nil? caster)
+        (if (nil? id)
             ;; technically dont need auth bc predefined repos pulled in, just for safety. If call sets specific repose then need auth
-            {:status 401 :error "invalid provider to sync id with"}
-            (do  ;; TODO cond->> refactor
+            {:status 401 :error "Must be a player to feed data to jinni"}
+            (do  ;; TODO do-> try + cond-> refactor
                 (if (nil? (:provider_id id)) (c/sync-provider-id pid provider) nil)
                 (cond (= github-c/PROVIDER provider) (github-c/sync-repos pid))))))
 

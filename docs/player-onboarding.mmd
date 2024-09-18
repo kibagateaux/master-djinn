@@ -1,0 +1,17 @@
+nothing -> player
+1. (a:Avatar:Human)
+2. (m:Master)
+2. (m)-[:ATTESTS]->(a)
+2. (j:Avatar:Jinni)
+2. (a)-[SUMMONS]->(j)
+2. (j)-[BONDS]->(a)
+
+
+nothing -> NPC
+1. (a:Avatar:Human)
+2. (j:Avatar:NPC)
+2. (a) -[SUMMONS]> (j)
+2. (j)-[BONDS]->(a)
+2. (m:Master)
+2. (m)-[:ATTESTS]->(a)
+2. (j:NPC) ~~> (j:Jinni)

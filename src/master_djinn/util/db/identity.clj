@@ -17,51 +17,54 @@
 ")
 
 ;; Set UUID to not create duplicate avatar that only has id from setting :Widgets
-;; Adds trust network metadata of which master djinn approved the player
-;; (p)--(j) erge assumes only one jinni per player (intentional for now)
-;; if player was NPC before then convert to full player preserving their existing game state.
-;; ON CREATE SET to prevent acciental overriding
-(neo4j/defquery create-player "
-    MERGE (p:Avatar:Human { id: $player.id })
+(neo4j/defquery create-player (str
+    ; ensure vouching master already exists and API wasnt exploited somehow
+    "MATCH (m:Provider:"db/MASTER_DJINN_DATA_PROVIDER" {id: $master_id})
+    WITH m \n"
+    ; create new player preventing override if already NPC
+    "MERGE (p:Avatar:Human { id: $player.id })
     ON CREATE
         SET p = $player
-    
-    MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
-    MERGE (p)<-[:ATTESTS]-(:Provider {id: $master_id})
-    
-    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni)
-    ON CREATE 
-        SET j = $jinni, 
-            j:p2p,
-            rj.since = $now
-    ON MATCH 
-        SET j:p2p,
+        MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' }) \n"
+    ; Adds trust network metadata of which master djinn approved the player
+    "MERGE (m)-[:ATTESTS]->(p)\n"
+    ; (p)--(j) merge assumes only one jinni per player (intentional for now)
+    "MERGE (p)-[SUMMONS]->(j:Avatar:p2p)
+    MERGE (j)-[rj:BONDS]->(p) \n"
+    ; if new player, ON CREATE SET to prevent acciental overriding jinni data
+    "ON CREATE 
+        SET j = $jinni,
+            j:Jinni,
+            rj.since = $now \n"
+    ; if extant player as NPC, convert to full player preserving their existing game state.
+    "ON MATCH 
         REMOVE j:NPC
-
+        SET j:Jinni
 
     RETURN $jinni.uuid as jinni
-")
+"))
 
 ;; creates npc avatar so we can save their widget config when they first download the game
 ;; they convert from npc to p2p when vouched by master jinn and preserving widgets and action data
-;; ideally npc would have no jinni but bc of how widgets work and want onboarding UX to explain game and such its required
-(neo4j/defquery create-npc "
-    MERGE (p:Avatar:Human { id: $player.id })
-    SET p = $player
-    
-    MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
-
-    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:NPC)
-    ON CREATE
-        SET rj.since = $now
-        SET j = $jinni
-
-    CASE WHEN $summoner IS NOT NULL
-    MERGE (p)<-[:ATTESTS]-(:Provider {id: $summoner})
+(neo4j/defquery create-npc (str
+    ; ensure account doesnt get overwritten
+    "MERGE (p:Avatar:Human { id: $player.id }) \n"
+    ; if player never existed then create new avatar for them (non jinni NPC)
+    "ON CREATE 
+        MERGE (p)<-[rj:BONDS]-(j:Avatar:NPC:p2p)
+        MERGE (p)-[:SUMMONS]->(j)
+        SET p = $player,
+            rj.since = $now,
+            j = $jinni \n"
+    ; add their randomly generated identity to player profile
+    "MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' }) \n"
+    ; if they were vouched for by existing player or jinni then add social graph
+    "CASE WHEN $summoner IS NOT NULL
+        MERGE (p)<-[:ATTESTS]-(:Provider {id: $summoner})
     END
 
     RETURN j.id as jid
-")
+"))
 
 ;; TODO should? add rel for (:Avatar:Jinni {id: "master-djinn"})-[:ATTESTS]->(:Identity)
 ;; and add status metadata - requested, verifying, verified, etc. ? Allows other Avatar to attest to identities

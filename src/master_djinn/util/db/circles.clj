@@ -16,7 +16,7 @@
 ;; (p)--(j) merge assumes only one p2c per player (intentional for now)
 ;; ON CREATE ensures 1 player->jubmoji and 1 player-> p2c + prevents accidental overriding
 (neo4j/defquery create-summoning-circle "
-  MATCH (p:Avatar:Human {id: $pid})<-[:BONDS]-(:Jinni:p2p)
+  MATCH (p:Avatar:Human {id: $pid})-[:SUMMONS]->(:Jinni:p2p)
   WITH p
   WHERE p IS NOT NULL
   MERGE (p)-[:HAS]->(id:Identity:Ethereum:Jubmoji)

@@ -7,6 +7,13 @@
             [master-djinn.util.db.circles :as cdb]
             [master-djinn.util.db.identity :as iddb]))
 
+(defn jinni-waitlist-npc
+  [player-id]
+  (:jid (db/call iddb/create-npc {
+      :player {:id player-id :uuid (avatar->uuid player-id)}
+      :now (now)
+      :jinni { :id (avatar->uuid (now)) :uuid (juuid player-id)}})))
+
 (defn jinni-activate
   [player-id jinni-id master-id]
   (:jinni (db/call iddb/create-player {

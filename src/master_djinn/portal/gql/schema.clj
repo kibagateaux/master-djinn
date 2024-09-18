@@ -39,6 +39,7 @@
   :Mutation/jinni_evolution i/jinni-evolution
   :Mutation/jinni_join_circle i/jinni-join-summoning-circle
   :Mutation/jinni_set_widget i/jinni-activate-widget
+  :Mutation/jinni_waitlist_npc i/jinni-waitlist-npc
   ;; Code
   :Mutation/sync_repos i/sync-repos
   :Mutation/track_commits i/track-commits

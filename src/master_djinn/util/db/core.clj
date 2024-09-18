@@ -182,7 +182,7 @@
 ;; works on any jinni even if not player not verified so can set intentions in onboarding
 ;; must already be created via create-npc before setting widgets
 (neo4j/defquery set-widget-settings "
-  MATCH (j:Jinni {id: $jinni_id})
+  MATCH (j:Avatar {id: $jinni_id})
   
   WITH j
   UNWIND $widgets AS widget

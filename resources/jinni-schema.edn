@@ -243,15 +243,19 @@
                 :description "Runs custom data analysis on players actions based on intentions they have set. Returns URL of new jinni image."
                 :args       {:verification {:type :SignedRequest} ;; unneccesary if pulling from settings. 
                             :jinni_id {:type String}}}
-
             :jinni_join_circle
-                {:type       ID ;; Divination :Action uuid, nil if nothing generated
-                :description "Adds a player to a summoning circle. Creates a new circle if target player is same as signer and they ont have a circle yet."
+                {:type       ID
+                :description "Adds a player to a summoning circle. Creates a new circle if target player is same as signer and they ont have a circle yet.
+                            Returns Jinni ID of circle joined or nil if none joined"
                 :args       {:verification {:type :SignedRequest} 
                             :majik_msg {:type (non-null String) :description "proof that circle summoner approved player id"}
                             :player_id {:type (non-null String) :description "player to add to summoning circle for majik_msg verification"} 
                             :jinni_id {:type String :description "UNIMPLEMENTED. specific jinni/circle by summoner to add player to. used in majik_msg verification" }}}
-
+            :jinni_waitlist_npc
+                {:type       (non-null ID)
+                :description "Create a new npc who wants to play the game allowing the to store config and join circles.
+                            Returns NPC Jinni ID"
+                :args       {:verification {:type (non-null :SignedRequest)}}}
             :jinni_set_widget
                 {:type       (list (non-null ID))
                 :description "Creates or updates settings for a widget to custyomize a players homepage.
