@@ -56,9 +56,9 @@
       (nil? pid) (do 
         (println "Gql:Resolv:ActivateJinni:ERROR - Unsigned API request")
         {:status 401 :body (map->json { :error "Player must give their majik to activation"})})
-      (not= (:player_id args) pid) (do 
-        (println "Gql:Resolv:ActivateJinni:ERROR - Signer !== Registrant")
-        {:status 401 :body (map->json { :error "Signer !== Registrant"})})
+    ;;   (not= (:player_id args) pid) (do 
+    ;;     (println "Gql:Resolv:ActivateJinni:ERROR - Signer !== Registrant")
+    ;;     {:status 401 :body (map->json { :error "Signer !== Registrant"})})
     ;;   (nil? pid) (println "Player must give their majik to activation")
     ;;   (not= (:player_id args) pid) (println "Signer !== Registrant")
     ;;   (not (MASTER_DJINNS djinn)) (println "majik msg not from powerful enough djinn")
