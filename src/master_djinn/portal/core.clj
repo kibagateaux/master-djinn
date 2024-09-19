@@ -75,7 +75,7 @@
   state has form `{address}.{nonce}.{signature('{address}.{provider}.{nonce}')}`"
   [provider state]
   (println "portal:decode-oauth-state:parts" provider (clojure.string/split state #"\."))
-  (let [[pid nonce sig] (clojure.string/split state #"\.")
+  (let [[pid platform nonce sig] (clojure.string/split state #"\.")
         signer (crypt/ecrecover sig (str pid"."provider"."nonce))]
         ;; (println "portal:decode-oauth-state:signer" pid signer)
         (if (= pid signer) pid nil)))
@@ -93,7 +93,7 @@
   returns - {:access_token string :refresh_token string :expires_in int}
   "
   [provider oauth-config code]
-  (println "requesting " provider " server: " (:token-uri oauth-config) "to callback to : " (get-redirect-uri provider) )
+  (println "requesting " provider " oauth server: " (:token-uri oauth-config) "to callback to : " (get-redirect-uri provider) )
   (let [base-config (get-oauth-login-request-config provider)
         request-config (assoc base-config :form-params
                           {:redirect_uri (get-redirect-uri provider)
@@ -104,11 +104,12 @@
                             :client_secret (:client-secret oauth-config)
                             })
         response (client/post (:token-uri oauth-config) request-config)]
-      ;; (println "oauth token response" (json/read-str (:body response) :key-fn keyword))
-      (if (:body response) (json->map (:body response)) nil)))
+      (println "requesting " provider " oauth response: " (json->map (:body response)))
+      (if (nil? (:error (:body response))) (json->map (:body response)) nil)))
 
 (defn oauth-callback-handler
-  "Part #1 of OAuth2 flow
+  "Used for mobile app
+  Part #1 of OAuth2 flow
 
   Hey its me. Yet another web2 authentication endpoint coded by hand.
   I'm sure you're wondering how we got here.
@@ -150,7 +151,8 @@
       (nil? (db/call id/init-player-identity {:pid pid :provider provider}))
                                           {:status 401 :body "player not registered"}
       :else                               (try (let
-        [response (request-access-token provider config code)]
+        [response (request-access-token provider config code)
+          [_ player-platform _ _] (clojure.string/split state #"\.")]
         (db/call id/set-identity-credentials {
           :pid pid
           :provider provider
@@ -163,7 +165,8 @@
             ;; redirect with deeplink and verifcation
             ;; TODO universal links instead of direct deep links https://docs.expo.dev/guides/deep-linking/
             ;; https://stackoverflow.com/questions/77214219/expo-linking-with-custom-scheme-does-not-redirect-back-to-app
-            :headers {"Location" (str "jinni-health://inventory/" provider "?state=" state)}
+            ;; TODO need to differentiate if request was from web or mobile app. include in state
+            :headers (if (= "web" player-platform) {} {"Location" (str "jinni-health://inventory/" provider "?state=" state)})
             :body (map->json {
               :id pid
               :provider provider

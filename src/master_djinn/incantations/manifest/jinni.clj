@@ -88,7 +88,7 @@
 ;; associate player with group in analytics
 
 
-(defn activate-widget
+(defn set-widgets
   [jinni-id widgets]
   ;; (let [w-uuid (map
   ;;         #(assoc % :confi 

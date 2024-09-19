@@ -92,7 +92,7 @@
             (println "Gql:Resolv:ActivateWidget:ERROR - Must provider :Widget configs to set")
             {:status 400 :body (map->json { :error "No :Widgets provided"})})
         ;; TODO clojure.spec/conform widgets ::widgets
-        :else (j/activate-widget pid jid widgets))))
+        :else (j/set-widgets jid widgets))))
 
 
 (defn jinni-join-summoning-circle
