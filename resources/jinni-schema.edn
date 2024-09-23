@@ -184,13 +184,21 @@
                 ;; :routeName {:type String :description "what to display from provider"}
                 ;; :title {:type String :description "what to display from provider"}
             }}
-        :HomeConfig {
-            :description ""
+        :HomeConfig
+            {:description "Jinni profile config for widgets, tabs, and other client side displays"
             :fields {
+                :jinni_id {:type (non-null String) :description "Player who can edit jinni config or accept in to cricle"}
+                :summoner {:type (non-null String) :description "Player who can edit jinni config or accept in to cricle"}
+                :jinni_type {:type (non-null String) :description "p2p or p2c"}
                 :widgets {:type (list :Widget) :description "customized widget configuration for homepage setup"}
-                :jinni_image {:type String :description "most recent image of their jinni"}
-            }
-        }
+                :last_divi_ts {:type String :description "last time jinni was evolved"}
+            }}
+        :HomeConfigMap
+            {:description "All jinni bonded to a player and their config. e.g. {:'asfaf-2sfa-21' {:widgets [] :type 'p2p}}"
+            :fields {
+                
+            }} ; fields dynamically generated from db values of player jinni
+
         :Query {:fields {
             :players {:type (list :Avatar)}
             :get_playlists
@@ -200,9 +208,9 @@
                             :provider {:type (non-null String)} ;; Spotify
                             :target_player {:type (non-null String)}}}
             :get_home_config
-                {:type       :HomeConfig
-                :description "gets players most recent jinni image and widgets config.
-                            Private to player to not leak data about data stored about them via widgets configured"
+                {:type       (list :HomeConfig)
+                :description "gets all jinni bonded to a player and returns details for homepage display in client e.g. widgets, type
+                            Private to player to not leak data about circles they are in via jids or data stored about them via widgets configured"
                 :args       {:verification {:type (non-null :SignedRequest)}
                             :player_id {:type (non-null String)}}}
 

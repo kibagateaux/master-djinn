@@ -82,15 +82,24 @@
   RETURN COLLECT(a) as actions
 ")
 
+;; returns all jinni, all widgets on that jinni, and only the last divination for that jinni
+;; for a given player that is bonded to any jinni, whether npc or not
 (neo4j/defquery get-home-config "
-  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinni:p2p),
-        (j)-[:USES]->(w:Widget)
-  OPTIONAL MATCH (j)-[:ACTS]->(d:Divination)
-  
-  WITH w, d
-  ORDER BY d.start_time DESC LIMIT 1
-  
-  RETURN COLLECT(w) as widgets, d as divi
+  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinni)
+  MATCH (summ:Avatar)-[:SUMMONS]->(j)
+  OPTIONAL MATCH (j)-[:USES]->(w:Widget)
+  OPTIONAL MATCH (j)-[:ACTS]->(d:Action:Divination)
+  WITH j, summ, w, d
+  ORDER BY d.start_time DESC
+  WITH j, summ, COLLECT(w) AS widgets, COLLECT(d)[0] AS last_divination
+  WITH {
+    jinni: j,
+    labels: labels(j),
+    summoner: summ,
+    widgets: widgets,
+    divi: last_divination
+  } AS bundle
+  RETURN collect(bundle) AS jinni
 ")
 
 (neo4j/defquery get-player-data "

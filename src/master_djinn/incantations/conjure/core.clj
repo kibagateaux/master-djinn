@@ -80,9 +80,17 @@
                 ;; @DEV: implicit standard of only 1 arg that is player_id and returns {:ids uuid[]} for conjure funcs
                 (:providers (db/call db/get-player-providers {:player_id player-id}))))))
 
-(defn get-home-config [player-id]
-    (let [res (db/call db/get-home-config player-id)]
-        (clojure.pprint/pprint res)
-        res
-    )
-)
+(defn get-home-config
+    [player-id]
+    (let [res (db/call db/get-home-config {:player_id player-id})
+        config-map (reduce (fn [jinni j] (into jinni {
+          (keyword (:id (:jinni j))) {
+            :jinni_id (:id (:jinni j))
+            :summoner (:id (:summoner j))
+            :jinni_type (first (filter #(or (= %1 "p2p") (= %1 "p2c")) (:labels j)))
+            :widgets (:widgets j)
+            :last_divi_ts (:end_time (:divi j))
+          }  
+        })) {} (:jinni res))]
+        ;; ideally return as json map but cant get lacinia to do dynamic key return vals so must return list
+        (vals config-map)))

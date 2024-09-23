@@ -65,7 +65,7 @@
       ;; TODO query db to make ensure they dont have a jinn already. App sepcific logic that we want to remove so no DB constaint
       :else (j/jinni-waitlist-npc pid))))
 
-(defn jinni-activate-widget
+(defn jinni-set-widget
     ;; TODO clojure.spec inputs and outputs
     [ctx args val]
     (let [pid (get-signer ctx)
@@ -150,7 +150,10 @@
     "theoretically not jinni specific. Standard way of expressing gameplay preferences regardless of host or playground"
     [ctx args val]
     (let [pid (get-signer ctx)
-        target_player (:player_id args)]    
+        target_player (:player_id args)
+        ]
+    ;; TODO add ACL so people in same circles can view your profile
+    (println "incantations:home-config:pid+target : " pid target_player)
     (cond
         (nil? pid) (do 
             (println "Gql:Resolv:GetHomeConfig:ERROR - Unsigned API request")
@@ -158,8 +161,7 @@
         (not= pid target_player) (do 
             (println "Gql:Resolv:GetHomeConfig:ERROR - signer id != target player id")
             {:status 403 :body (map->json { :error "Caster is not bonded to target player"})})
-        ;; TODO clojure.spec/conform :HomeConfig
-        :else (c/get-home-config pid))))
+        :else (c/get-home-config target_player))))
 
 (defn sync-provider-id
     "@DEV: does NOT require auth because simple stateless function that mirrors data from external db"
