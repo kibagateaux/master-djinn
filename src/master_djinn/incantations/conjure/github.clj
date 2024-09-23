@@ -66,9 +66,6 @@
         ;; (clojure.pprint/pprint (json->map (:body res)))
         (clojure.pprint/pprint (-> (:body res) json->map :data :user :repositories :nodes))
         (if (and (:status res) (some? (:data body))) 
-        ;;   (-> body :data :user :repositories :nodes
-        ;;     #(trans/Repo->Resource player-id (:provider_id id) PROVIDER %)
-        ;;     #(db/call db/batch-create-resources {:resources %}))
           (let [rs (map 
                 (fn [repo] (trans/Repo->Resource player-id (:provider_id id) PROVIDER repo))
                 (-> body :data :user :repositories :nodes))
@@ -76,7 +73,6 @@
                 aaa (println "\n\nC:Github:SyncRepos:post-trans" rs)
                 data (db/call db/batch-create-resources {:resources rs})]
             (println "\n\nC:Github:SyncRepos:return" (:resources data))
-            ;; (clojure.pprint/pprint rs)
             (:resources data))
               
             (do (track-spell {:stage "error" :error body})
@@ -98,11 +94,7 @@
               (do (track-spell {:stage "unauthorized" :error (ex-data err)})
                 {:status 403 :error (ex-message err)})
               (do (track-spell {:stage "error" :error (ex-data err)})
-                {:status 501 :error (ex-message err)})
-        )))
-      ))
-    )
-))
+                {:status 501 :error (ex-message err)})))))))))
 
 (defonce qu-get-player-commits "query($owner: String!, $repo: String!, $since: GitTimestamp!) {
     repository(owner: $owner, name: $repo) {

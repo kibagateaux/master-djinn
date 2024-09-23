@@ -22,6 +22,18 @@
 (defonce MASTER_DJINN_DATA_PROVIDER "MasterDjinn")
 (defonce MOBILE_APP_DATA_SOURCE "JinniMobileApp")
 
+;; TODO implement tx queeu for lighter banwidth, prevent redundancy / race conitions,  and ongoing updates and easier debugging 
+;; (def request-queue (atom []))
+;; (defn process-queue []
+;;   (let [batch (swap! request-queue (constantly []))]
+;;     (when (seq batch)
+;;       (neo4j/with-transaction session
+;;         (doseq [{:keys [q data]} batch]
+;;           (q data))))))
+;; (defn schedule-tx [query args]
+;;   (swap! request-queue conj {:q query :data args})
+;;   (when (= 1 (count @request-queue))
+;;     (future (Thread/sleep 100) (process-queue))))
 
 (defn call [query args]
   (println "DB:call: q \n" (:id query))
@@ -50,8 +62,31 @@
       (-> (query tx args) doall first))))
 
 ;; TODO figure out when to run this. Should i create a migrations type process?
-(neo4j/defquery define-action-invariants
-  "CREATE CONSTRAINT unique_action_uuid FOR (a:Action) REQUIRE a.uuid IS UNIQUE")
+(neo4j/defquery define-core-game-invariants "
+  // ensure uniqueness across all Avatars for base ids and global uuid
+  CREATE CONSTRAINT key_avatar_id IF NOT EXISTS
+    FOR (a:Avatar)
+    REQUIRE a.id IS NODE KEY;
+  
+  // we compute uuid deterministically so should never have duplicates 
+  // but we dont really use it so no composite node key with (id, uuid)
+  CREATE CONSTRAINT req_avatar_uuid IF NOT EXISTS
+    FOR (a:Avatar)
+    REQUIRE a.uuid IS NOT NULL;
+  CREATE CONSTRAINT uniq_avatar_uuid IF NOT EXISTS
+      FOR (a:Avatar)
+      REQUIRE a.uuid IS UNIQUE;
+
+  // ensure only a single identity node exists and relations added ontop of it for ownership/access
+  CREATE CONSTRAINT key_identity_provider_id IF NOT EXISTS
+    FOR (id:Identity)
+    REQUIRE ( id.provider, id.provider_id ) IS NODE KEY;
+
+  // 
+  CREATE CONSTRAINT key_action_uuid IF NOT EXISTS
+    FOR (a:Action)
+    REQUIRE a.uuid IS NODE KEY;
+")
 
 ;; Mistral embed API only does 1024 dimension
 ;; https://docs.mistral.ai/platform/endpoints#embedding-models
