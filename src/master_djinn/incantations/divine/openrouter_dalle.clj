@@ -410,6 +410,7 @@
                 (log/handle-error e "Failed to run divination" {:provider PROVIDER}))))))
 
 
+;; TOO should be in portal.core
 (defn get-jinn-img-handler
   "get the latests image for a jinn, reads the file on this server
   and serves it for display purposes on frontend <img> tags
@@ -420,9 +421,9 @@
   (let [jid (get-in request [:path-params :jid])
         mode (get-in request [:query-params :mode])
         date (get-in request [:query-params :date])
-        ; TODO should return (get-last-divi-img) immediately to user, then run (see-current-me) and upate frontend somehow with new image
+        ; TODO should return (get-last-divi-img) immediately to user, then run (see-current-me) and update frontend somehow with new image
         path (if date (str AVATAR_IMG_DIR jid "/" date ".png" ) (get-last-divi-img jid))] ;; TODO if day 
-    (println "view pfp handler" jid path)
+    (println "view pfp handler" jid path (.exists (io/file path)))
     (cond
       (nil? jid)            (map->json {:body {:status 400 :error "must provide jinn id"}})
       (nil? path)           (map->json {:body  {:status 404 :error "Jinn does not exist"}}) ; if no default base img then no player

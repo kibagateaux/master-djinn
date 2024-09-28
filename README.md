@@ -56,6 +56,7 @@ use `ngrok http 8888` to expose local server to internet for OAuth callback test
 2. Build an uberjar of your service: `lein uberjar`
 3. Build a Docker image: `sudo docker build -t master-djinn .`
 4. Run your Docker image: `docker run -p 8000:8000 master-djinn`
+5. View prinlnt on remote docker with `docker-compose logs api`
 
 ### [OSv](http://osv.io/) unikernel support with [Capstan](http://osv.io/capstan/)
 

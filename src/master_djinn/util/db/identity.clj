@@ -53,7 +53,7 @@
             j = $jinni,
             j:NPC
 
-    RETURN j.id as jid"))
+    RETURN j.id as jid")
 
 ;; TODO should? add rel for (:Avatar:Jinni {id: "master-djinn"})-[:ATTESTS]->(:Identity)
 ;; and add status metadata - requested, verifying, verified, etc. ? Allows other Avatar to attest to identities

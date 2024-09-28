@@ -92,5 +92,6 @@
             :last_divi_ts (:end_time (:divi j))
           }  
         })) {} (:jinni res))]
+        (clojure.pprint/pprint config-map)
         ;; ideally return as json map but cant get lacinia to do dynamic key return vals so must return list
         (vals config-map)))
