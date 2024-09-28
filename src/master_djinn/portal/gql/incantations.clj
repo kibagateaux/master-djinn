@@ -17,10 +17,12 @@
 (defonce providers portal/oauth-providers)
 
 (defn jinni-activate
+    ;; TODO refactor into join_summoning_circle. pre (cond) (if (MASTER_DJINNS summoner) (j/jinni-activate pid jid djinn))
     ;; TODO clojure.spec inputs and outputs
+
   [ctx args val]
   (println "activate jinn arhs:" args val)
-  (let [djinn (ecrecover (:majik_msg args) (:player_id args))
+  (let [djinn (ecrecover (:majik_msg args) (str "summon:" (:player_id args)))
         pid (get-signer ctx)
         jid (juuid pid)]
     (println djinn (MASTER_DJINNS djinn))

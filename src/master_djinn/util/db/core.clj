@@ -80,7 +80,7 @@
   // ensure only a single identity node exists and relations added ontop of it for ownership/access
   CREATE CONSTRAINT key_identity_provider_id IF NOT EXISTS
     FOR (id:Identity)
-    REQUIRE ( id.provider, id.provider_id ) IS NODE KEY;
+    REQUIRE ( id.provider, id.provider_id ) IS UNIQUE;
 
   // 
   CREATE CONSTRAINT key_action_uuid IF NOT EXISTS

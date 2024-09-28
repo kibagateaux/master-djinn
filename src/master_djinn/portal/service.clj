@@ -29,7 +29,7 @@
     :port (if isprod? 80 8888)
     :host (or (:api-host (load-config)) "0.0.0.0") ;; jetty defaults to serving on 0.0.0.0
     :cors {
-      :allowed-origins (if isprod? ["https://app.jinni.health"] ["http://localhost:8081" "http://localhost:8888"])
+      :allowed-origins (if isprod? ["https://app.jinni.health" "https://scryer.jinni.health" nil] ["http://localhost:8081" "http://localhost:8888" "http://zahhi.local:8081" nil])
       :allowed-methods [:get :post :options]
       :allowed-headers ["Content-Type" "Authorization"]
       :max-age 3600}
