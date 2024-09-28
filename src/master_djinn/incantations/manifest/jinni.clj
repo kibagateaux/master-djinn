@@ -27,11 +27,6 @@
         :id jinni-id
         :uuid (avatar->uuid jinni-id)}})))
 
-
-(defn get-summoning-circle
-  [jubmoji]
-   (db/call cdb/get-summoning-circle {:pid jubmoji}))
-
 (defn create-summoning-circle
   [summoner jubmoji-id]
    (let [attesters (:attesters (db/call iddb/get-player-attesters {:pid summoner}))

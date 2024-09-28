@@ -10,6 +10,7 @@
             [master-djinn.portal.core :as portal]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as iddb]
+            [master-djinn.util.db.circles :as cdb]
             [master-djinn.util.core :refer [get-signer map->json]]
             [master-djinn.util.types.core :refer [load-config uuid juuid avatar->uuid]]
             [master-djinn.util.crypto :refer [ecrecover MASTER_DJINNS]]))
@@ -106,8 +107,9 @@
         signer (get-signer ctx)
         ; TODO if no circle yet then only target-player a.k.a creator in majik-msg. if circle exists then creator signs jinni + player
         jubmoji (ecrecover majik_msg (str "summon:" (if jinni_id (str jinni_id "." player_id) player_id)))
-        {:keys [jinni summoner]} (j/get-summoning-circle jubmoji)]
-        (println "joining circle player, jubmoji, summoner" player_id " : " jubmoji " : " (:id (or summoner {})))
+        aaaa  (println "joining circle player, jubmoji, summoner" player_id " : " jubmoji)
+        {:keys [jinni summoner]} (cdb/get-summoning-circle {:jmid jubmoji})]
+        (println "joining circle jinni + summoner" (:id (or jinni {})) (:id (or summoner {})))
         (cond
             (and (not= signer player_id) (not= signer (:id summoner)))
                 {:status 401  :body (map->json {:error "Only summoner or summonee can request access to circle"})}

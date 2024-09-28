@@ -3,9 +3,9 @@
             [master-djinn.util.db.core :as db]))
 
 (neo4j/defquery get-summoning-circle "
-  OPTIONAL MATCH (p:Avatar:Human)-[:HAS]->(:Jubmoji {provider_id: $pid}),
+  OPTIONAL MATCH (p:Avatar:Human)-[:HAS]->(:Jubmoji {provider_id: $jmid}),
     (p)-[:SUMMONS]->(j:Jinni:p2c)
-  RETURN  p AS summoner, j AS jinni
+  RETURN p AS summoner, j AS jinni
 ")
 
 ;; TODO should :Identity:Jubmoji be mapped to :Human or :Jinni ???
