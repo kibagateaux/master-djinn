@@ -25,7 +25,7 @@
 ;;
 
 (defonce PROVIDER "OpenRouterDalle")
-(defonce AVATAR_IMG_DIR "resources/avatars/")
+(defonce AVATAR_IMG_DIR "avatars/")
 (defonce MIN_DIVINATION_INTERVAL_DAY 3)
 (defonce MIN_DIVINATION_INTERVAL_SEC (* MIN_DIVINATION_INTERVAL_DAY (* 24 (* 60 60))))
 
@@ -133,7 +133,7 @@
     [og-image-path prompt]
     (println "DALLE Edit image/prompt : " og-image-path prompt)
     (try (let [image-res (oai/create-image-edit {
-                :image (io/file og-image-path)
+                :image (io/resource og-image-path)
                 :prompt prompt
                 :n 1
                 :size "1024x1024"}
@@ -152,17 +152,26 @@
     returns full path on server file system incl. resource/"
     [jinni-id]
   (let [jinni-dir (str AVATAR_IMG_DIR jinni-id)
-        aaa (println "get last divi 4 avatar - " jinni-dir)
-        files (->> (file-seq (io/file jinni-dir))
-                    (filter #(.isFile %))
-                    (map #(.getName %))
-                    (filter #(re-matches #"\d{4}-\d{2}-\d{2}.png" %)) ; ensure ISO format for sorting
-                    (map #(java.time.LocalDate/parse (clojure.string/replace % #"\.png" "")))
-                    (sort-by identity #(compare %1 %2))) ; this should work but getting ISO timestamp not short date
-        d-img (last files)]
+        resource-url (io/resource jinni-dir)
+        ;; _ (println "get last divi 4 avatar - " jinni-dir resource-url)
+        ;; _ (println "get last divi 4 avatar - " (io/file (.toURI resource-url)) (.exists (io/file (.toURI resource-url))))
+        
+        files (if (and resource-url (.exists (io/file (.toURI resource-url))))
+                (->> (file-seq (io/file (.toURI resource-url)))
+                     (filter #(.isFile %))
+                     (map #(do (println "divi pre-images" %) %))
+                     (map #(.getName %))
+                     (filter #(re-matches #"\d{4}-\d{2}-\d{2}.png" %))
+                     (sort #(compare %2 %1)))
+                [])
+        
+        d-img (first files)
+        aaa (println "last divi image?" d-img)
+        aaa (println "all divi pre-images" files (str jinni-dir "/" d-img))
+        ]
     (if (nil? d-img) ; if no past divinations return base model else lastest chronological divination
         (str AVATAR_IMG_DIR "base/blub.png")
-        (str jinni-dir "/" (last files) ".png"))))
+        (str jinni-dir "/" d-img))))
 
 (defn rgb->rgba
   "Converts an RGB image to RGBA format"
@@ -195,7 +204,7 @@
 (defn save-image
   "Saves a BufferedImage to a file"
   [image output-path]
-  (ImageIO/write image "png" (io/file output-path)))
+  (ImageIO/write image "png" (io/resource output-path)))
 
 (defn save-divi-img
     "
@@ -422,23 +431,26 @@
         mode (get-in request [:query-params :mode])
         date (get-in request [:query-params :date])
         ; TODO should return (get-last-divi-img) immediately to user, then run (see-current-me) and update frontend somehow with new image
-        path (if date (str AVATAR_IMG_DIR jid "/" date ".png" ) (get-last-divi-img jid))] ;; TODO if day 
-    (println "view pfp handler" jid path (.exists (io/file path)))
+        path (if date (str AVATAR_IMG_DIR jid "/" date ".png" ) (get-last-divi-img jid))
+        resource  (io/resource path)] ;; TODO if day 
+
+    (println "view pfp handler" jid path)
+    (println "view pfp handler" (nil? resource) resource)
     (cond
-      (nil? jid)            (map->json {:body {:status 400 :error "must provide jinn id"}})
-      (nil? path)           (map->json {:body  {:status 404 :error "Jinn does not exist"}}) ; if no default base img then no player
-      (not (.exists (io/file path))) (map->json {:body {:status 404 :error "Jinn has no divination yet"}}) ; should always display default
+      (nil? jid)            {:status 400 :body "must provide jinn id"}
+      (nil? path)            {:status 404 :body "Jinn does not exist"} ; if no default base img then no player
+      (nil? resource)       {:status 404 :body "Jinn has no divination yet"} ; should always display default
       (= mode "download")  ; send img directly to save locally for offline access. Player can also share directly to socials then
-        ;; (let [resp (-> (io/file path)
-        ;;             (io/input-stream)
-        ;;             (assoc :headers {"Content-Type" "image/png"})
-        ;;             (ring.util.response/response))]
-        ;;         (println "avatar image respoinse" resp))
-        (-> (ring.util.response/response (io/input-stream path))
-        (ring.util.response/header "Content-Type" "application/octet-stream")
-        ;; (response/header "Content-Disposition" "attachment; filename=\"image.jpg\"")
-        )
-    (= mode "view") (-> (ring.util.response/file-response path)
-        (ring.util.response/content-type "image/png"))
+        {:status 200
+        :headers {"Content-Type" "image/png"
+        "Content-Disposition" (str "attachment; filename=\"" path "\"")}
+        :body (io/input-stream resource)}
+    (= mode "view") (do
+        (println "avatar view mode: " path) 
+        {:status 200
+        :headers {"Content-Type" "image/png"}
+        :body (io/input-stream resource)})
     ;; else should default to view mode for simpler devex
-      :else                 {:status 400 :body "Must provide a ?mode=view|download"})))
+      :else (do 
+        (println "no avatar rendered")
+        {:status 400 :body "Must provide a ?mode=view|download"}))))

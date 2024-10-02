@@ -84,13 +84,6 @@
 
 (defn set-widgets
   [jinni-id widgets]
-  ;; (let [w-uuid (map
-  ;;         #(assoc % :confi 
-  ;;           (assoc :uuid (widget->uuid player_id (:provider ) (:widget_id %) "0.0.1")))
-  ;;       widgets)]
-  ;;     (println "widgest w uuid" w-uuid)
-  ;;     ;; (clojure.pprint/pprint w-uuid)
-  ;;     )
   (:widgets (db/call db/set-widget-settings {
       :jinni_id jinni-id
       :widgets (map
@@ -102,16 +95,10 @@
 
 
 (defn activate-widget
+  "functino call when a a new accounts settings are being initiated.
+    e.g. post waitlist_npc, activate_jinni"
   [player-id widgets]
-  ;; (let [w-uuid (map
-  ;;         #(assoc % :confi 
-  ;;           (assoc :uuid (widget->uuid player_id (:provider ) (:widget_id %) "0.0.1")))
-  ;;       widgets)]
-  ;;     (println "widgest w uuid" w-uuid)
-  ;;     ;; (clojure.pprint/pprint w-uuid)
-  ;;     )
-  
-  ;; TODO.eng extra db call every time someone updates settings. Better to abstract into another API call on frontend
+  ;; TODO. we call npc() from frontend already. extra db call every time to ensure + get jid from player
   (let [jid (:jid (db/call iddb/create-npc
           {:player {:id player-id :uuid (avatar->uuid player-id)}
           :summoner nil

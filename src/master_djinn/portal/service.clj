@@ -100,8 +100,7 @@
          ::http/host host
          ::http/type :jetty
          ::http/join? false
-         ::http/allowed-origins (:allowed-origins (:cors gql-server-config))
-        }
+         ::http/allowed-origins (:allowed-origins (:cors gql-server-config))}
          p2/enable-graphiql
         (p2/enable-subscriptions compiled-schema gql-server-config)
         http/create-server)))
