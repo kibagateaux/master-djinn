@@ -17,13 +17,15 @@
 
 (defonce providers portal/oauth-providers)
 
+(defonce SUMMON_SPELL_PREFIX "summon:")
+
 (defn jinni-activate
     ;; TODO refactor into join_summoning_circle. pre (cond) (if (MASTER_DJINNS summoner) (j/jinni-activate pid jid djinn))
     ;; TODO clojure.spec inputs and outputs
 
   [ctx args val]
   (println "activate jinn arhs:" args val)
-  (let [djinn (ecrecover (:majik_msg args) (str "summon:" (:player_id args)))
+  (let [djinn (ecrecover (:majik_msg args) (str SUMMON_SPELL_PREFIX (:player_id args)))
         pid (get-signer ctx)
         jid (juuid pid)]
     (println djinn (MASTER_DJINNS djinn))
@@ -106,47 +108,49 @@
     (let [{:keys [majik_msg player_id jinni_id]} args
         signer (get-signer ctx)
         ; TODO if no circle yet then only target-player a.k.a creator in majik-msg. if circle exists then creator signs jinni + player
-        jubmoji (ecrecover majik_msg (str "summon:" (if jinni_id (str jinni_id "." player_id) player_id)))
+        jubmoji (ecrecover majik_msg (str SUMMON_SPELL_PREFIX (if jinni_id (str jinni_id "." player_id) player_id)))
         aaaa  (println "joining circle player, jubmoji, summoner" player_id " : " jubmoji)
-        {:keys [jinni summoner]} (cdb/get-summoning-circle {:jmid jubmoji})]
+        ;; aaaa  (println "joining circle " (db/call cdb/get-summoning-circle {:jmid jubmoji}))
+        {:keys [jinni summoner]} (db/call cdb/get-summoning-circle {:jmid jubmoji})]
         (println "joining circle jinni + summoner" (:id (or jinni {})) (:id (or summoner {})))
         (cond
             (and (not= signer player_id) (not= signer (:id summoner)))
-                {:status 401  :body (map->json {:error "Only summoner or summonee can request access to circle"})}
+                {:status 401  :body {:error "Only summoner or summonee can request access to circle"}}
 
             (and (nil? jinni_id) (nil? majik_msg))
-                {:status 400  :body (map->json {:error "Must include proof of acceptance or circle id to apply to"})}
+                {:status 400  :body {:error "Must include proof of acceptance or circle id to apply to"}}
 
             ; ensure jubmoji's circle is same one being requested for async application
             ; checked on the acceptance *from* jubmoji not on application from player
             (and (not (nil? jinni_id)) (not= jinni_id (:id jinni)))
-                {:status 400 :body (map->json {:error "Invalid Jinni id for summoner who signed circle approval"})}
+                {:status 400 :body {:error "Invalid Jinni id for summoner who signed circle approval"}}
             
             ; should both be impossible. only need check for jinni technically if verifying jinni + jinni_id already
-            ;; (and jinni_id (nil? summoner)) {:status 500  :body (map->json {:error " Probably invalid data"})}
-            ;; (and jinni (nil? summoner)) {:status 500  :body (map->json {:error "Impossible. Jinni returned with no summoner"})} 
+            ;; (and jinni_id (nil? summoner)) {:status 500  :body {:error " Probably invalid data"}}
+            ;; (and jinni (nil? summoner)) {:status 500  :body {:error "Impossible. Jinni returned with no summoner"}) 
             
             (and (= player_id (:id summoner)) jinni)
-                {:status 200  :body (map->json {:error "Already joined"})} ; creator of summoning circle cant apply/join
+                {:status 400 :body {:error "Already Joined"}}
+            ;;    (throw (ex-info "Already joined" {})) ; creator of summoning circle cant apply/join
             
             ; no jinni yet for jubmoji, implies nil summoner.
             ; player that sends first join request becomes creator
             (nil? jinni) (try
-                {:status 200 :body (map->json {:jid (j/create-summoning-circle player_id jubmoji)})}
+                (j/create-summoning-circle player_id jubmoji)
             (catch Exception err
-                {:status 500 :body (map->json {:error  "Error creating summoning circle"})}))
+                {:status 500 :body { :error "Error creating summoning circle"}}))
 
             ; if circle exists but no proof then process as application to be approved later
             (nil? majik_msg) (try
-                {:status 200 :body (map->json {:jid (j/apply-summoning-circle player_id jinni_id)})}
+                (j/apply-summoning-circle player_id jinni_id)
             (catch Exception err
-                {:status 500 :body (map->json {:error  "Error applying summoning circle"})}))
+                {:status 500 :body {:error  "Error applying summoning circle"}}))
 
             ; verified 1. circle exists 2. jubmoji is owner of circle 3. specific player was approved by signer
             :else (try
-                {:status 200 :body (map->json {:jid (j/join-summoning-circle player_id (:id jinni))})}
+                (j/join-summoning-circle player_id (:id jinni))
             (catch Exception err
-                {:status 500 :body (map->json {:error  "Error joining summoning circle"})}))
+                {:status 500 :body {:error  "Error joining summoning circle"}}))
             )))
 
 (defn get-home-config
@@ -198,7 +202,7 @@
     (if-let [jid (:jinni_id args)]
         ;; TODO pull provider from widget settings and route to proper file
         (openrouter-d/see-current-me jid)
-        (map #(openrouter-d/see-current-me %) (:jinn (db/call db/get-all-jinn)))))
+        (map #(openrouter-d/see-current-me %) (:jinn (db/call db/get-all-jinni)))))
 
 
 ;; Code Providers

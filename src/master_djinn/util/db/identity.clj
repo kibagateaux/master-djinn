@@ -15,17 +15,15 @@
     ON CREATE
         SET p = $player
 
-    // Adds trust network metadata of which master djinn approved the player
-    MERGE (m)-[:ATTESTS]->(p)
-
     // (p)--(j) merge assumes only one jinni per player (intentional for now)
-    MERGE (p)-[:SUMMONS]->(j:Avatar:Jinni:p2p)
+    MERGE (p)-[:SUMMONS]->(j:Avatar:p2p)
     MERGE (j)-[rj:BONDS]->(p)
 
     // if new player, ON CREATE SET to prevent acciental overriding jinni data
     ON CREATE 
         SET j = $jinni,
-        rj.since = $now
+        rj.since = $now,
+        j:Jinni
 
     // if extant player as NPC, convert to full player preserving their existing game state.
     REMOVE j:NPC
@@ -40,7 +38,7 @@
     MERGE (p:Avatar:Human { id: $player.id })
     
     // only allows one personal avatar (npc or jinni) per player atm
-    MERGE (p)<-[rj:BONDS]-(j:Avatar:Jinni:p2p)
+    MERGE (p)<-[rj:BONDS]-(j:Avatar:p2p)
     MERGE (p)-[:SUMMONS]->(j)
 
     // add their randomly generated identity to player profile
@@ -64,13 +62,6 @@
     WITH id
     CALL apoc.create.addLabels(id, [$provider]) YIELD node
     RETURN ID(node) as id
-")
-
-(neo4j/defquery get-player-attesters "
-    MATCH (p:Avatar { id: $pid })
-    MATCH (p)<-[:ATTESTS]->(pr:Provider)
-    
-    RETURN COLLECT(pr) as attesters
 ")
 
 ;; set attributes individually to not erase other identity data e.g. username

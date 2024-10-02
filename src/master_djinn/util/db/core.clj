@@ -106,8 +106,8 @@
 (neo4j/defquery get-all-players
   "MATCH (p:Avatar) RETURN COLLECT(p) as players")
 
-(neo4j/defquery get-all-jinn
-  "MATCH (j:Jinni) RETURN COLLECT(j.id) as jinn")
+(neo4j/defquery get-all-jinni
+  "MATCH (j:Jinni) RETURN COLLECT(j.id) as jinni")
 
 
 (neo4j/defquery get-player-actions "
