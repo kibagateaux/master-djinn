@@ -2,34 +2,40 @@
   (:require [neo4j-clj.core :as neo4j]
             [master-djinn.util.db.core :as db]))
 
+;; TODO match on jjubmoji
 (neo4j/defquery get-summoning-circle "
-  OPTIONAL MATCH (p:Avatar:Human)-[:HAS]->(:Jubmoji {provider_id: $jmid}),
-    (p)-[:SUMMONS]->(j:Jinni:p2c)
+  OPTIONAL MATCH (j:Avatar:Jinni)-[:HAS]->(:Jubmoji {provider_id: $jmid}),
+    (p:Avatar:Human)-[:SUMMONS]->(j:Jinni:p2c)
   RETURN p AS summoner, j AS jinni
 ")
 
-;; TODO should :Identity:Jubmoji be mapped to :Human or :Jinni ???
-;; much cooler if on jinni then it can be passed around. 
-;; would have to make :Jubmoji the summoner then which feels weird if its not an agent
-
-;; Can only create circle if you have been vouched by master djinn
-;; (p)--(j) merge assumes only one p2c per player (intentional for now)
-;; ON CREATE ensures 1 player->jubmoji and 1 player-> p2c + prevents accidental overriding
 (neo4j/defquery create-summoning-circle "
+  // Only verified players with personal jinni can create circles
   MATCH (p:Avatar:Human {id: $pid})-[:SUMMONS]->(:Jinni:p2p)
   WITH p
   WHERE p IS NOT NULL
-  MERGE (p)-[:HAS]->(id:Identity:Ethereum:Jubmoji)
 
-  ON CREATE
-    SET id.provider = 'Ethereum'
-    SET id.provider_id = $signer
-    WITH p
-    MERGE (p)-[rj:SUMMONS]->(j:Jinni:p2c)
-    MERGE (j)-[rp:BONDS]->(p)
-    SET rj.timesetamp = $now
-    SET rp.since = $now
-    RETURN p AS summoner, j AS jinni
+  // Give community jinni the jubmoji identity to take actions directly in game
+  // on jinni :ID created so only 1 circle/jinni per jubmoji
+  
+  CALL apoc.do.when(
+    size((id:Identity:Ethereum:Jubmoji {
+      provider: 'Ethereum',
+      provider_id: $signer})) = 0,
+    \"CREATE (j:Avatar:Jinni:p2c)-[:HAS]->(id:Identity:Ethereum:Jubmoji {
+      provider: 'Ethereum',
+      provider_id: $signer})
+      
+      MERGE (p)<-[rp:BONDS]-[j)
+      MERGE (p)-[rj:SUMMONS]->(j)
+      SET rj.timestamp = $now
+      SET rp.since = $now
+      
+      RETURN j\",
+    \"RETURN 'Identity already exists'\"
+) YIELD value
+    
+    RETURN p AS summoner, value AS jinni
 ")
 
 ;; only create rj if p + j already exist. Do not overide existing rj data
