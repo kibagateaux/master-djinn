@@ -91,7 +91,9 @@
             :widgets (:widgets j)
             :last_divi_ts (:end_time (:divi j))
           }  
-        })) {} (:jinni res))]
+        })) {} (:jinni res))
+        valid-jinni (filter #(and (some? %) (some? (:jinni_id %))) (vals config-map))]
         (clojure.pprint/pprint config-map)
+        (println  valid-jinni)
         ;; ideally return as json map but cant get lacinia to do dynamic key return vals so must return list
-        (vals config-map)))
+        valid-jinni))

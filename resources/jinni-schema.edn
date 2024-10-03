@@ -241,7 +241,7 @@
                             :player_id {:type (non-null String)}}}  ;; 0x ETH address
             
             :jinni_activate
-                {:type       (non-null ID)
+                {:type       ID ; nil if no p2p jini activated
                 :description "Registers a new jinni using ZKP that you have received a majik card"
                 :args       {:verification {:type :SignedRequest} ;; TODO ZKP?
                             :majik_msg {:type (non-null String)} ;; Signed player_id by majik card
@@ -260,7 +260,7 @@
                             :player_id {:type (non-null String) :description "player to add to summoning circle for majik_msg verification"} 
                             :jinni_id {:type String :description "UNIMPLEMENTED. specific jinni/circle by summoner to add player to. used in majik_msg verification" }}}
             :jinni_waitlist_npc
-                {:type       (non-null ID)
+                {:type       (non-null ID) ; must create npc account or reutrn existing NPC jinni
                 :description "Create a new npc who wants to play the game allowing the to store config and join circles.
                             Returns NPC Jinni ID"
                 :args       {:verification {:type (non-null :SignedRequest)}}}

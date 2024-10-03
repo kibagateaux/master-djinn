@@ -120,7 +120,7 @@
 ;; returns all jinni, all widgets on that jinni, and only the last divination for that jinni
 ;; for a given player that is bonded to any jinni, whether npc or not
 (neo4j/defquery get-home-config "
-  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Jinni)
+  MATCH (p:Avatar {id: $player_id})<-[:BONDS]-(j:Avatar)
   MATCH (summ:Avatar)-[:SUMMONS]->(j)
   OPTIONAL MATCH (j)-[:USES]->(w:Widget)
   OPTIONAL MATCH (j)-[:ACTS]->(d:Action:Divination)
