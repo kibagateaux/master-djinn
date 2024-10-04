@@ -64,3 +64,16 @@
         :start_time committedDate
         :end_time committedDate
         :data_source PROVIDER}}))
+
+(defn transmute 
+  [data]
+  (let [provider (:provider data) ;; @DEV: remove keyword prefix ":" for neo4j tag
+        action_type (:action_type data)
+        pid (:player_id data)
+        inputs (:raw_data data)]
+        (cond
+          (not= PROVIDER provider) []
+          (= action_type :Coding)  (map #(Commit->Action pid provider %) inputs)
+          (= action_type :Stewarding) (map #(Repo->Resource pid provider %) inputs)
+        :else []
+        )))

@@ -26,6 +26,7 @@
                 ;; openai shit for clojure
                 [net.clojars.wkok/openai-clojure "0.18.1"]
                 ;; Testing
+                [lambdaisland/kaocha "1.91.1392"]
                 [org.clojure/core.specs.alpha "0.1.24"]
                 [org.clojure/spec.alpha "0.1.143"]
                 [org.clojure/test.check "1.1.1"]
@@ -48,11 +49,14 @@
   :plugins [[lein-environ "0.4.0"]]
   :resource-paths ["config", "resources"]
   :aliases {"serve" ["run" "-m" "master-djinn.server/-main"]
-            "dev" ["run" "-m" "master-djinn.server/run-dev"]}
+            "dev" ["run" "-m" "master-djinn.server/run-dev"]
+            "test" ["run" "-m" "kaocha.runner"]}
   ;; If you use HTTP/2 or ALPN, use the java-agent to pull in the correct alpn-boot dependency
   ;:java-agents [[org.mortbay.jetty.alpn/jetty-alpn-agent "2.0.5"]]
   :profiles {:dev {:aliases {"run-dev" ["trampoline" "run" "-m" "master-djinn.server/run-dev"]}
                    :dependencies [[io.pedestal/pedestal.service-tools "0.6.1"]]}
+            :test {:aliases {"test" ["run" "-m" "kaocha.runner"]}
+                   :dependencies [[lambdaisland/kaocha "1.91.1392"]]}
             ;; TODO would be nice to move Dockerfile flags to uberjar config
             :uberjar {:aot [master-djinn.server]}}
   :main ^{:skip-aot true} master-djinn.server)
