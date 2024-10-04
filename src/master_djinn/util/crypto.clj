@@ -75,7 +75,6 @@
         Open issue on web3j repo - https://github.com/web3j/web3j/issues/1989
     "
     ([signed-msg-hash original-msg]
-    (println "ecrecover sig leng" signed-msg-hash (count signed-msg-hash)  (< (count signed-msg-hash) 130))
     (cond
         (nil? original-msg)  nil
         (nil? signed-msg-hash) nil

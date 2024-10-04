@@ -66,6 +66,14 @@ jobs:
         tags: |
           ${{ steps.get-repo.outputs.repo }}:${{ steps.get-tag.outputs.tag }}
           ${{ steps.get-repo.outputs.repo }}:latest
+    
+    # - id: run-tests
+    #   name: Run Clojure test suite on generated uberjar
+    #   run: |
+    #     # Assuming the uberjar is in the target directory
+    #     # java -cp target/master-djinn-standalone.jar clojure.main -m leiningen.core.main test
+    #     docker run --rm -w /usr/src/app --rm "$GAR_REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA" lein test
+      
       # TODO run tests with built image. Add needs:test to push command
       # get-instance: echo ::set-output name=name:: if master master-djinn elif staging master-djinn-apprentice fi
       # gcloud compute instances update-container  ${{ steps.get-instance.outputs.name }}

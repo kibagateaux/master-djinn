@@ -1,6 +1,9 @@
 (ns master-djinn.util.crypto-test
   (:require [clojure.test :refer :all]
-            [master-djinn.util.crypto :refer :all]))
+              [master-djinn.util.types.core :refer [address?]]
+              [clojure.spec.alpha :as s]
+
+              [master-djinn.util.crypto :refer :all]))
 
 (defn genhex [len] (str (repeatedly len #(rand-nth "0123456789abcdef"))))
 (defn random-addy [] (apply str "0x" (genhex 40)))
@@ -10,6 +13,56 @@
        :original-msg " mutation jinni_waitlist_npc( $verification: SignedRequest! ) { jinni_waitlist_npc( verification: $verification ) } "
        :signer "0xa0e8566a433FC11844D645Ed814841E9213C2052"} ;; Example expected address
 ])
+
+(deftest handle-signed-POST-query-tests
+  (let [valid-context {:request {:graphql-vars {:verification {:signature "0xvalidsignature" :_raw_query "query { test }"}}}}
+        invalid-context {:request {:graphql-vars {}}}
+        malformed-context {:request {:graphql-vars {:verification {:signature "invalid" :_raw_query "query { test }"}}}}]
+
+    (testing "Expects :verification in query params"
+      (is (map? (handle-signed-POST-query valid-context)))
+      (is (thrown? Exception (handle-signed-POST-query invalid-context)))
+      (is (thrown? Exception (handle-signed-POST-query {}))))
+
+    (testing "Derives signature from :verification"
+      (let [result (handle-signed-POST-query valid-context)]
+        (is (string? (get-in result [:request :signer])))
+       ;;  (is (address? (get-in result [:request :signer])))
+        ))
+
+    (testing "Replaces original graphql-query with verified query"
+      (let [result (handle-signed-POST-query valid-context)]
+        (is (= "query { test }" (get-in result [:request :graphql-query])))))
+
+    (testing "Adds signer to request context"
+      (let [result (handle-signed-POST-query valid-context)]
+        (is (contains? (:request result) :signer))
+        (is (s/valid? ::address? (get-in result [:request :signer])))
+        (is (address? (get-in result [:request :signer])))
+       ;;  (is (address? (get-in result [:request :signer])))
+        ))
+
+    (testing "Handles malformed verification data"
+      (is (thrown? Exception (handle-signed-POST-query malformed-context))))
+
+    (testing "Does not check args as part of request verification"
+      (let [context1 (assoc-in valid-context [:request :graphql-vars :args] {:arg1 "value1"})
+            context2 (assoc-in valid-context [:request :graphql-vars :args] {:arg2 "value2"})
+            result1 (handle-signed-POST-query context1)
+            result2 (handle-signed-POST-query context2)]
+        (is (= (get-in result1 [:request :graphql-query])
+               (get-in result2 [:request :graphql-query])))))
+
+    (testing "False positive: Invalid signature still processes"
+      (let [false-positive-context (assoc-in valid-context [:request :graphql-vars :verification :signature] "0xinvalidsignature")
+            result (handle-signed-POST-query false-positive-context)]
+        (is (some? (get-in result [:request :signer])))))
+
+    (testing "False negative: Valid signature fails to process"
+      (let [false-negative-context (assoc-in valid-context [:request :graphql-vars :verification :_raw_query] "invalid query")
+            result (handle-signed-POST-query false-negative-context)]
+        (is (not= "invalid query" (get-in result [:request :graphql-query])))))
+))
 
 (deftest ecrecover-tests
   ;; Positive Test Cases
