@@ -1,6 +1,6 @@
 (ns master-djinn.util.crypto
     (:require [clojure.test :refer [is]])
-    (:import  (org.web3j.crypto ECKeyPair Sign Keys)
+    (:import  (org.web3j.crypto ECKeyPair Credentials Sign Keys)
               (org.web3j.utils Numeric)))
 
 (defonce MALIKS_MAJIK_CARD "0x1a861777Ba3BceD36E63242C2DdE484CA5563587") ;; cat
@@ -153,3 +153,10 @@
             (throw e))) ;; bubble up error
         (throw (Exception. "util:crypto:handle-signed-query:nil No verification data passed"))
     ))
+
+(defn sign
+  "Signs a message using the provided private key"
+  [msg pkey]
+  (let [credentials (Credentials/create pkey)
+        signature (Sign/signPrefixedMessage (.getBytes msg "UTF-8") (.getEcKeyPair credentials))]
+    (.toString signature)))

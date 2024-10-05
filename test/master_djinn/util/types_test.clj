@@ -7,7 +7,7 @@
 
 ;; Test the specification with example data
 (deftest primitive-types-test
-  (testing "signer is eth address"
+  (testing "::signer is eth address"
     (let [gen-addy (Keys/getAddress "some key thing")
         hard-addy "0xdead00000000000000000000000000000000beef"
         long-addy "0xdead00000000000000000000000000000000beefdead00000000000000000000000000000000beef"]
@@ -24,7 +24,6 @@
         (is (not (spec/valid? :master-djinn.util.types.core/signer (Keys/getAddress long-addy))))
         (is (spec/valid? :master-djinn.util.types.core/signer (str "0x" (Keys/getAddress long-addy))))
         (is (thrown? Exception (Keys/toChecksumAddress long-addy)))
-        (is (not (spec/valid? :master-djinn.util.types.core/signer long-addy)))
-    ))
+        (is (not (spec/valid? :master-djinn.util.types.core/signer long-addy)))))
     
 )

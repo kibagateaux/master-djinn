@@ -35,8 +35,3 @@
 ;;   "takes milliseconds since UNIX epoch and converst to ISO 8601"
 ;;   [ts]
 ;;   (java.util.Date ts))
-
-(defn get-signer
-  "extract API request signer injected by /util/crypto pedestal interceptor"
-  [gql-ctx]
-  (or (get-in gql-ctx [:request :signer]) TEST_SIGNER))
