@@ -18,38 +18,56 @@
 
 (deftest web3j-cryptographic-validity-tests
   (let [test-message "Test message for signing"
-        test-private-key (ECKeyPair/create (BigInteger. "1234567890"))
-        test-public-key (.getPublicKey test-private-key)
-        test-address (Keys/getAddress test-public-key)
-        test-signature (Sign/signPrefixedMessage (.getBytes test-message) test-private-key)]
+        pk (ECKeyPair/create (BigInteger. "1234567890"))
+        test-public-key (.getPublicKey pk)
+        pid (Keys/toChecksumAddress (Keys/getAddress test-public-key))
+        test-signature (Sign/signPrefixedMessage (.getBytes test-message) pk)]
+       
 
     (testing "Sign/signedPrefixedMessageToKey performs correct address derivation"
       (let [derived-public-key (Sign/signedPrefixedMessageToKey (.getBytes test-message) test-signature)
             derived-address (Keys/getAddress derived-public-key)]
-        (is (= test-address derived-address))))
+        (is (and (some? derived-public-key) (some? derived-address)))
+        ;; returned address is not-checksummed
+        (is (= (subs (clojure.string/lower-case pid) 2) derived-address))
+        ;; we always checksum address before returning in ecrecover
+        (is (= pid (Keys/toChecksumAddress derived-address)))))
+        
 
     (testing "Keys/getAddress returns :signer/address? type"
-      (is (s/valid? :master-djinn.util.types.core/signer (Keys/toChecksumAddress test-address))))
+      (is (s/valid? :master-djinn.util.types.core/signer (Keys/toChecksumAddress pid))))
 
     (testing "Sign/signedPrefixedMessageToKey returns the right checksum address for derived address"
       (let [derived-public-key (Sign/signedPrefixedMessageToKey (.getBytes test-message) test-signature)
             derived-address (Keys/getAddress derived-public-key)]
-        (is (= (Keys/toChecksumAddress test-address)
+        (is (= (Keys/toChecksumAddress pid)
                (Keys/toChecksumAddress derived-address)))))
 
        (testing "Sign/signedPrefixedMessageToKey returns the right checksum address for derived address"
       (let [derived-public-key (Sign/signedPrefixedMessageToKey (.getBytes test-message) test-signature)
             derived-address (Keys/getAddress derived-public-key)]
-        (is (= (Keys/toChecksumAddress test-address)
+        (is (= (Keys/toChecksumAddress pid)
                (Keys/toChecksumAddress derived-address)))))
+
+       (println "asfarfaw" (sign test-message pk))
+
+       (testing "(sign) returns same value as web3j signMessage"
+              (let [sig (sign test-message pk)
+                     raw-sig (Sign/signPrefixedMessage (.getBytes test-message) pk)]
+         (is (= (subs sig 0 2) "0x"))
+         (is (= (subs sig 2 66) (subs (bytes->hex (.getR raw-sig)) 2)))
+         (is (= (subs sig 66 130) (subs (bytes->hex (.getS raw-sig)) 2)))
+         (is (= (subs sig 130 132) (subs (bytes->hex (.getV raw-sig)) 2)))
+       ))
   ))
 
 (deftest ecrecover-tests
   (let [test-message "Test message for signing"
-        test-private-key (ECKeyPair/create (BigInteger. "1234567890"))
-        test-public-key (.getPublicKey test-private-key)
-        test-address (Keys/getAddress test-public-key)
-        test-signature (Sign/signPrefixedMessage (.getBytes test-message) test-private-key)]
+        pk (ECKeyPair/create (BigInteger. "1234567890"))
+        test-public-key (.getPublicKey pk)
+        pid (Keys/toChecksumAddress (Keys/getAddress test-public-key))
+        test-signature (Sign/signPrefixedMessage (.getBytes test-message) pk)]
+       (println "core crypto testting" )
   ;; Positive Test Cases
   (testing "Valid signature recovery"
     ;; Assuming these values are valid for testing
@@ -103,49 +121,58 @@
        (is (= signer (ecrecover (subs fake-hash 2) fake-msg)))))
 
 (testing "ecrecover always returns a checksum address if not nil"
-       (let [signature-bytes (byte-array (concat (.getR test-signature) (.getS test-signature) (.getV test-signature)))
-              signature-hex (bytes->hex signature-bytes)
+       (let [signature-hex (sig->hex test-signature)
               recovered-address (ecrecover signature-hex test-message)]
               (is (or (nil? recovered-address)
                      (and (string? recovered-address)
                      (s/valid? :master-djinn.util.types.core/signer recovered-address))))))
 
        (testing "ecrecover is consistent with Sign/signedPrefixedMessageToKey"
-       (let [signature-bytes (byte-array (concat (.getR test-signature) (.getS test-signature) (.getV test-signature)))
-              signature-hex (bytes->hex signature-bytes)
+       (let [signature-hex (sig->hex test-signature)
               ecrecover-address (ecrecover signature-hex test-message)
               sign-address (-> (Sign/signedPrefixedMessageToKey (.getBytes test-message) test-signature)
                                    Keys/getAddress
                                    Keys/toChecksumAddress)]
               (is (= ecrecover-address sign-address))))
 
+       (testing "ecrecover is always returns checksummed address"
+       (let [signature-hex (sig->hex test-signature)
+              ecrecover-address (ecrecover signature-hex test-message)
+              sign-address (Keys/getAddress (Sign/signedPrefixedMessageToKey (.getBytes test-message) test-signature))]
+              (is (not= ecrecover-address sign-address))
+              (is (= ecrecover-address (Keys/toChecksumAddress sign-address)))
+              (is (not= ecrecover-address (clojure.string/lower-case sign-address)))))
+
        (testing "ecrecover rejects tampered messages"
-       (let [signature-bytes (byte-array (concat (.getR test-signature) (.getS test-signature) (.getV test-signature)))
-              signature-hex (bytes->hex signature-bytes)
+       (let [signature-hex (sig->hex test-signature)
               tampered-message (str test-message "tampered")]
               (is (not= (ecrecover signature-hex test-message)
                      (ecrecover signature-hex tampered-message)))))
 
        (testing "ecrecover incorectly processes tampered signatures"
-       (let [signature-bytes (byte-array (concat (.getR test-signature) (.getS test-signature) (.getV test-signature)))
-              signature-hex (bytes->hex signature-bytes)
+       (let [signature-hex (sig->hex test-signature)
               tampered-signature (str (subs signature-hex 0 (- (count signature-hex) 2)) "1c")] ; 1b for 27, 1c for 28
               (is (not= (ecrecover signature-hex test-message)
                      (ecrecover tampered-signature test-message)))))
 
        (testing "ecrecover rejects invalid signatures"
-       (let [signature-bytes (byte-array (concat (.getR test-signature) (.getS test-signature) (.getV test-signature)))
-              signature-hex (bytes->hex signature-bytes)
+       (let [signature-hex (sig->hex test-signature)
               tampered-signature (str (subs signature-hex 0 (- (count signature-hex) 2)) "bb")] ; 1b for 27, 1c for 28
               (is (thrown? Exception (ecrecover tampered-signature test-message)))))
 
   ;; False Negative Test Cases
   (testing "Edge cases for valid signatures"
+
        ;; Test case: Trailing whitespace in original message
-       (let [signed-msg-hash "0x5c0d4c3b2a1f6e4b0b1f3e4c5a6b7d8e9f0a1b2c3d4e5f6g7h8i9j0k1l2m3n4" ;; Example valid hash
-              original-msg "Hello, Ethereum!   "] ;; Original message with trailing spaces
-       (is (not= (:signer live-example)
-              (ecrecover signed-msg-hash (clojure.string/trim original-msg)))) ;; Trimmed message should still return valid address
+       (let [original-msg "Hello, Ethereum!   "  ;; Original message with trailing spaces
+              signed-msg-hash (sign original-msg pk)]
+       (is (= pid
+              ;; untrimmed message should should be valid
+              (ecrecover signed-msg-hash original-msg)))
+       (is (not= pid
+              ;; Trimmed message should still return valid address
+              (ecrecover signed-msg-hash (clojure.string/trim original-msg)))))
+       
 
        ;; Test case: Different line endings in original message
        (let [signed-msg-hash "0x5c0d4c3b2a1f6e4b0b1f3e4c5a6b7d8e9f0a1b2c3d4e5f6g7h8i9j0k1l2m3n4" ;; Example valid hash
@@ -184,7 +211,7 @@
               (ecrecover signed-msg-hash original-msg)))) ;; Should handle case insensitivity
 
   ))
-))
+)
 
 
 (deftest handle-signed-POST-query-tests

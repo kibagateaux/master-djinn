@@ -88,56 +88,72 @@
                   portal/request-access-token (constantly {:access_token "test-token" :refresh_token "test-refresh"})
                   master-djinn.util.db.identity/init-player-identity (constantly "test-pid")
                   master-djinn.util.db.identity/set-identity-credentials (constantly "test-pid")]
-      (let [request {:query-params {:provider "Github" 
+      (let [provider "Github"
+            request {:query-params {:provider provider
                                     :code "test-code" 
                                     :state "test-pid.web.nonce.signature"}}
             response (portal/oauth-callback-handler request)]
         (is (= 301 (:status response)))
-        (is (= "{\"id\":\"test-pid\",\"provider\":\"Github\",\"state\":\"test-pid.web.nonce.signature\",\"msg\":\"TestProviderItem Successfully Equipped!\"}"
+        (is (= (str "{\"id\":\"test-pid\",\"provider\":\""provider"\",\"state\":\"test-pid.web.nonce.signature\",\"msg\":\""provider"Item Successfully Equipped!\"}")
                (:body response))))))
   
-  (testing "Successful OAuth callback for native app"
+  (testing "Successful OAuth callbacks on native apps redirect to eeplinks in the app"
     (with-redefs [portal/decode-oauth-state (constantly "test-pid")
                   portal/request-access-token (constantly {:access_token "test-token" :refresh_token "test-refresh"})
                   master-djinn.util.db.identity/init-player-identity (constantly "test-pid")
                   master-djinn.util.db.identity/set-identity-credentials (constantly "test-pid")]
-      (let [request {:query-params {:provider "Github" 
+      (let [provider "Github"
+            request {:query-params {:provider provider
                                     :code "test-code" 
                                     :state "test-pid.native.nonce.signature"}}
             response (portal/oauth-callback-handler request)]
         (is (= 301 (:status response)))
-        (is (= "jinni-health://inventory/Github?state=test-pid.native.nonce.signature"
+        (is (= (str "jinni-health://inventory/"provider"?state=test-pid.native.nonce.signature")
                (get-in response [:headers "Location"]))))))
   
   (testing "Handles various error cases"
     (let [
         pk (ECKeyPair/create (BigInteger. "1234567890"))
         pubk (.getPublicKey pk)
-        pid (Keys/getAddress pubk)
-        gen-state  (fn [msg] (Sign/signPrefixedMessage (.getBytes msg) pk))
+        pid (Keys/toChecksumAddress (Keys/getAddress pubk))
+        gen-state  (fn [msg] (crypt/sign msg pk))
+        test-data (gen-state (str pid"." "" "." "nonce1"))
     ]
+    
+    (println "Decoding generated state" test-data )
+    (println "Decoding generated state" pid (crypt/ecrecover test-data (str pid"." "" "." "nonce1")))
+    
     (are [query-params expected-status expected-body]
          (= {:status expected-status :body expected-body}
             (select-keys (portal/oauth-callback-handler {:query-params query-params}) [:status :body]))
       
+      ;; bad state cant be decoded thus no player to oauth. always reverts here first if bad state
+      {:provider "TestProvider" :code "" :state "bad.state.components.0xhere"}
+      401 "unverified player"
+
+      {:provider "TestProvider" :code "test" :state "invalid.stateFormatting"}
+      401 "unverified player"
+
+        ;; valid provider in url params but different provider signed by player
+      {:provider "Github" :error "access_denied" :state (str pid"." "web" "." "nonce1" "." (gen-state (str pid"." "UnsupportedProvider" "." "nonce1")))}
+      401 "unverified player"
+
       {:provider "" :code "test" :state (str pid"." "web" "." "nonce1" "." (gen-state (str pid"." "" "." "nonce1")))}
       400 "must include oauth provider"
       
       {:provider "UnsupportedProvider" :code "test" :state (str pid"." "web" "." "nonce1" "." (gen-state (str pid"." "UnsupportedProvider" "." "nonce1")))}
       400 "oauth provider not supported"
       
-      {:provider "TestProvider" :error "access_denied" :state (str pid"." "web" "." "nonce1" "." (gen-state (str pid"." "TestProvider" "." "nonce1")))}
+      {:provider "Github" :error "access_denied" :state (str pid"." "web" "." "nonce1" "." (gen-state (str pid"." "Github" "." "nonce1")))}
       400 "user rejected access"
       
-      {:provider "TestProvider" :code "" :state "bad.state"}
-      401 "unverified player"
+      
 
         ;; need actual state with pid
-      {:provider "TestProvider" :code "" :state (str pid"." "web" "." "nonce1" "." (gen-state (str pid"." "TestProvider" "." "nonce1")))}
+      {:provider "Github" :code "" :state (str pid"." "web" "." "nonce1" "." (gen-state (str pid"." "Github" "." "nonce1")))}
       400 "no code provided for oauth flow"
-      
-      {:provider "TestProvider" :code "test" :state "invalid.state"}
-      401 "unverified player"))))
+
+      ))))
 
 (deftest refresh-access-token-test
   (testing "Successfully refreshes access token"

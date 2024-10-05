@@ -154,9 +154,20 @@
         (throw (Exception. "util:crypto:handle-signed-query:nil No verification data passed"))
     ))
 
+(defn sig->hex
+    "takes cryptographic values for signature and constructs hex string format for decoding
+    returns 0x{hash}"
+    [signature]
+    (bytes->hex (byte-array
+        ;; Combine r, s, and v into a single byte array
+        (concat (.getR signature) (.getS signature) (.getV signature)))))
+
 (defn sign
   "Signs a message using the provided private key"
   [msg pkey]
   (let [credentials (Credentials/create pkey)
-        signature (Sign/signPrefixedMessage (.getBytes msg "UTF-8") (.getEcKeyPair credentials))]
-    (.toString signature)))
+        signature (Sign/signPrefixedMessage
+            (.getBytes msg "UTF-8")
+            (.getEcKeyPair credentials))]
+    (sig->hex signature)))
+    
