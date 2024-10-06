@@ -171,3 +171,13 @@
             (.getEcKeyPair credentials))]
     (sig->hex signature)))
     
+
+(defn get-signer 
+    "generate new signer, private key and player id. Mostly for testing"
+    [seed]
+    (let [
+        ;; pk (ECKeyPair/create (BigInteger. "1234567890"))
+        pk (ECKeyPair/create (BigInteger. (str seed)))
+        test-public-key (.getPublicKey pk)
+        pid (Keys/toChecksumAddress (Keys/getAddress test-public-key))]
+    {:pk pk :pid pid}))

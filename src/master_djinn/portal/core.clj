@@ -70,7 +70,7 @@
   :headers  {"Authorization" (get-provider-auth-token provider)
               "Content-Type" "application/x-www-form-urlencoded"}})
 
-(defn gen-oauth-state-sig 
+(defn oauth-state-sig 
   [pid provider nonce]
   (str pid"."provider"."nonce))
 
@@ -79,11 +79,12 @@
   state has form `{address}.{nonce}.{signature('{address}.{provider}.{nonce}')}`
   returns player-id eth address they signed state with"
   [provider state]
-  (println "portal:decode-oauth-state:parts" provider (clojure.string/split state #"\."))
+  (if (nil? state) nil
   (let [[pid platform nonce sig] (clojure.string/split state #"\.")
-        signer (crypt/ecrecover sig (gen-oauth-state-sig  pid provider nonce))]
+        qaasaas (println "portal:decode-oauth-state:parts" provider (clojure.string/split state #"\."))
+        signer (crypt/ecrecover sig (oauth-state-sig pid provider nonce))]
         ;; (println "portal:decode-oauth-state:signer" pid signer)
-        (if (= pid signer) pid nil)))
+        (if (= pid signer) pid nil))))
 
 
 ;;; Step #1 & #2 - Provider response handling
@@ -108,9 +109,10 @@
                             ;; only needed on - github, 
                             :client_secret (:client-secret oauth-config)
                             })
-        response (client/post (:token-uri oauth-config) request-config)]
+        response (client/post (:token-uri oauth-config) request-config)
+        body (json->map (:body response))]
       (println "requesting " provider " oauth response: " (json->map (:body response)))
-      (if (nil? (:error (:body response))) (json->map (:body response)) nil)))
+      (if (nil? (:error body)) body nil)))
 
 (defn oauth-callback-handler
   "Used for mobile app
@@ -155,9 +157,11 @@
       ;; Last check to prevent unneccessary db calls
       (nil? (db/call id/init-player-identity {:pid pid :provider provider}))
                                           {:status 401 :body "player not registered"}
-      :else                               (try (let
+      :else (try (let
         [response (request-access-token provider config code)
           [_ player-platform _ _] (clojure.string/split state #"\.")]
+        (if (nil? (:access_token (or response {})))
+          (throw (ex-info "invalid token response" "oauth callback failed")))
         (db/call id/set-identity-credentials {
           :pid pid
           :provider provider
@@ -176,7 +180,7 @@
               :id pid
               :provider provider
               :state state
-              :msg (str provider "Item Successfully Equipped!")}
+              :msg (str provider " Item Successfully Equipped!")}
         )})
       (catch Exception e
         (println "portal:oauth-callback:request-token:ERROR on " provider " - " (ex-message e))
@@ -208,10 +212,9 @@
               refresh_token? (:refresh_token res)] ; provider MAY issue new refresh token
       (println "refresh token response " res (:error res) (not new_token))
       (if (or (:error res) (not new_token))
-        ;; (throw (Exception. "bad_refrsh_token"))
         (throw (ex-info "bad_refresh_token" {:status 401}))
         (do    (db/call id/set-identity-credentials {
-            :pid player-id ;; TODO player-id when fixed in init-oauth-handler
+            :pid player-id
             :provider provider
             :access_token new_token
             :refresh_token (or refresh_token? (:refresh_token id)) ;; so we dont overwrite with null
