@@ -200,11 +200,14 @@
   (println "refreshing access token for "  player-id " on " provider)
   (let [id (id/getid player-id provider)
         provider-config ((keyword provider) oauth-providers)
+        aaaaa (println "refresh-token:provider-id:id+refresh-token " id (:refresh_token id))
         base-config (get-oauth-login-request-config provider)
         request-config (assoc base-config :form-params {
                         :grant_type "refresh_token"
                         :refresh_token (:refresh_token id)
                         :client_id (:client-id provider-config)})]
+    (if  (or (nil? id) (nil? (:refresh_token id)))
+      (throw (ex-info "no player with identity" {:status 403}))
     (try (let [response (client/post (:token-uri provider-config) request-config)
               res (json->map (:body response))
               log (clojure.pprint/pprint res)
@@ -212,6 +215,7 @@
               refresh_token? (:refresh_token res)] ; provider MAY issue new refresh token
       (println "refresh token response " res (:error res) (not new_token))
       (if (or (:error res) (not new_token))
+        ;; TODO should bubble up {:error res} instead of "bad_refresh_token?"
         (throw (ex-info "bad_refresh_token" {:status 401}))
         (do    (db/call id/set-identity-credentials {
             :pid player-id
@@ -229,7 +233,7 @@
       (throw err) ;; make sure call errors out so any function relying on success of refresh errors out as well preventing infinite loops
         
     ))
-))
+)))
 
 (defn oauthed-request-config
   "For sending requests on behalf of a user to an OAuth2 server

@@ -1,2 +1,1 @@
-;; write tests to stub Strava API and send fake oauth call/responses to 
-
+;; write tests to stub Github + Spotify API and send fake oauth call/responses to 

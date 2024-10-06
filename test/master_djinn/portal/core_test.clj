@@ -1,14 +1,3 @@
-;; generalized implementation of oauth protocol to add any amount of login providers to app easily
-;; generate a test suite for each function in 
-;; the most important functions are oath-callback-handler, request-access-token, refresh-access-token, decode-oauth-state
-;; write a new (testing) case for each logic path, code branch, edge case, positive and negative assertions, 
-;; 
-
-;; For oauth-callback-handler write additional tests that cover
-;; 1. Flow for native app vs webapp
-;; 2. Redirect_url usage
-;; 3. Redirect state and formats for signatures like on frontend
-
 (ns master-djinn.portal.core-test
   (:require [clojure.test :refer :all]
             [master-djinn.portal.core :as portal]
@@ -17,6 +6,9 @@
             [master-djinn.util.types.core :refer [load-config]]
             [clojure.string :as str])
     (:import  (org.web3j.crypto ECKeyPair Sign Keys)))
+
+;; generalized implementation of oauth protocol to add any amount of login providers to game easily
+;; most important funcs: oath-callback-handler, request-access-token, refresh-access-token, decode-oauth-state
 
 (deftest get-redirect-uri-test
   (testing "Constructs correct redirect URI"
@@ -115,13 +107,7 @@
                   portal/get-redirect-uri (constantly "http://test-redirect")
                   clj-http.client/post (constantly {:body "{\"access_token\": \"new-access-token\", \"refresh_token\": \"new-refresh-token\"}"})]
         (let [response (portal/request-access-token "TestProvider" {:token-uri "http://test-token-uri"} "test-code")]
-            (is (= "new-access-token" (:access_token response)))
-        )
-    ))
-      
-)
-
-
+            (is (= "new-access-token" (:access_token response)))))))
 
 
 (deftest oauth-callback-handler-test
@@ -137,7 +123,9 @@
             response (portal/oauth-callback-handler request)]
         (is (= 301 (:status response)))
         (is (= (str "{\"id\":\"test-pid\",\"provider\":\""provider"\",\"state\":\"test-pid.web.nonce.signature\",\"msg\":\""provider" Item Successfully Equipped!\"}")
-               (:body response))))))
+               (:body response)))
+        ;; no manual redirect via server
+        (is (nil? (get-in response [:headers "Location"]))))))
   
   (testing "Successful OAuth callbacks on native apps redirect to deeplinks in the app"
     (with-redefs [portal/decode-oauth-state (constantly "test-pid")
@@ -175,13 +163,13 @@
             (is (= 400 (:status response)))
             (is (= "Error on OAuth provider issuing access token" (:body response))))))
 
+    ;; (refresh-token) tests show that we can still get new access_token using oauth even if no refresh_token 
     (testing "Completes oauth flow if no refresh token provided"
         (with-redefs [portal/request-access-token (constantly {:access_token "Asfnawfawfa"})
                         master-djinn.util.db.identity/init-player-identity (constantly pid)]
             (let [response (portal/oauth-callback-handler request)]
                 (is (= 301 (:status response)))
                 (is (some? (:body response))))))
-    ;; (refresh-token) tests show that we can still get new access_token using oauth even if no refresh_token 
 
   (testing "Handles invalid inputs, signatures, and error cases"
     (let [gen-state  (fn [msg] (crypt/sign msg (:pk player)))]
@@ -249,7 +237,7 @@
         (let [result (portal/refresh-access-token test-player-id test-provider)]
           (is (= new-access-token result)))))
 
-    (testing "On success calls db/call with correct data"
+    (testing "Calls db/call with correct data on success"
       (let [db-call-args (atom nil)]
         (with-redefs [master-djinn.util.db.identity/getid (constantly {:refresh_token old-refresh-token})
                       portal/get-oauth-login-request-config (constantly {})
@@ -263,26 +251,58 @@
                    :refresh_token new-refresh-token}] 
                  @db-call-args)))))
 
-    (testing "On success actually updates database with new token values"
+    (testing "Updates database with new token values on success"
       (let [test-db (atom {})]
         (with-redefs [master-djinn.util.db.identity/getid (fn [pid provider] (get @test-db [pid provider]))
                       portal/get-oauth-login-request-config (constantly {})
                       clj-http.client/post (constantly {:body (str "{\"access_token\":\"" new-access-token "\",\"refresh_token\":\"" new-refresh-token "\"}")})
                       db/call (fn [f & args] (swap! test-db assoc [test-player-id test-provider] args))]
+            ;; init identity/refresh token on player for initial calls to pass
+            (swap! test-db assoc [test-player-id test-provider] {:refresh_token "test-token"})
           (portal/refresh-access-token test-player-id test-provider)
           (let [updated-identity (first (get @test-db [test-player-id test-provider]))]
             (is (= new-access-token (:access_token updated-identity)))
             (is (= new-refresh-token (:refresh_token updated-identity)))))))
 
-    (testing "Throws exception on refresh failure"
+    (testing "Does not complete flow if player has no refresh token"
+      (with-redefs [master-djinn.util.db.identity/getid (constantly {:access_token "some_value" :refresh_token nil})
+                    portal/get-oauth-login-request-config (constantly {})
+                    clj-http.client/post (constantly {:body (str "{\"access_token\":\"" new-access-token "\"}")})]
+        (is (thrown? Exception (portal/refresh-access-token test-player-id test-provider)))))
+    
+    ;; TODO (refresh-token) tests show that we can still get new access_token using oauth even if no refresh_token. e.g. access-token after refresh-token fails can still work
+
+    (testing "Throws exception on refresh failure with invalid_grant error"
       (with-redefs [master-djinn.util.db.identity/getid (constantly {:refresh_token old-refresh-token})
                     portal/get-oauth-login-request-config (constantly {})
-                    clj-http.client/post (constantly {:body "{\"error\":\"invalid_grant\"}"})]
+                    clj-http.client/post (constantly {:body (str "{\"error\":\"invalid_grant\"}")})]
         (is (thrown? Exception (portal/refresh-access-token test-player-id test-provider)))
         (try (portal/refresh-access-token test-player-id test-provider)
-        (catch Exception e
-            (is (= "bad_refresh_token" (ex-message e)))
-            (is (= {:status 401} (ex-data e)))))))))
+             (catch Exception e
+               (is (= "bad_refresh_token" (ex-message e)))
+               (is (= {:status 401} (ex-data e)))))))
+
+    (testing "Handles unexpected error responses gracefully"
+      (with-redefs [master-djinn.util.db.identity/getid (constantly {:refresh_token old-refresh-token})
+                    portal/get-oauth-login-request-config (constantly {})
+                    clj-http.client/post (constantly {:body (str "{\"error\":\"unexpected_error\"}")})]
+        (is (thrown? Exception (portal/refresh-access-token test-player-id test-provider)))
+        (try (portal/refresh-access-token test-player-id test-provider)
+             (catch Exception e
+               (is (= "bad_refresh_token" (ex-message e)))
+               (is (= {:status 401} (ex-data e)))))))
+
+    (testing "Validates access control by ensuring player identity exists"
+      (with-redefs [master-djinn.util.db.identity/getid (constantly nil)
+                    portal/get-oauth-login-request-config (constantly {})
+                    clj-http.client/post (constantly {:body (str "{\"access_token\":\"" new-access-token "\",\"refresh_token\":\"" new-refresh-token "\"}")})]
+        (is (thrown? Exception (portal/refresh-access-token test-player-id test-provider)))
+        
+        (try (portal/refresh-access-token test-player-id test-provider)
+             (catch Exception e
+               (is (= "no player with identity" (ex-message e)))
+               (is (= {:status 403} (ex-data e)))))))))
+
 
 (deftest oauthed-request-config-test
   (testing "Constructs correct oauthed request config"
