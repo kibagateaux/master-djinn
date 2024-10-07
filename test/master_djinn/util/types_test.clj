@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as spec]
             [clojure.spec.test.alpha :as test]
             [clojure.test :refer :all]
+            [master-djinn.util.core :as util]
             [master-djinn.util.types.core :as types])
     (:import  (org.web3j.crypto Keys)))
 
@@ -27,3 +28,11 @@
         (is (not (spec/valid? :master-djinn.util.types.core/signer long-addy)))))
     
 )
+
+(deftest utils-test
+  (testing "now offsets"
+    (let [ts (util/now)]
+      (is (= (util/now) ts))
+      (is (< (util/now -10000) ts))
+      (is (> (util/now 10000) ts))
+    )))

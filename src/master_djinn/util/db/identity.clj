@@ -6,29 +6,32 @@
 ;; Set UUID to not create duplicate avatar that only has id from setting :Widgets
 (neo4j/defquery create-player (str "
     // ensure vouching master already exists and API wasnt exploited somehow
-    MATCH (m:Provider:"db/MASTER_DJINN_DATA_PROVIDER" {id: $master_id})
+    // has to be manually set so not any p2c creator can jump in players
+    MATCH (m:"db/MASTER_DJINN_DATA_PROVIDER" {id: $master_id})
     WITH m
 
     // create new player preventing override if already NPC
     MERGE (p:Avatar:Human { id: $player.id })
-    MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' }) 
     ON CREATE
         SET p = $player
+    MERGE (id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
+    MERGE (p)-[:HAS]->(id)
 
     // (p)--(j) merge assumes only one jinni per player (intentional for now)
-    MERGE (p)-[:SUMMONS]->(j:Avatar:p2p)
+    MERGE (p)-[rs:SUMMONS]->(j:Avatar:p2p)
     MERGE (j)-[rj:BONDS]->(p)
 
     // if new player, ON CREATE SET to prevent acciental overriding jinni data
     ON CREATE 
         SET j = $jinni,
         rj.since = $now,
-        j:Jinni
-
+        rs.timestamp = $now
+    
+    SET j:Jinni
     // if extant player as NPC, convert to full player preserving their existing game state.
     REMOVE j:NPC
 
-    RETURN $jinni.uuid as jinni
+    RETURN j.id as jinni
 "))
 
 ;; creates npc avatar so we can save their widget config when they first download the game
@@ -39,7 +42,7 @@
     
     // only allows one personal avatar (npc or jinni) per player atm
     MERGE (p)<-[rj:BONDS]-(j:Avatar:p2p)
-    MERGE (p)-[:SUMMONS]->(j)
+    MERGE (p)-[rs:SUMMONS]->(j)
 
     // add their randomly generated identity to player profile
     MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
@@ -48,6 +51,7 @@
     ON CREATE 
         SET p = $player,
             rj.since = $now,
+            rs.timestamp = $now,
             j = $jinni,
             j:NPC
 

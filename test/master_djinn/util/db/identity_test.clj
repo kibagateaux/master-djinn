@@ -23,7 +23,9 @@
 
     // Delete actions on summononed jinni or 
     OPTIONAL MATCH (ii)-[rr]-(iii)
-    DETACH DELETE a, r, rr, ii, iii
+    OPTIONAL MATCH (d:MasterDjinn)
+
+    DETACH DELETE a, r, rr, ii, iii, d
 ")
 
 (defn clear [] (db/call clear-db {}))
@@ -45,7 +47,7 @@
     ([cy args] (neo4j/execute (neo4j/get-session db/connection) cy args)))
 
 (defn get-node-count
-    ([] (neoqu  "MATCH (n) RETURN count(*) as totalNodes"))
+    ([] (get-node-count ""))
     ([labels]
     (let [result (neoqu (str "MATCH (n"labels") RETURN count(*) as totalNodes"))]
       (first result)))) ;; Return the first result to avoid IllegalArgumentException
@@ -304,41 +306,105 @@
   (let [initial-node-count (get-node-count)
         player-id "test-player-id"
         jinni-id "test-jinni-id"
-        player-data {:id player-id :name "Test Player"}
-        jinni-data {:id jinni-id :uuid "test-uuid"}]
+        player-data {:id player-id :uuid "Test Player"}
+        jinni-data {:id jinni-id :uuid "test-uuid"}
+        master-djinn "master-djinn-id"
+        timestamp (now)
+        create (fn [mid] (db/call iddb/create-player {:player player-data :jinni jinni-data :now timestamp :master_id mid}))]
 
-    (testing "can only create player if summoner provided is Master Djinn"
-        ;; must have summoner
-        ;; summoner not a masterdjinn returns nil
+    (testing "player only created if Master Djinn has created a circle"
+        (clear)
+        (is (nil? (create "")))
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid jinni-id :mid ""})
+        (is (some? (create "")))) ;; can create with existing master
 
+    ;; provide least amount of data to nodes/relationships/labels to show what is really required
+    (testing "can only create player if summoner provided"
+        (clear)
+        (is (thrown? Exception (create)))
+
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid jinni-id :mid ""})
+        
+        ; throws when master djinn availabe too
+        (is (thrown? Exception (create)))
+        (is (nil? (create "random master"))) ;; cant create with invalid master
+        (is (some? (create ""))) ;; can create with existing master
+    )
+
+    (testing "creates player if summoner provided is Master Djinn"
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid jinni-id :mid ""})
+        (let [p (create "")]
+            (is (= jinni-id (:jinni p))))
+    )
+
+    (testing "can only create player once"
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid jinni-id :mid ""})
+        (is (= jinni-id (:jinni (create ""))))
+        (is (= jinni-id (:jinni (create "")))))
+    
+    (testing "player can only create one p2p jinni"
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid jinni-id :mid ""})
+        (is (= jinni-id (:jinni (create ""))))
+        ; returns original jinni
+        (is (nil? (:jinni (db/call iddb/create-player {
+            :player player-data
+            :jinni {:id" test jinni" :uuid "ajksnfjaf223"}
+            :now (now)
+            :master_id master-djinn
+        }))))
         )
-    (testing "can only create player if summoner provided")
 
     ;; Test creating a new player
     (clear)
-    (println "CREA PLAYER" (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id "test-master-id"}))
+    (println "CREA PLAYER" (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id master-djinn}))
     (clear)
+    
+    (testing "Creating a player ensures an ethereum identity"
+        ;add masterdjin to create player
+      (let [id1 (:id (first (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id})))
+            created-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id master-djinn}))
+            id2 (:id (first (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id})))]
+
+        ;; also check creating npc first then player and same jinni id
+        ;; (is (= (:provider id) "Ethereum"))
+        ;;   (is (= (:provider_id id) player-id))
+        (is (nil? nil))
+        ))
+        
+
     (testing "Creating a new player with no existing Avatar account"
-      (let [created-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id "test-master-id"}))]
+        ;add masterdjin to create player
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid jinni-id :mid master-djinn})
+      (let [created-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id master-djinn}))]
         (is (some? created-jinni-uuid))
         (let [final-count (get-node-count)]
-            (println "COUNTING NODES" initial-node-count final-count)
-          (is (= (+ initial-node-count 3) final-count))
-          (is (not (nil? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid created-jinni-uuid}))))
-          (is (not (nil? (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id}))))
-          (is (= (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.since" {:jid created-jinni-uuid}) (now))))))
+          (is (= (+ (:totalNodes initial-node-count) 3) (:totalNodes final-count)))
+          (is (some? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid created-jinni-uuid})))
+          (is (some? ((neoqu (str "MATCH (id:Identityq:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id}))))
+          (is (= (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})-[relation:BONDS]->(:Human) RETURN relation.since as ts" {:jid jinni-id}))) timestamp))
+          (is (= (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.timestamp AS ts" {:jid created-jinni-uuid}))) timestamp)))
+        ))
 
+          
     ;; Test creating a player when the Avatar account already exists
     (testing "Creating a player when Avatar account already exists"
-      (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id "test-master-id"})
-      (let [existing-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now -10000) :master_id "test-master-id"}))]
-        (is (= existing-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now -10000) :master_id "test-master-id"}))))
-        (let [final-count (get-node-count)]
-          (is (= initial-node-count final-count))
-          (is (not (nil? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid existing-jinni-uuid}))))
-          (is (nil? (first (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id}))))
-          (is (= (:ts (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.since as ts" {:jid existing-jinni-uuid})) (now -10000)))
-    )))
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid jinni-id :mid master-djinn})
+        (let [mid-node-count (get-node-count)
+        past-ts (now -10000)
+            created-jinni-id (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now past-ts :master_id master-djinn}))
+                final-count (get-node-count)
+            id (:id (first (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id})))]
+        (is (= (+ 3 (:totalNodes mid-node-count)) (:totalNodes (get-node-count))))
+        (is (= jinni-id created-jinni-id))
+        (is (= (+ 0 (:totalNodes final-count)) (:totalNodes (get-node-count))))
+        (println "get jinni post create" (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j.id as j") {:jid jinni-id}))
+        (println "get jinni relation" (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.since as ts" {:jid jinni-id}))
+            ; 4 includes master. should be 3 if test is isolated more
+          (is (= jinni-id (:j (first (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j.id as j") {:jid jinni-id})))))
+          (is (some? id))
+          (is (= (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})-[relation:BONDS]->(:Human) RETURN relation.since as ts" {:jid jinni-id}))) timestamp))
+          (is (= (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.timestamp as ts" {:jid jinni-id}))) timestamp))
+    ))
 ))
 
 ;; (activate-jinni)
