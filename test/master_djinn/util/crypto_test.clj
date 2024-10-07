@@ -49,8 +49,6 @@
         (is (= (Keys/toChecksumAddress pid)
                (Keys/toChecksumAddress derived-address)))))
 
-       (println "asfarfaw" (sign test-message pk))
-
        (testing "(sign) returns same value as web3j signMessage"
               (let [sig (sign test-message pk)
                      raw-sig (Sign/signPrefixedMessage (.getBytes test-message) pk)]
@@ -67,7 +65,7 @@
         test-public-key (.getPublicKey pk)
         pid (Keys/toChecksumAddress (Keys/getAddress test-public-key))
         test-signature (Sign/signPrefixedMessage (.getBytes test-message) pk)]
-       (println "core crypto testting" )
+
   ;; Positive Test Cases
   (testing "Valid signature recovery"
     ;; Assuming these values are valid for testing

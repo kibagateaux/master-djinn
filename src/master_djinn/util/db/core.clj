@@ -81,6 +81,12 @@
   CREATE CONSTRAINT key_identity_provider_id IF NOT EXISTS
     FOR (id:Identity)
     REQUIRE ( id.provider, id.provider_id ) IS UNIQUE;
+  CREATE CONSTRAINT req_identity_provider IF NOT EXISTS
+    FOR (id:Identity)
+    REQUIRE id.provider IS NOT NULL;
+  CREATE CONSTRAINT req_identity_id IF NOT EXISTS
+      FOR (id:Identity)
+      REQUIRE id.provider_id IS NOT NULL;
 
   // 
   CREATE CONSTRAINT key_action_uuid IF NOT EXISTS

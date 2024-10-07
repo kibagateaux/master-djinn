@@ -12,11 +12,16 @@
   [gql-ctx]
   (or (get-in gql-ctx [:request :signer]) TEST_SIGNER))
 
-(defn now "get current time in ISO 8601 locale time" []
-  (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")
-        utc (java.time.ZoneId/of "UTC")
-        now (java.time.ZonedDateTime/now utc)]
-    (.format formatter now)))
+(defn now
+  "get current time in ISO 8601 locale time with optional offset in seconds"
+  ([]
+   (now 0)) ;; default to no offset
+  ([offset-seconds]
+   (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")
+         utc (java.time.ZoneId/of "UTC")
+         now (java.time.ZonedDateTime/now utc)
+         adjusted-now (.plusSeconds now offset-seconds)]
+     (.format formatter adjusted-now))))
 
 (defn update-time [ts]
   (clojure.instant/parse-timestamp ts "timestamp")) 

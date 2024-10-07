@@ -2,12 +2,14 @@
   (:require [clojure.test :refer :all]
               [master-djinn.util.types.core :refer [address?]]
               [clojure.spec.alpha :as s]
-              
+
               [master-djinn.util.db.core :as db]
               [master-djinn.util.db.identity :as iddb]
               [master-djinn.incantations.manifest.jinni :as j]
               [neo4j-clj.core :as neo4j]
 
+            ; to stub and/or generate test data
+              [master-djinn.util.core :refer [now]]
               [master-djinn.util.crypto :refer :all]))
 
 ;; ;; DB tests
@@ -24,14 +26,13 @@
     DETACH DELETE a, r, rr, ii, iii
 ")
 
-(defn reset-db-fixture
-    [do-tests]
-    (db/call clear-db {}) ;; Reset the database to a known state
-    (do-tests)
-    (db/call clear-db {}) ;; Reset the database to a known state
-    )
-
-(use-fixtures :each reset-db-fixture)
+(defn clear [] (db/call clear-db {}))
+;; TODO fixtures not working
+;; (defn reset-db-fixture
+;;     [setup teardown]
+;;     (fn [do-tests]
+;;         (setup) (do-tests) (teardown)))
+;; (use-fixtures :each (reset-db-fixture clear clear))
 
 (defn create-npc [id]
     (db/call iddb/create-npc {
@@ -50,28 +51,28 @@
       (first result)))) ;; Return the first result to avoid IllegalArgumentException
 
     ;; TODO test invariants
-(deftest db-invariant-tests
+(deftest db-invariant-test
   (let [player-id "tjbjvghjhgfrtyujk87654erth"
         existing-npc-id "ansjkfanbfiau83093u190h31io2nj"
         existing-jinni-id "18231b1bd8d-8d91d-asbasc89asasca-nji2b"
         non-existing-player-id "18231b1bd8d-8d91d-asbasc89asasca-anjsfki2"]
         (doseq [label [":Avatar" ":Avatar:Human" ":Avatar:Jinni" ":Avatar:NPC"]]
+            ;; (is thrown?) gives nil, (is nil?) throws error. Both checks belowfail
+            ;; (is (nil? (neoqu (str "CREATE (a" label " {id: $pid}) RETURN a") {:pid player-id})))
+            ;; (is (thrown? Exception (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})))
+            ;; (let [res]) captures err somehow and lets nil be tested
+            
             (testing (str label " may have id. if id then unique not null")
-                ;; (is thrown?) gives nil, (is nil?) throws error. Both checks belowfail
-                ;; (is (nil? (neoqu (str "CREATE (a" label " {id: $pid}) RETURN a") {:pid player-id})))
-                ;; (is (thrown? Exception (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})))
-                ;; (let [res]) captures err somehow and lets nil be tested
-
                 (db/call clear-db {})
                 (let [res (neoqu (str "CREATE (a" label " {id: null}) RETURN a") {:pid player-id})]
                     (is nil? res))
                 (let [res (neoqu (str "CREATE (a" label " {id: null, id: $pid}) RETURN a") {:pid player-id})]
                     (is nil? res))
-                ;; can actually create
+                ;; create to prove uniqueness
                 (is (some? (neoqu (str "CREATE (a" label " {id: $pid}) RETURN a") {:pid player-id})))
                 (let [res (neoqu (str "CREATE (a" label " {id: $pid}) RETURN a") {:pid player-id})]
                     (is nil? res))
-                )
+            )
                 
             (testing (str label " may have uuid. if uuid then unique not null")
                 (db/call clear-db {})
@@ -80,7 +81,7 @@
                 (let [res (neoqu (str "CREATE (a" label " {uuid: null, id: $pid}) RETURN a") {:pid player-id})]
                     (is nil? res))
                 
-                ;; can actually create
+                ;; create to prove uniqueness
                 (is (some? (first (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id}))))
                 ;; for some reason the thrown?nil? error doesnt affect this last check
                 ;; (let [res (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})]
@@ -92,9 +93,52 @@
                 (db/call clear-db {})
                 (is (= player-id (:a (first (neoqu (str "CREATE (a" label " {id: $pid, uuid: $pid}) RETURN a.id as a") {:pid player-id}))))))
         )
+        
+        (let [provider-id "ajsnfaf732j2h89s"]
+        (doseq [provider [":Identity" ":Identity:Ethereum" ":Identity:Github" ":Identity:Spotify"]]
+            ;; (is thrown?) gives nil, (is nil?) throws error. Both checks belowfail
+            ;; (is (nil? (neoqu (str "CREATE (a" provider " {id: $pid}) RETURN a") {:pid player-id})))
+            ;; (is (thrown? Exception (neoqu (str "CREATE (a" provider " {uuid: $pid}) RETURN a") {:pid player-id})))
+            ;; (let [res]) captures err somehow and lets nil be tested
+            
+            (testing (str provider " may have provider. if provider then not null and unique")
+                (db/call clear-db {})
+                (let [res (neoqu (str "CREATE (a" provider " {provider: null}) RETURN a") {:provider provider :provider_id provider-id})]
+                    (is nil? res))
+                (let [res (neoqu (str "CREATE (a" provider " {provider: null, providerid: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
+                    (is nil? res))
+                ;; can actually create
+                (is (some? (neoqu (str "CREATE (a" provider " {provider: $provider}) RETURN a") {:provider provider :provider_id provider-id})))
+                (let [res (neoqu (str "CREATE (a" provider " {provider: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
+                    (is nil? res))
+            )
+
+            (testing (str provider "  may have provider_id. if provider_id then not null and unique")
+                (db/call clear-db {})
+                (let [res (neoqu (str "CREATE (a" provider " {provider_id: null}) RETURN a") {:provider provider :provider_id provider-id})]
+                    (is nil? res))
+                (let [res (neoqu (str "CREATE (a" provider " {provider_id: null, providerid: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
+                    (is nil? res))
+                ;; can actually create
+                (is (some? (neoqu (str "CREATE (a" provider " {provider_id: $provider}) RETURN a") {:provider provider :provider_id provider-id})))
+                (let [res (neoqu (str "CREATE (a" provider " {provider_id: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
+                    (is nil? res))
+            )
+
+            (testing (str provider " has unique constraint on provider_id")
+                (db/call clear-db {})
+                (is (some? (neoqu (str "CREATE (a" provider " {provider: $provider, provider_id: $provider}) RETURN a") {:provider provider :provider_id provider-id})))
+                (let [res (neoqu (str "CREATE (a" provider " {provider: $provider, provider_id: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
+                    (is nil? res))
+            )
+        
+            (testing (str provider " can create with full provider + provider_id")
+                (db/call clear-db {})
+                (is (= provider-id (:a (first (neoqu (str "CREATE (a" provider " {provider: $provider, provider_id: $provider_id}) RETURN a.provider_id as a") {:provider provider :provider_id provider-id}))))))
+        ))
 ))
 
-(deftest waitlist-npc-test
+(deftest create-npc-test
   (let [player-id "test-player-id-13r13"
         existing-npc-id "existing-npc-i-13124d"
         existing-jinni-id "existing-jinni-id-1321241"
@@ -142,6 +186,29 @@
             _ (create-npc player-id)
             final-count (get-node-count ":Avatar")]
         (is (= (:totalNodes mid-count) (:totalNodes final-count)))))
+    
+    (testing "Player cant be turned back into NPC if already a Jinni"
+        (db/call clear-db {})
+      (let [jinni-id "existing-jinni-id"
+            _ (neoqu "CREATE (p:Avatar {id: $pid, uuid: $pid})-[:SUMMONS]->(j:Avatar:Jinni {id: $jid, uuid: $jid})"
+                    {:pid player-id :jid jinni-id})
+            initial-jinni (first (neoqu (str "MATCH (a:Avatar {id: $pid})-[rj]-(j:Avatar) RETURN rj as relation, j as jinni, elementId(j) as jid, labels(j) as labels")
+                                         {:pid player-id}))]
+
+        (is (= (:since (:relation initial-jinni)) nil)) ; we didnt set so should be unset
+        (is (contains? (set (:labels initial-jinni)) "Jinni")) ; ensure not an npc
+
+        ;; cant create id with same uuid
+        (is (thrown? Exception (create-npc player-id)))
+        ; check state after npc creation request
+        (let [final-jinni (first (neoqu (str "MATCH (a:Avatar {id: $pid})-[rj]-(j:Avatar) RETURN rj as relation, j as jinni, elementId(j) as jid, labels(j) as labels")
+                                         {:pid player-id}))]
+            (is (some? final-jinni))
+            (is (= (:since (:properties (:relation final-jinni))) nil)) ; should still be unset
+            (is (= (:jid final-jinni) (:jid initial-jinni))) ; still using same avatar node
+            (is (not (contains? (set (:labels final-jinni)) "NPC"))) ; ensure not an npc
+            (is (contains? (set (:labels final-jinni)) "Jinni")) ; ensure still jinni
+        )))
 
 
     ;; Test case 3: Ensure no data is changed on their node by new inputs
@@ -160,24 +227,17 @@
 
     ;; Test case 5: Ensure that creating an NPC does not affect other players
     (testing "Creating NPC for one player does not affect others"
+        (db/call clear-db {})
       (let [other-player-id "other-player-id"
             initial-count (get-node-count ":Avatar")
             _ (create-npc player-id)
             _ (create-npc other-player-id)
             final-avatar (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN n as player")
                                 {:pid player-id})]
-    (is (= (count final-avatar) 1))
-    (is (= (:player (first final-avatar)) {
-        :id player-id
-        :uuid player-id
-    }))
-        
-        ;; (is (= other-initial-count (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN count(n) as playerNodes")
-        ;;                                      {:pid other-player-id})))
-                                             
-                                             ))
-
-
+        (is (= (count final-avatar) 1))
+        (is (= (:player (first final-avatar))
+            {:id player-id
+            :uuid player-id}))))
 
     ;; Test case 6: Ensure that the function handles invalid player IDs gracefully
     (testing "Handling invalid player ID"
@@ -236,31 +296,81 @@
         (let [final-npc-count (neoqu (str "MATCH (n:NPC {id: $jid}) RETURN count(n) as totalNodes")
                                        {:jid jinni-id})]
           (is (= initial-npc-count final-npc-count)))))
+
 ))
 
 
-;; waitlist-npc
-;; - Ensure no duplicate Human or NPC created
-;; 1.match (a:Avatar {id: $pid}), (n) RETURN count(a) as playerNodes, count(n) as totalNodes
-;; 2. (j/jinni-Waitlist-npc)
-;; 3. match (a:Avatar {id: $pid}, (n) RETURN count(a) as playerNodes, count(n) as totalNodes
-;; created? > playerNodes2 playerNodes1
-;; if created? (is = totalNodes2 (+ 1 totalNodes1))
-;; else (is = totalNodes2 totalNodes1) (is = playerNodes2 playerNodes1)
-;; if player has :Jinni already then no new NPC created
-;; if player has :Jinni already then not turned back into NPC
-;; if player/jinni already ensure no data is changed on their node by new inputs
+(deftest create-player-test
+  (let [initial-node-count (get-node-count)
+        player-id "test-player-id"
+        jinni-id "test-jinni-id"
+        player-data {:id player-id :name "Test Player"}
+        jinni-data {:id jinni-id :uuid "test-uuid"}]
 
-;; activate-jinni
+    (testing "can only create player if summoner provided is Master Djinn"
+        ;; must have summoner
+        ;; summoner not a masterdjinn returns nil
+
+        )
+    (testing "can only create player if summoner provided")
+
+    ;; Test creating a new player
+    (clear)
+    (println "CREA PLAYER" (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id "test-master-id"}))
+    (clear)
+    (testing "Creating a new player with no existing Avatar account"
+      (let [created-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id "test-master-id"}))]
+        (is (some? created-jinni-uuid))
+        (let [final-count (get-node-count)]
+            (println "COUNTING NODES" initial-node-count final-count)
+          (is (= (+ initial-node-count 3) final-count))
+          (is (not (nil? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid created-jinni-uuid}))))
+          (is (not (nil? (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id}))))
+          (is (= (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.since" {:jid created-jinni-uuid}) (now))))))
+
+    ;; Test creating a player when the Avatar account already exists
+    (testing "Creating a player when Avatar account already exists"
+      (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now) :master_id "test-master-id"})
+      (let [existing-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now -10000) :master_id "test-master-id"}))]
+        (is (= existing-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now (now -10000) :master_id "test-master-id"}))))
+        (let [final-count (get-node-count)]
+          (is (= initial-node-count final-count))
+          (is (not (nil? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid existing-jinni-uuid}))))
+          (is (nil? (first (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id}))))
+          (is (= (:ts (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.since as ts" {:jid existing-jinni-uuid})) (now -10000)))
+    )))
+))
+
+;; (activate-jinni)
+;; - if no player :Avatar account already.
+;; - creates 2 avatar nodes and 1 identity node
+;; - increase total node count by 3
+;; - has a :Jinni attached to user
+;; - has an :Identity:Ethereum node
+;; - relation.since set to now
+;; - returns jinni uuid
+;; - if player :Avatar account already.
+;;     - creates 0 avatar nodes and 0 identity node
+;;     - increase total node count by 0
+;;     - had :Avatar:NPC before, have :Avatar:Jinni now
+;;     - relation.since set to before now
+;;     - returns jinni uuid
+
 ;; init-player-identity
 ;; - returns nil if (a:Avatar {id: $pid}) not already in database
-;; - returns nonce if identity created_at
-;; - 
+;; - does not create id node/rel if no avatar
+;; - returns id nonce if identity created already
+;; - adds provider as label to node
+;; - adds provider as field to node
+
+
+;; sync-provider-id
+; - sets provider_id for on correct Provider
+; - sets provider_id on Identity owned by player
+; - sets provider_id to id supplied
+; - must have pid
+
 
 ;; set-identity-credentials
 ;; - must have access_token provider and pid as params
 ;; - resets access token  and refesh_token if present
-
-
-;; get-identity
-

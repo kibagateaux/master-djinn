@@ -61,7 +61,7 @@
 
     WITH id
     CALL apoc.create.addLabels(id, [$provider]) YIELD node
-    RETURN ID(node) as id
+    RETURN id as id
 ")
 
 ;; set attributes individually to not erase other identity data e.g. username
