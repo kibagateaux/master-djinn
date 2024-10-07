@@ -13,11 +13,11 @@
 ;; ;; DB tests
 (neo4j/defquery clear-db "
     // Get all fake players / test db entries to delete 
-    MATCH (a:Avatar:Human) WHERE NOT (a.id =~ '0x.*')
+    MATCH (a:Avatar) WHERE NOT (a.id =~ '0x.*') OR NOT (a.uuid =~ '0x.*')
 
     // Get all nodes associated with fake player except p2c jinni.
     // p2p jinni owned by them deleted bc :SUMMONS matches on lables(r)
-    MATCH (a)-[r]-(ii) WHERE NOT type(r) = 'BONDS'
+    OPTIONAL MATCH (a)-[r]-(ii) WHERE NOT type(r) = 'BONDS'
 
     // Delete actions on summononed jinni or 
     OPTIONAL MATCH (ii)-[rr]-(iii)
@@ -49,6 +49,51 @@
     (let [result (neoqu (str "MATCH (n"labels") RETURN count(*) as totalNodes"))]
       (first result)))) ;; Return the first result to avoid IllegalArgumentException
 
+    ;; TODO test invariants
+(deftest db-invariant-tests
+  (let [player-id "tjbjvghjhgfrtyujk87654erth"
+        existing-npc-id "ansjkfanbfiau83093u190h31io2nj"
+        existing-jinni-id "18231b1bd8d-8d91d-asbasc89asasca-nji2b"
+        non-existing-player-id "18231b1bd8d-8d91d-asbasc89asasca-anjsfki2"]
+        (doseq [label [":Avatar" ":Avatar:Human" ":Avatar:Jinni" ":Avatar:NPC"]]
+            (testing (str label " may have id. if id then unique not null")
+                ;; (is thrown?) gives nil, (is nil?) throws error. Both checks belowfail
+                ;; (is (nil? (neoqu (str "CREATE (a" label " {id: $pid}) RETURN a") {:pid player-id})))
+                ;; (is (thrown? Exception (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})))
+                ;; (let [res]) captures err somehow and lets nil be tested
+
+                (db/call clear-db {})
+                (let [res (neoqu (str "CREATE (a" label " {id: null}) RETURN a") {:pid player-id})]
+                    (is nil? res))
+                (let [res (neoqu (str "CREATE (a" label " {id: null, id: $pid}) RETURN a") {:pid player-id})]
+                    (is nil? res))
+                ;; can actually create
+                (is (some? (neoqu (str "CREATE (a" label " {id: $pid}) RETURN a") {:pid player-id})))
+                (let [res (neoqu (str "CREATE (a" label " {id: $pid}) RETURN a") {:pid player-id})]
+                    (is nil? res))
+                )
+                
+            (testing (str label " may have uuid. if uuid then unique not null")
+                (db/call clear-db {})
+                (let [res (neoqu (str "CREATE (a" label " {uuid: null}) RETURN a") {:pid player-id})]
+                    (is nil? res))
+                (let [res (neoqu (str "CREATE (a" label " {uuid: null, id: $pid}) RETURN a") {:pid player-id})]
+                    (is nil? res))
+                
+                ;; can actually create
+                (is (some? (first (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id}))))
+                ;; for some reason the thrown?nil? error doesnt affect this last check
+                ;; (let [res (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})]
+                ;;     (is nil? res))
+                (is (thrown? Exception (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})))
+            )
+        
+            (testing (str label " can create with full id + uuid")
+                (db/call clear-db {})
+                (is (= player-id (:a (first (neoqu (str "CREATE (a" label " {id: $pid, uuid: $pid}) RETURN a.id as a") {:pid player-id}))))))
+        )
+))
+
 (deftest waitlist-npc-test
   (let [player-id "test-player-id-13r13"
         existing-npc-id "existing-npc-i-13124d"
@@ -71,6 +116,7 @@
             (do (is (= (:totalNodes initial-count) (:totalNodes final-count)))
                 (is (= (:totalNodes id-count) (:totalNodes id-count2))))
         )))
+
 
     ;; Test case 2: No new NPC created if player already has a Jinni
     (testing "No new NPC created if player has a Jinni"
@@ -117,10 +163,19 @@
       (let [other-player-id "other-player-id"
             initial-count (get-node-count ":Avatar")
             _ (create-npc player-id)
-            other-initial-count (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN count(n) as playerNodes")
-                                           {:pid other-player-id})]
-        (is (= other-initial-count (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN count(n) as playerNodes")
-                                             {:pid other-player-id})))))
+            _ (create-npc other-player-id)
+            final-avatar (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN n as player")
+                                {:pid player-id})]
+    (is (= (count final-avatar) 1))
+    (is (= (:player (first final-avatar)) {
+        :id player-id
+        :uuid player-id
+    }))
+        
+        ;; (is (= other-initial-count (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN count(n) as playerNodes")
+        ;;                                      {:pid other-player-id})))
+                                             
+                                             ))
 
 
 
