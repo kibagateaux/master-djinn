@@ -20,8 +20,15 @@
    (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")
          utc (java.time.ZoneId/of "UTC")
          now (java.time.ZonedDateTime/now utc)
-         adjusted-now (.plusSeconds now offset-seconds)]
+         adjusted-now (if (> offset-seconds 0) 
+                         (.plusSeconds now offset-seconds) 
+                         (.minusSeconds now (Math/abs offset-seconds)))]
      (.format formatter adjusted-now))))
+
+(defn iso->unix
+  "takes ISO 8601 time and converts to seconds since UNIX epoch"
+  [iso-timestamp]
+  (.getEpochSecond (java.time.Instant/parse iso-timestamp)))
 
 (defn update-time [ts]
   (clojure.instant/parse-timestamp ts "timestamp")) 

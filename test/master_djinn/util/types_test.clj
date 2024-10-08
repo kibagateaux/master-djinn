@@ -33,6 +33,8 @@
   (testing "now offsets"
     (let [ts (util/now)]
       (is (= (util/now) ts))
-      (is (< (util/now -10000) ts))
-      (is (> (util/now 10000) ts))
+      (is (= (util/iso->unix (util/now 10000)) (+ (util/iso->unix ts) 10000)))
+      (is (> (util/iso->unix (util/now 10000)) (util/iso->unix ts)))
+      (is (= (util/iso->unix (util/now -10000)) (- (util/iso->unix ts) 10000)))
+      (is (< (util/iso->unix (util/now -10000)) (util/iso->unix ts)))
     )))
