@@ -149,7 +149,7 @@
 
             ; verified 1. circle exists 2. jubmoji is owner of circle 3. specific player was approved by signer
             :else (try
-                (j/join-summoning-circle player_id (:id jinni))
+                (j/join-summoning-circle player_id signer (:id jinni))
             (catch Exception err
                 (log/handle-error err "Failed to generate new prompt and embeds" {:provider "jinni"})
                 {:status 500 :body {:error  (ex-message err)}}))
