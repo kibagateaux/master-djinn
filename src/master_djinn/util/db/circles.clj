@@ -14,11 +14,12 @@
   MATCH (player:Avatar:Human {id: $pid})-[:SUMMONS]->(:Jinni:p2p)
   // Check if the Identity already exists
   OPTIONAL MATCH (id:Identity:Ethereum:Jubmoji {provider: 'Ethereum', provider_id: $signer})
+  
+  // TODO feelz this isnt returning right vals
   WITH count(player) as playerCount, count(id) AS jubCount
-    
     // RETURN playerCount, jubCount;
 
-// //   only 1 circle/jinni per jubmoji. count must be 0 to create
+  // only 1 circle/jinni per jubmoji. count must be 0 to create
   CALL apoc.do.when(
     jubCount = 0 and playerCount = 1,
     // Give community jinni the jubmoji identity to take actions directly in game
@@ -43,14 +44,17 @@
 
 ;; only create rj if p + j already exist. Do not overide existing rj data
 (neo4j/defquery join-summoning-circle "
-  MATCH (p:Avatar:Human {id: $pid}), (j:Jinni:p2c {jid: $jid})
+  MATCH (p:Avatar:Human {id: $pid})
+  MATCH (j:Jinni:p2c {id: $jid})
   WITH p, j
   MERGE (p)-[rj:BONDS]->(j)
   ON CREATE SET rj.since = $now
+  RETURN j.id
 ")
 
 (neo4j/defquery apply-summoning-circle "
-  MATCH (p:Avatar:Human {id: $pid}), (j:Jinni:p2c {jid: $jid})
+  MATCH (p:Avatar:Human {id: $pid})
+  MATCH (j:Jinni:p2c {jid: $jid})
   WITH p, j
   MERGE (p)-[rj:DESIRES]->(j)
   ON CREATE SET rj.since = $now
@@ -58,8 +62,7 @@
 
 ;; TODO jid as input once multi p2c per player
 (neo4j/defquery get-circle-applicants "
-  MATCH (:Avatar:Human {id: $pid})-[:SUMMONS]->(j:Jinni:p2c),
-    (p:Avatar:Human)-[:DESIRES]->(j)
+  MATCH (p:Avatar:Human)-[:DESIRES]->(j:Jinni:p2c {id: $jid})
   
   RETURN COLLECT(p.id)
 ")
