@@ -42,7 +42,7 @@
               }
             })]
           (println "Inc:Mani:Jinni:create-circle:response" res)
-            jid)
+            (:jinni res))
          (catch Exception e 
          (println "exception creating circle: " (ex-message e))
           (throw e))))
@@ -58,8 +58,7 @@
       :now (now)
       :jinni { :id (avatar->uuid (now)) :uuid (juuid player-id)}}) ; npc jid not p2c jid from params
     (println "Inc:Mani:Jinni:join-circle:summon" summoner)
-    (db/call cdb/join-summoning-circle {:pid player-id :jid jinni-id :now (now)})
-    jinni-id)
+    (:jinni (db/call cdb/join-summoning-circle {:pid player-id :jid jinni-id :now (now)})))
 
 (defn apply-summoning-circle
   "Do not auto create npc account.
@@ -67,8 +66,7 @@
   Allows players to async/remotely ask to join a summoning circle that alreay exists"
   [player-id jinni-id]
     (println "Inc:Mani:Jinni:apply-circle:" player-id jinni-id)
-    (db/call cdb/apply-summoning-circle {:pid player-id :jid jinni-id :now (now)})
-    jinni-id)
+    (:jinni (db/call cdb/apply-summoning-circle {:pid player-id :jid jinni-id :now (now)})))
 
 
 ;; TODO group djinn

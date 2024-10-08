@@ -4,8 +4,8 @@
 
 ;; TODO match on jjubmoji
 (neo4j/defquery get-summoning-circle "
-  OPTIONAL MATCH (j:Avatar:Jinni:p2c)-[:HAS]->(:Jubmoji:Identity:Ethereum {provider_id: $jmid}),
-    (p:Avatar:Human)-[:SUMMONS]->(j)
+  OPTIONAL MATCH (j:Avatar:Jinni:p2c)-[:HAS]->(:Jubmoji:Identity:Ethereum {provider_id: $jmid})
+  MATCH (p:Avatar:Human)-[:SUMMONS]->(j)
   RETURN p AS summoner, j AS jinni
 ")
 

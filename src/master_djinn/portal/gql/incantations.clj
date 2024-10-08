@@ -113,7 +113,7 @@
         aaaa  (println "joining circle player, jubmoji, summoner" player_id " : " jubmoji)
         ;; aaaa  (println "joining circle " (db/call cdb/get-summoning-circle {:jmid jubmoji}))
         {:keys [jinni summoner]} (db/call cdb/get-summoning-circle {:jmid jubmoji})]
-        (println "joining circle jinni + summoner" (:id (or jinni {})) (:id (or summoner {})))
+        (println "joining circle jub + jinni + summoner" jubmoji (:id (or jinni {})) (:id (or summoner {})))
         (cond
             (and (not= signer player_id) (not= signer (:id summoner)))
                 {:status 401  :body {:error "Only summoner or summonee can request access to circle"}}
@@ -133,7 +133,7 @@
             (and (= player_id (:id summoner)) jinni)
                 {:status 400 :body {:error "Already Joined"}}
             ;;    (throw (ex-info "Already joined" {})) ; creator of summoning circle cant apply/join
-            
+
             ; no jinni yet for jubmoji, implies nil summoner.
             ; player that sends first join request becomes creator
             (nil? jinni) (try
