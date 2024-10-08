@@ -8,6 +8,7 @@
             [master-djinn.incantations.conjure.github :as github-c]
             [master-djinn.incantations.conjure.core :as c]
             [master-djinn.portal.core :as portal]
+            [master-djinn.portal.logs :as log]
             [master-djinn.util.db.core :as db]
             [master-djinn.util.db.identity :as iddb]
             [master-djinn.util.db.circles :as cdb]
@@ -150,7 +151,8 @@
             :else (try
                 (j/join-summoning-circle player_id (:id jinni))
             (catch Exception err
-                {:status 500 :body {:error  "Error joining summoning circle"}}))
+                (log/handle-error err "Failed to generate new prompt and embeds" {:provider "jinni"})
+                {:status 500 :body {:error  (ex-message err)}}))
             )))
 
 (defn get-home-config
