@@ -49,7 +49,7 @@
   WITH p, j
   MERGE (p)-[rj:BONDS]->(j)
   ON CREATE SET rj.since = $now
-  RETURN j.id
+  RETURN j.id as jinni
 ")
 
 (neo4j/defquery apply-summoning-circle "
@@ -58,11 +58,12 @@
   WITH p, j
   MERGE (p)-[rj:DESIRES]->(j)
   ON CREATE SET rj.since = $now
+  RETURN j.id as jinni
 ")
 
 ;; TODO jid as input once multi p2c per player
 (neo4j/defquery get-circle-applicants "
   MATCH (p:Avatar:Human)-[:DESIRES]->(j:Jinni:p2c {id: $jid})
   
-  RETURN COLLECT(p.id)
+  RETURN COLLECT(p.id) as players
 ")
