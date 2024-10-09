@@ -15,7 +15,7 @@
 ;; ;; DB tests
 (neo4j/defquery clear-db "
     // Get all fake players / test db entries to delete 
-    MATCH (a:Avatar) WHERE NOT (a.id =~ '0x.*') OR NOT (a.uuid =~ '0x.*')
+    MATCH (a:Avatar:Human) WHERE NOT (a.id =~ '0x.*') OR NOT (a.uuid =~ '0x.*')
 
     // Get all nodes associated with fake player except p2c jinni.
     // p2p jinni owned by them deleted bc :SUMMONS matches on lables(r)

@@ -47,7 +47,7 @@
   MATCH (p:Avatar:Human {id: $pid})
   MATCH (j:Jinni:p2c {id: $jid})
   WITH p, j
-  MERGE (p)-[rj:BONDS]->(j)
+  MERGE (j)-[rj:BONDS]->(p)
   ON CREATE SET rj.since = $now
   RETURN j.id as jinni
 ")
