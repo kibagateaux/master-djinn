@@ -16,7 +16,7 @@
 
 (defn jinni-activate
   [player-id jinni-id master-id]
-  (:jinni (db/call iddb/create-player {
+  (let [response (db/call iddb/create-player {
       :now (now)
       :master_id master-id
       :player {
@@ -25,13 +25,17 @@
         ;; :birthday (:birthday args)
       } :jinni {
         :id jinni-id
-        :uuid (avatar->uuid jinni-id)}})))
+        :uuid (avatar->uuid jinni-id)}})]
+  (println "Inc:mani:jinni:activateL db resp" response) 
+  (:jinni response)))
 
 (defn create-summoning-circle
   [summoner jubmoji-id]
    (try (let [jid (juuid summoner)
         uuid (avatar->uuid jid)
-        aaaa (println "Inc:Mani:Jinni:create-circle:summ,jub,jid" summoner jubmoji-id jid)
+        aaaa (println "Inc:Mani:Jinni:create-circle:summoner" summoner)
+        aaaa (println "Inc:Mani:Jinni:create-circle:jid" jid)
+        aaaa (println "Inc:Mani:Jinni:create-circle:jubmoji" jubmoji-id)
         res (db/call cdb/create-summoning-circle {
               :pid summoner
               :signer jubmoji-id
@@ -58,7 +62,10 @@
       :now (now)
       :jinni { :id (avatar->uuid (now)) :uuid (juuid player-id)}}) ; npc jid not p2c jid from params
     (println "Inc:Mani:Jinni:join-circle:summon" summoner)
-    (:jinni (db/call cdb/join-summoning-circle {:pid player-id :jid jinni-id :now (now)})))
+    (let [resp (db/call cdb/join-summoning-circle {:pid player-id :jid jinni-id :now (now)})]
+    
+    (println "Inc:Mani:Jinni:join-circle:db resp:" resp)
+    (:jinni resp)))
 
 (defn apply-summoning-circle
   "Do not auto create npc account.

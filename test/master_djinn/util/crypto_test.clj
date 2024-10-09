@@ -10,6 +10,7 @@
 (defn genhex [len] (str (repeatedly len #(rand-nth "0123456789abcdef"))))
 (defn random-addy [] (apply str "0x" (genhex 40)))
 
+;; TODO replace with generated values
 (defonce live-example {
        :signed-msg-hash "0xb8609910b723eb0904eb62358e33f30c8afabe03f920ca73b8ad366cf4d3ae473b16beabf123542dd1eda8ead2e5497bd476ea132ba8026c36e967efe601b4e51c"
        :original-msg " mutation jinni_waitlist_npc( $verification: SignedRequest! ) { jinni_waitlist_npc( verification: $verification ) } "

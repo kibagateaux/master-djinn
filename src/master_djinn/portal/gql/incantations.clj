@@ -110,7 +110,7 @@
         signer (get-signer ctx)
         ; TODO if no circle yet then only target-player a.k.a creator in majik-msg. if circle exists then creator signs jinni + player
         jubmoji (ecrecover majik_msg (str SUMMON_SPELL_PREFIX (if jinni_id (str jinni_id "." player_id) player_id)))
-        aaaa  (println "joining circle player, jubmoji, summoner" player_id " : " jubmoji)
+        aaaa  (println "joining circle player, jubmoji" player_id " : " jubmoji)
         ;; aaaa  (println "joining circle " (db/call cdb/get-summoning-circle {:jmid jubmoji}))
         {:keys [jinni summoner]} (db/call cdb/get-summoning-circle {:jmid jubmoji})]
         (println "joining circle jub + jinni + summoner" jubmoji (:id (or jinni {})) (:id (or summoner {})))
