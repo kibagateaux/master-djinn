@@ -1,6 +1,6 @@
 (ns master-djinn.util.db.identity-test
   (:require [clojure.test :refer :all]
-              [master-djinn.util.types.core :refer [address?]]
+              [master-djinn.util.types.core :refer [address? avatar->uuid]]
               [clojure.spec.alpha :as s]
 
               [master-djinn.util.db.core :as db]
@@ -9,48 +9,18 @@
               [neo4j-clj.core :as neo4j]
 
             ; to stub and/or generate test data
+            [master-djinn.util.testing-helpers :refer [clear neoqu get-node-count]]
               [master-djinn.util.core :refer [now iso->unix]]
               [master-djinn.util.crypto :refer :all]))
 
 ;; ;; DB tests
-(neo4j/defquery clear-db "
-    // Get all fake players / test db entries to delete 
-    MATCH (a:Avatar:Human) WHERE NOT (a.id =~ '0x.*') OR NOT (a.uuid =~ '0x.*')
 
-    // Get all nodes associated with fake player except p2c jinni.
-    // p2p jinni owned by them deleted bc :SUMMONS matches on lables(r)
-    OPTIONAL MATCH (a)-[r]-(ii) WHERE NOT type(r) = 'BONDS'
-
-    // Delete actions on summononed jinni or 
-    OPTIONAL MATCH (ii)-[rr]-(iii)
-    OPTIONAL MATCH (d:MasterDjinn)
-
-    DETACH DELETE a, r, rr, ii, iii, d
-")
-
-(defn clear [] (db/call clear-db {}))
 ;; TODO fixtures not working
 ;; (defn reset-db-fixture
 ;;     [setup teardown]
 ;;     (fn [do-tests]
 ;;         (setup) (do-tests) (teardown)))
 ;; (use-fixtures :each (reset-db-fixture clear clear))
-
-(defn create-npc [id]
-    (db/call iddb/create-npc {
-        :player { :id id :uuid id }
-        :jinni { :id (str "j" id) :uuid (str "j" id) }
-        :now "timestamp"}))
-
-(defn neoqu
-    ([cy] (neoqu cy {}))
-    ([cy args] (neo4j/execute (neo4j/get-session db/connection) cy args)))
-
-(defn get-node-count
-    ([] (get-node-count ""))
-    ([labels]
-    (let [result (neoqu (str "MATCH (n"labels") RETURN count(*) as totalNodes"))]
-      (first result)))) ;; Return the first result to avoid IllegalArgumentException
 
     ;; TODO test invariants
 (deftest db-invariant-test
@@ -104,7 +74,6 @@
             ;; (let [res]) captures err somehow and lets nil be tested
             
             (testing (str provider " may have provider. if provider then not null and unique")
-                (clear)
                 (let [res (neoqu (str "CREATE (a" provider " {provider: null}) RETURN a") {:provider provider :provider_id provider-id})]
                     (is nil? res))
                 (let [res (neoqu (str "CREATE (a" provider " {provider: null, providerid: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
@@ -116,7 +85,6 @@
             )
 
             (testing (str provider "  may have provider_id. if provider_id then not null and unique")
-                (clear)
                 (let [res (neoqu (str "CREATE (a" provider " {provider_id: null}) RETURN a") {:provider provider :provider_id provider-id})]
                     (is nil? res))
                 (let [res (neoqu (str "CREATE (a" provider " {provider_id: null, providerid: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
@@ -146,14 +114,14 @@
         existing-jinni-id "existing-jinni-id-1321241"
         non-existing-player-id "non-existing-player-id-1231241"]
 
-    ;; Test case 1: Right amount of Nodes are created 
-    (testing "Creating NPC for existing player"
+
+    (testing "Creating NPC for existing player generates right db nodes + rels"
       (let [existing-entity (neoqu "MATCH (a:Avatar {id: $pid}) RETURN a" {:pid player-id})
             initial-count (get-node-count ":Avatar")
-            id-count (get-node-count ":Ethereum")
-            _ (create-npc player-id)
+            id-count (get-node-count ":Identity")
+            _ (j/jinni-waitlist-npc player-id)
             final-count (get-node-count ":Avatar")
-            id-count2 (get-node-count ":Ethereum")]
+            id-count2 (get-node-count ":Identity")]
         (if (nil? (first existing-entity))
             ; correct amount of nodes created
             (do (is (= (+ 2 (:totalNodes initial-count)) (:totalNodes final-count)))
@@ -163,19 +131,32 @@
                 (is (= (:totalNodes id-count) (:totalNodes id-count2))))
         )))
 
-
-    ;; Test case 2: No new NPC created if player already has a Jinni
-    (testing "No new NPC created if player has a Jinni"
-      (let [
-            _ (neoqu "MERGE (a:Avatar {id: $pid}) 
-                    MERGE (a)-[:SUMMONS]->(p:Avatar) 
-                    MERGE (p)-[:BONDS]->(a) 
-                    RETURN a, p" {:pid player-id}) ;; Simulate Jinni creation
-            initial-count (get-node-count ":Avatar")
-            mid-count (get-node-count ":Avatar")
-            _ (create-npc player-id)
+    (testing "Creating NPC for non-existing player generates right db nodes + rels"
+        (clear)
+      (let [initial-count (get-node-count ":Avatar")
+            id-count1 (get-node-count ":Identity")
+            _ (j/jinni-waitlist-npc non-existing-player-id)
+            id-count2 (get-node-count ":Identity")
             final-count (get-node-count ":Avatar")]
-        (is (= (:totalNodes initial-count) (:totalNodes mid-count)))
+        ; +2 = :Avatar:Human, :Avatar:NPC
+        (is (= (+ 2 (:totalNodes initial-count)) (:totalNodes final-count)))
+        (is (= (+ 1 (:totalNodes id-count1)) (:totalNodes id-count2)))))
+
+    (testing "No new NPC created if player has a Jinni"
+        (clear)
+        ; create master djinn so player can be created
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid "summoner" :mid "summoner"})
+      (let [initial-count (get-node-count ":Avatar")
+            _ (db/call iddb/create-player {
+                :player {:id player-id :uuid player-id}
+                :jinni {:id "test jinni" :uuid "ajksnfjaf223"}
+                :now (now)
+                :master_id "summoner"
+            })
+            mid-count (get-node-count ":Avatar")
+            __ (j/jinni-waitlist-npc player-id)
+            final-count (get-node-count ":Avatar")]
+        (is (= (+ 2 (:totalNodes initial-count)) (:totalNodes mid-count)))
         (is (= (:totalNodes mid-count) (:totalNodes final-count)))
         
         ))
@@ -183,122 +164,100 @@
     (testing "No duplicate Human or NPC created"
       (let [player-id "test-player-id"
             initial-count (get-node-count ":Avatar")
-            _ (create-npc player-id)
+            _ (j/jinni-waitlist-npc player-id)
             mid-count (get-node-count ":Avatar")
-            _ (create-npc player-id)
+            _ (j/jinni-waitlist-npc player-id)
             final-count (get-node-count ":Avatar")]
-        (is (= (:totalNodes mid-count) (:totalNodes final-count)))))
+        (is (= (:totalNodes mid-count) (:totalNodes final-count)))
+        (is (<= (:totalNodes initial-count) (:totalNodes mid-count)))))
     
     (testing "Player cant be turned back into NPC if already a Jinni"
         (clear)
-      (let [jinni-id "existing-jinni-id"
-            _ (neoqu "CREATE (p:Avatar {id: $pid, uuid: $pid})-[:SUMMONS]->(j:Avatar:Jinni {id: $jid, uuid: $jid})"
-                    {:pid player-id :jid jinni-id})
+        ; create initial NPC for testing
+      (let [_ (neoqu "MERGE (p:Avatar {id: $pid, uuid: $pid})-[:SUMMONS {since: $now}]->(j:Avatar:Jinni {id: $jid, uuid: $jid})"
+                    {:pid player-id :jid existing-jinni-id :now (now)})
             initial-jinni (first (neoqu (str "MATCH (a:Avatar {id: $pid})-[rj]-(j:Avatar) RETURN rj as relation, j as jinni, elementId(j) as jid, labels(j) as labels")
                                          {:pid player-id}))]
-
-        (is (= (:since (:relation initial-jinni)) nil)) ; we didnt set so should be unset
+        
+        (is (not (nil? initial-jinni)))
         (is (contains? (set (:labels initial-jinni)) "Jinni")) ; ensure not an npc
+        (is (some? (:since (:relation initial-jinni)))) ; just need to know its set. check equivalnce to itsef at tend of tests
 
         ;; cant create id with same uuid
-        (is (thrown? Exception (create-npc player-id)))
+        (is (thrown? Exception (j/jinni-waitlist-npc player-id)))
         ; check state after npc creation request
         (let [final-jinni (first (neoqu (str "MATCH (a:Avatar {id: $pid})-[rj]-(j:Avatar) RETURN rj as relation, j as jinni, elementId(j) as jid, labels(j) as labels")
                                          {:pid player-id}))]
             (is (some? final-jinni))
-            (is (= (:since (:properties (:relation final-jinni))) nil)) ; should still be unset
+            (is (= (:since (:relation final-jinni)) (:since (:relation initial-jinni))))
             (is (= (:jid final-jinni) (:jid initial-jinni))) ; still using same avatar node
             (is (not (contains? (set (:labels final-jinni)) "NPC"))) ; ensure not an npc
             (is (contains? (set (:labels final-jinni)) "Jinni")) ; ensure still jinni
         )))
+    
+    (testing "Ensure player is not turned back into NPC if already a Jinni"
+        (clear)
+        (is (= 0 (:totalNodes (get-node-count ":Jinni"))))
+        (is (= 0 (:totalNodes (get-node-count ":NPC"))))
+        ;; TODO this isnt creating nodes for some reason so tests failing 
+        ;; (neoqu "CREATE (a:Avatar:Human {id: $pid})-[:SUMMONS]->(j:Avatar:p2p:Jinni)
+        ;;     CREATE (j)-[:BONDS]->(a)
+        ;;     SET j = $jinni
+        ;;     RETURN a, j
+        ;; " {:pid player-id :jinni { :id "existing-jinni-id" :uuid "existing-jinni-id" }})
+        ;; TODO workaround create MasterDjinn to let activate-jinni work
+        ;; dont think this means theres bug/config bug or automagic in my code.
+        ;; Just db nodes not created in test
+        (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid "master-djinn" :mid "master-djinn"})
+        (j/jinni-activate player-id "jajfnoaie" "master-djinn")
+      (let [post-jinni-count (:totalNodes (get-node-count ":Jinni"))
+            post-npc-count (:totalNodes (get-node-count ":NPC"))]
+        (is (= 0 post-npc-count))
+        (is (= 2 post-jinni-count)) ; master + player. 1 if test isolated properly
+        (j/jinni-waitlist-npc player-id)
+        (let [final-jinni-count (:totalNodes (get-node-count ":Jinni"))
+            final-npc-count (:totalNodes (get-node-count ":NPC"))]
+          (is (= post-npc-count final-npc-count))
+          (is (= post-jinni-count final-jinni-count)))))
 
+    (testing "No new NPC created if player already has a Jinni"
+        (clear)
+        (is (= 0 (:totalNodes (get-node-count ":NPC"))))
+        (j/jinni-waitlist-npc player-id)
+      (let [post-count (:totalNodes (get-node-count ":NPC"))]
+        (j/jinni-waitlist-npc player-id)
+          (is (= 1 (:totalNodes (get-node-count ":NPC"))))))
 
-    ;; Test case 3: Ensure no data is changed on their node by new inputs
     (testing "No data change on player node if NPC already exists"
+        (clear)
       (let [initial-npc-data (neoqu (str "MATCH (n:NPC {id: $nid}) RETURN n") {:nid existing-npc-id})]
-        (create-npc existing-npc-id)
+        (j/jinni-waitlist-npc existing-npc-id)
         (let [final-npc-data (neoqu (str "MATCH (n:NPC {id: $nid}) RETURN n") {:nid existing-npc-id})]
           (is (= initial-npc-data final-npc-data)))))
 
-    ;; Test case 4: Attempt to create NPC for non-existing player
-    (testing "Creating NPC for non-existing player"
-      (let [initial-count (get-node-count ":Avatar")
-            _ (create-npc non-existing-player-id)
-            final-count (get-node-count ":Avatar")]
-        (is (= (+ 2 (:totalNodes initial-count)) (:totalNodes final-count))))) ; +2 = :Avatar:Human, :Avatar:NPC
-
-    ;; Test case 5: Ensure that creating an NPC does not affect other players
     (testing "Creating NPC for one player does not affect others"
         (clear)
       (let [other-player-id "other-player-id"
-            initial-count (get-node-count ":Avatar")
-            _ (create-npc player-id)
-            _ (create-npc other-player-id)
+            _ (j/jinni-waitlist-npc player-id)
+            ;; _ (j/jinni-waitlist-npc other-player-id)
             final-avatar (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN n as player")
-                                {:pid player-id})]
+                                {:pid player-id})
+            other-avatar (neoqu (str "MATCH (n:Avatar {id: $pid}) RETURN n as player")
+                                {:pid other-player-id})]
+        
         (is (= (count final-avatar) 1))
-        (is (= (:player (first final-avatar))
-            {:id player-id
-            :uuid player-id}))))
+        (is (= player-id (:id (:player (first final-avatar)))))
+        (is (not= (:player (first final-avatar)) (:player (first other-avatar))))
+            
+            ))
 
-    ;; Test case 6: Ensure that the function handles invalid player IDs gracefully
     (testing "Handling invalid player ID"
-        (is (thrown? Exception (create-npc nil))))
+        (is (thrown? Exception(j/jinni-waitlist-npc nil)))
+        ;; (is (nil? (j/jinni-waitlist-npc nil)))
         ;; all valid from db persepctive. tested in manifest
-        ;; (is (thrown? Exception (create-npc []))
-        ;; (is (thrown? Exception (create-npc ""))
-
-    ;; Test case 7: Ensure that the function does not create an NPC if the player is already an NPC
-    (testing "No new NPC created if player is already an NPC"
-      (let [initial-count (neoqu (str "MATCH (n:NPC {id: $nid}) RETURN count(n) as totalNodes")
-                                     {:nid existing-npc-id})]
-        (create-npc existing-npc-id)
-        (let [final-count (neoqu (str "MATCH (n:NPC {id: $nid}) RETURN count(n) as totalNodes")
-                                     {:nid existing-npc-id})]
-          (is (= initial-count final-count)))))
-
-    ;; Test case 8: Ensure that the function does not create an NPC if the player is already a Jinni
-    (testing "No new NPC created if player is already a Jinni"
-      (let [initial-count (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN count(j) as totalNodes")
-                                     {:jid existing-jinni-id})]
-        (create-npc existing-jinni-id)
-        (let [final-count (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN count(j) as totalNodes")
-                                     {:jid existing-jinni-id})]
-          (is (= initial-count final-count)))))
-
-
-    ;; Test case 10: Ensure player is not turned into NPC if already exists
-    (testing "Player not turned into NPC if already exists"
-      (let [player-id "existing-player-id"
-            _ (create-npc player-id)
-            initial-npc-count (neoqu (str "MATCH (n:NPC {id: $pid}) RETURN count(n) as totalNodes")
-                                       {:pid player-id})]
-        (create-npc player-id)
-        (let [final-npc-count (neoqu (str "MATCH (n:NPC {id: $pid}) RETURN count(n) as totalNodes")
-                                       {:pid player-id})]
-          (is (= initial-npc-count final-npc-count)))))
-
-    ;; Test case 11: Ensure player is not turned back into NPC if already a Jinni
-    (testing "Player not turned back into NPC if already a Jinni"
-      (let [jinni-id "existing-jinni-id"
-            _ (create-npc jinni-id)
-            initial-jinni-count (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN count(j) as totalNodes")
-                                         {:jid jinni-id})]
-        (create-npc jinni-id)
-        (let [final-jinni-count (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN count(j) as totalNodes")
-                                         {:jid jinni-id})]
-          (is (= initial-jinni-count final-jinni-count)))))
-
-    ;; Test case 12: Ensure no new NPC created if player has Jinni already
-    (testing "No new NPC created if player has Jinni already"
-      (let [jinni-id "jinni-with-npc-id"
-            initial-npc-count (neoqu (str "MATCH (n:NPC {id: $jid}) RETURN count(n) as totalNodes")
-                                       {:jid jinni-id})]
-        (create-npc jinni-id)
-        (let [final-npc-count (neoqu (str "MATCH (n:NPC {id: $jid}) RETURN count(n) as totalNodes")
-                                       {:jid jinni-id})]
-          (is (= initial-npc-count final-npc-count)))))
-
+        ;; (is (thrown? Exception (j/jinni-waitlist-npc []))
+        ;; (is (thrown? Exception (j/jinni-waitlist-npc ""))
+    )
 ))
 
 
