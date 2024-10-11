@@ -43,10 +43,7 @@
     // only allows one personal avatar (npc or jinni) per player atm
     MERGE (p)<-[rj:BONDS]-(j:Avatar:p2p)
     MERGE (p)-[rs:SUMMONS]->(j)
-
-    // add their randomly generated identity to player profile
-    MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
-
+    
     // if player never existed then create new avatar for them (non jinni NPC)
     ON CREATE 
         SET p = $player,
@@ -54,6 +51,9 @@
             rs.timestamp = $now,
             j = $jinni,
             j:NPC
+
+    // add their randomly generated identity to player profile
+    MERGE (p)-[:HAS]->(id:Identity:Ethereum { provider_id: $player.id, provider: 'Ethereum' })
 
     RETURN j.id as jid")
 

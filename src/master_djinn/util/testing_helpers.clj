@@ -11,9 +11,9 @@
 
     // Get all nodes associated with fake player except p2c jinni.
     // p2p jinni owned by them deleted bc :SUMMONS matches on lables(r)
-    OPTIONAL MATCH (a)--(act:Action)
     OPTIONAL MATCH (a)--(j:Avatar)
-    OPTIONAL MATCH (a)--(id:Identity)
+    OPTIONAL MATCH (act:Action)
+    OPTIONAL MATCH (id:Identity)
     OPTIONAL MATCH (m:Jinni) WHERE NOT (a.id =~ '0x.*') OR NOT (a.uuid =~ '0x.*')
 
     // Delete actions on summononed jinni or 
@@ -28,6 +28,7 @@
 (defn neoqu
     ([cy] (neoqu cy {}))
     ([cy args] (neo4j/execute (neo4j/get-session db/connection) cy args)))
+      
 
 (defn get-node-count
     ([] (get-node-count ""))
