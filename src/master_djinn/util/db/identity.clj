@@ -72,10 +72,12 @@
 ;; TODO should add scope to identity? diff function so we dont override when refreshing tokens
 (neo4j/defquery set-identity-credentials "
     MATCH (p:Avatar { id: $pid })-[:HAS]->(id:Identity {provider: $provider})
+    // while supposedly SET = {} doesnt overwrite i havent noticed that
+    // so mandate we set both tokens together specifically
     SET id.access_token = $access_token
     SET id.refresh_token = $refresh_token
     
-    RETURN ID(id) as id
+    RETURN id as id
 ")
 
 (neo4j/defquery sync-provider-id "

@@ -433,7 +433,162 @@
                 {:pid pid :provider "Github"}))]
             (is (some? (:rel res)))
             (is (some? (:id res)))))
+        
+        (testing "Throws db error on incompatible input params"
+            (clear)
+            (is (thrown? Exception (db/call iddb/init-player-identity nil)))
+            (is (thrown? Exception (db/call iddb/init-player-identity {:pid nil})))
+            (is (thrown? Exception (db/call iddb/init-player-identity {:provider nil})))
+            
+            ; numbers are invalid inputs
+            (is (thrown? Exception (db/call iddb/init-player-identity {:pid nil :provider 3853292358})))
+            (is (thrown? Exception (db/call iddb/init-player-identity {:pid 23521350923 :provider 3853292358})))
+            (is (thrown? Exception (db/call iddb/init-player-identity {:pid "asfaf" :provider 3853292358})))
+            ; because provider gets put in array it throws error unlike :pid
+            ;; (is (nil? (db/call iddb/init-player-identity {:pid 3853292358 :provider "InvalidProvider"})))
+            
+            ; structured data is invalid, must be strings
+            (is (thrown? Exception (db/call iddb/init-player-identity {:pid [pid] :provider ["asfaf"]}))))
+        
+        (testing "Returns nil on inputs with no matches"
+            (clear)
+            (is (nil? (db/call iddb/init-player-identity {:pid nil :provider nil})))
+            (is (nil? (db/call iddb/init-player-identity {:pid nil :provider "thing"})))
+            (is (nil? (db/call iddb/init-player-identity {:pid "thing" :provider nil})))
+            (is (nil? (db/call iddb/init-player-identity {:pid "notaplayer" :provider "Github"})))
+            (is (nil? (db/call iddb/init-player-identity {:pid pid :provider "NotAProvider"})))
+
+            (is (nil? (db/call iddb/init-player-identity {:pid 3853292358 :provider nil})))
+            ; because provider gets put in array it throws error unlike :pid
+            ;; (is (thrown? Exception (db/call iddb/init-player-identity {:pid "asfaf" :provider 3853292358})))
+            (is (nil? (db/call iddb/init-player-identity {:pid 3853292358 :provider "InvalidProvider"}))))
 ))
+
+(deftest set-identity-credentials-test
+  (let [test-player-id "test-player"
+        test-provider "TestProvider"
+        existing-access-token "existing-access-token"
+        existing-refresh-token "existing-refresh-token"
+        new-access-token "new-access-token"
+        new-refresh-token "new-refresh-token"]
+
+
+    (testing "Returns nil if identity does not exist when updating credentials"
+      (clear)
+      (is (nil? (db/call iddb/set-identity-credentials {:pid "non-existing-player" :provider test-provider :access_token new-access-token :refresh_token new-refresh-token})))
+    )
+
+    (testing "Successfully updates identity credentials"
+      (clear)
+      (db/call iddb/create-npc {:player {:id test-player-id :uuid test-player-id} :jinni {:uuid "jinni-uuid"} :now "now"})
+      (db/call iddb/init-player-identity {:pid test-player-id :provider test-provider})
+      (let [initial-id (db/call iddb/get-identity {:pid test-player-id :provider test-provider})]
+        (is (some? initial-id))
+        (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token new-access-token :refresh_token new-refresh-token})
+        (let [updated-id (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+                id (:id updated-id)]
+          (is (= new-access-token (:access_token id)))
+          (is (= new-refresh-token (:refresh_token id))))))
+
+    (testing "Does not create a new Identity node if one already exists"
+      (clear)
+      (is (= 0 (:totalNodes (get-node-count ":Identity"))))
+      (db/call iddb/create-npc {:player {:id test-player-id :uuid test-player-id} :jinni {:uuid "jinni-uuid"} :now "now"})
+      (is (= 1 (:totalNodes (get-node-count ":Identity")))) ; ETH ID
+      (db/call iddb/init-player-identity {:pid test-player-id :provider test-provider})
+      (is (= 2 (:totalNodes (get-node-count ":Identity")))) ;; Provider ID
+
+      (let [initial-id (db/call iddb/get-identity {:pid test-player-id :provider test-provider})]
+        (is (some? initial-id))
+        (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token new-access-token :refresh_token new-refresh-token})
+        (let [og-node (neoqu "MATCH (id:Identity {provider: $provider})--(:Avatar {id: $pid}) RETURN elementId(id) as node_id"
+                {:provider test-provider :pid test-player-id})
+            
+            after-update-id (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+            
+            post-node (neoqu "MATCH (id:Identity {provider: $provider})--(:Avatar {id: $pid}) RETURN elementId(id) as node_id"
+                {:provider test-provider :pid test-player-id})]
+          (is (= 2 (:totalNodes (get-node-count ":Identity"))))
+          (is (= (:node_id og-node) (:node_id post-node))))))
+
+    (testing "Resets access token if present"
+      (clear)
+      (db/call iddb/create-npc {:player {:id test-player-id :uuid test-player-id} :jinni {:uuid "jinni-uuid"} :now "now"})
+      (db/call iddb/init-player-identity {:pid test-player-id :provider test-provider})
+      (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token existing-access-token :refresh_token existing-refresh-token})
+      (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token new-access-token :refresh_token nil})
+      (let [updated-id (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+            id (:id updated-id)]
+        (is (= new-access-token (:access_token id)))))
+
+    (testing "Resets refresh token if present"
+      (clear)
+      (db/call iddb/create-npc {:player {:id test-player-id :uuid test-player-id} :jinni {:uuid "jinni-uuid"} :now "now"})
+      (db/call iddb/init-player-identity {:pid test-player-id :provider test-provider})
+      (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token nil :refresh_token new-refresh-token})
+      (let [updated-id (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+            id (:id updated-id)]
+        (is (= new-refresh-token (:refresh_token id)))))
+
+    (testing "Must provide values for both tokens on update"
+      (clear)
+      (db/call iddb/create-npc {:player {:id test-player-id :uuid test-player-id} :jinni {:uuid "jinni-uuid"} :now "now"})
+      (db/call iddb/init-player-identity {:pid test-player-id :provider test-provider})
+
+      (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token existing-access-token :refresh_token existing-refresh-token})
+      (let [updated-id (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+            id2 (:id updated-id)]
+        (is (= existing-access-token (:access_token id2)))
+        (is (= existing-refresh-token (:refresh_token id2))))
+        
+      (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token nil :refresh_token new-refresh-token})
+      (let [updated-id2 (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+            id3 (:id updated-id2)]
+        (is (nil? (:access_token id3)))
+        (is (= new-refresh-token (:refresh_token id3))))
+
+      (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token new-access-token :refresh_token nil})
+      (let [updated-id2 (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+            id4 (:id updated-id2)]
+        (is (= new-access-token (:access_token id4)))
+        (is (nil? (:refresh_token id4))))
+
+        (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token nil :refresh_token nil})
+      (let [updated-id2 (db/call iddb/get-identity {:pid test-player-id :provider test-provider})
+            id4 (:id updated-id2)]
+        (is (nil? (:access_token id4)))
+        (is (nil? (:refresh_token id4))))
+            
+    )
+
+
+    (testing "Throws exception on incompatible input params"
+      (clear)
+      (is (thrown? Exception (db/call iddb/set-identity-credentials nil)))
+      ; all vars must have vals, even nil, otherwise automatic error before its even run.
+      ; all nil is fine on this query
+      (is (nil? (db/call iddb/set-identity-credentials {:pid nil :provider nil :access_token nil :refresh_token nil})))
+      ; 2/4 included throws
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :provider test-provider})))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider nil})))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:access_token nil :refresh_token nil})))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:access_token nil :refresh_token test-provider})))
+      ; 3/4 included throws
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :provider nil :access_token nil })))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:provider nil :access_token nil :refresh_token nil })))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :provider nil :refresh_token nil })))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :access_token nil :refresh_token nil })))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token existing-access-token })))
+      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :refresh_token existing-refresh-token })))
+    ;;   (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token "asfafssf" :refresh_token 12345})))
+    ;;   (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token 12345 :refresh_token "12341"})))
+    ;;   (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider 12345 :refresh_token ""})))
+
+    )
+
+
+))
+
 
 ;; init-player-identity
 ;; - returns nil if (a:Avatar {id: $pid}) not already in database
@@ -450,9 +605,6 @@
 ; - must have pid
 
 
-;; set-identity-credentials
-;; - must have access_token provider and pid as params
-;; - resets access token  and refesh_token if present
 
 
 ;; Think these done already 
