@@ -13,7 +13,7 @@
               [master-djinn.util.core :refer [now iso->unix]]
               [master-djinn.util.crypto :refer :all]))
 
-;; ;; DB tests
+;; DB tests
 
 ;; TODO#0 test invariants
 
@@ -24,7 +24,7 @@
 ;;         (setup) (do-tests) (teardown)))
 ;; (use-fixtures :each (reset-db-fixture clear clear))
 
-;; TODO#2 remove any calls, just testing iddb/
+;; TODO#2 remove any calls to j/, just testing iddb/
 
 (deftest db-invariant-test
   (let [player-id "tjbjvghjhgfrtyujk87654erth"
@@ -58,9 +58,6 @@
                 
                 ;; create to prove uniqueness
                 (is (some? (first (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id}))))
-                ;; for some reason the thrown?nil? error doesnt affect this last check
-                ;; (let [res (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})]
-                ;;     (is nil? res))
                 (is (thrown? Exception (neoqu (str "CREATE (a" label " {uuid: $pid}) RETURN a") {:pid player-id})))
             )
         
@@ -71,7 +68,7 @@
         
         (let [provider-id "ajsnfaf732j2h89s"]
         (doseq [provider [":Identity" ":Identity:Ethereum" ":Identity:Github" ":Identity:Spotify"]]
-            ;; (is thrown?) gives nil, (is nil?) throws error. Both checks belowfail
+            ;; (is thrown?) gives nil, (is nil?) throws error. Both checks below fail
             ;; (is (nil? (neoqu (str "CREATE (a" provider " {id: $pid}) RETURN a") {:pid player-id})))
             ;; (is (thrown? Exception (neoqu (str "CREATE (a" provider " {uuid: $pid}) RETURN a") {:pid player-id})))
             ;; (let [res]) captures err somehow and lets nil be tested
@@ -103,8 +100,8 @@
             (testing (str provider " has unique constraint on provider_id")
                 (clear)
                 (is (some? (neoqu (str "CREATE (a" provider " {provider: $provider, provider_id: $provider}) RETURN a") {:provider provider :provider_id provider-id})))
-                (let [res (neoqu (str "CREATE (a" provider " {provider: $provider, provider_id: $provider}) RETURN a") {:provider provider :provider_id provider-id})]
-                    (is nil? res))
+                ; thrown on db constraint requiring provider_id
+                (is (thrown? Exception (neoqu (str "CREATE (a" provider " {provider: $provider, provider_id: $provider}) RETURN a") {:provider provider :provider_id provider-id})))
             )
         
             (testing (str provider " can create with full provider + provider_id")
@@ -117,7 +114,6 @@
         existing-npc-id "existing-npc-i-13124d"
         existing-jinni-id "existing-jinni-id-1321241"
         non-existing-player-id "non-existing-player-id-1231241"]
-
 
     (testing "Creating NPC for existing player generates right db nodes + rels"
       (let [existing-entity (neoqu "MATCH (a:Avatar {id: $pid}) RETURN a" {:pid player-id})
@@ -162,8 +158,7 @@
             final-count (get-node-count ":Avatar")]
         (is (= (+ 2 (:totalNodes initial-count)) (:totalNodes mid-count)))
         (is (= (:totalNodes mid-count) (:totalNodes final-count)))
-        
-        ))
+    ))
 
     (testing "No duplicate Human or NPC created"
       (let [player-id "test-player-id"
@@ -261,7 +256,6 @@
     )
 ))
 
-
 (deftest create-player-test
   (let [initial-node-count (get-node-count)
         player-id "test-player-id"
@@ -326,7 +320,6 @@
         (is (= (:provider id2) "Ethereum"))
         (is (= (:provider_id id2) player-id))))
 
-        
     (testing "NPC -> player transition retains ETH Identity"
         (clear)
         ; create master-djinn so create-player works
@@ -338,11 +331,9 @@
         (is (= (:provider_id (:id id1)) (:provider_id (:id id2))))
         (is (= (:id (:player id1)) (:id (:player id2))))))
         
-
-
     (testing "Creating a new player with no existing Avatar account"
         (clear)
-        ;add masterdjin to create player
+        ;add master djin to create player
         (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid master-djinn :mid master-djinn})
       (let [mid-count (get-node-count) test-ts (now)
             created-jinni-uuid (:jinni (db/call iddb/create-player {:player player-data :jinni jinni-data :now test-ts :master_id master-djinn}))
@@ -359,8 +350,6 @@
           (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.timestamp AS ts" {:jid created-jinni-uuid})))) (iso->unix test-ts)))
         ))
 
-          
-    ;; Test creating a player when the Avatar account already exists
     (testing "Creating a player when Avatar account already exists"
         (clear)
         (neoqu "CREATE (:Jinni)-[:HAS]->(:MasterDjinn {id: $mid})" {:jid master-djinn :mid master-djinn})
@@ -383,9 +372,6 @@
     ))
 ))
 
-
-
-;; Still TODO
 (deftest init-player-identity-test
     (let [pid "some rano" jid "myjinni"]
         (testing "Returns nil if player does not exist"
@@ -440,11 +426,11 @@
             (is (thrown? Exception (db/call iddb/init-player-identity {:pid nil})))
             (is (thrown? Exception (db/call iddb/init-player-identity {:provider nil})))
             
-            ; numbers are invalid inputs
+            ; numbers are invalid inputs for :provider because
+            ; :provider gets put in array it throws error unlike :pid
             (is (thrown? Exception (db/call iddb/init-player-identity {:pid nil :provider 3853292358})))
             (is (thrown? Exception (db/call iddb/init-player-identity {:pid 23521350923 :provider 3853292358})))
             (is (thrown? Exception (db/call iddb/init-player-identity {:pid "asfaf" :provider 3853292358})))
-            ; because provider gets put in array it throws error unlike :pid
             ;; (is (nil? (db/call iddb/init-player-identity {:pid 3853292358 :provider "InvalidProvider"})))
             
             ; structured data is invalid, must be strings
@@ -472,11 +458,9 @@
         new-access-token "new-access-token"
         new-refresh-token "new-refresh-token"]
 
-
     (testing "Returns nil if identity does not exist when updating credentials"
       (clear)
-      (is (nil? (db/call iddb/set-identity-credentials {:pid "non-existing-player" :provider test-provider :access_token new-access-token :refresh_token new-refresh-token})))
-    )
+      (is (nil? (db/call iddb/set-identity-credentials {:pid "non-existing-player" :provider test-provider :access_token new-access-token :refresh_token new-refresh-token}))))
 
     (testing "Successfully updates identity credentials"
       (clear)
@@ -558,9 +542,7 @@
             id4 (:id updated-id2)]
         (is (nil? (:access_token id4)))
         (is (nil? (:refresh_token id4))))
-            
     )
-
 
     (testing "Throws exception on incompatible input params"
       (clear)
@@ -580,111 +562,104 @@
       (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :access_token nil :refresh_token nil })))
       (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token existing-access-token })))
       (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :refresh_token existing-refresh-token })))
-    ;;   (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token "asfafssf" :refresh_token 12345})))
-    ;;   (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token 12345 :refresh_token "12341"})))
-    ;;   (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider 12345 :refresh_token ""})))
-
     )
-
-
 ))
 
+(deftest sync-provider-id-test
+  (let [test-player-id "test-player-id"
+        test-provider "TestProvider"
+        test-provider-id "provider-123"
+        non-existent-player-id "non-existent-player-id"]
 
-;; init-player-identity
-;; - returns nil if (a:Avatar {id: $pid}) not already in database
-;; - does not create id node/rel if no avatar
-;; - returns id nonce if identity created already
-;; - adds provider as label to node
-;; - adds provider as field to node
+    (testing "Returns nil if player not in db"
+      (clear)
+      (is (nil? (db/call iddb/sync-provider-id {:pid non-existent-player-id :provider test-provider :provider_id test-provider-id}))))
 
+    (testing "Player must have initiated :Identity already to set it"
+      (clear)
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})" {:pid test-player-id})
+      (let [initial-identity (:id (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))]
+        (is (nil? initial-identity))
+        (is (nil? (:provider_id initial-identity)))
+        (db/call iddb/sync-provider-id {:pid test-player-id :provider test-provider :provider_id test-provider-id})
+        (let [updated-identity (:id (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))]
+          (is (nil? updated-identity))
+          (is (nil? (:provider_id updated-identity))))))
 
-;; sync-provider-id
-; - sets provider_id for on correct Provider
-; - sets provider_id on Identity owned by player
-; - sets provider_id to id supplied
-; - must have pid
+    (testing "Updates provider_id for the correct Provider"
+      (clear)
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})" {:pid test-player-id})
+      (db/call iddb/init-player-identity {:pid test-player-id :provider test-provider})
+      (let [initial-identity (:id (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))]
+        (println "CREATE :ID " (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))
+        (is (nil? (:provider_id initial-identity)))
+        (db/call iddb/sync-provider-id {:pid test-player-id :provider test-provider :provider_id test-provider-id})
+        (println "CREATE :ID " (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))
+        (let [updated-identity (:id (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))]
+          (is (= test-provider-id (:provider_id updated-identity))))))
 
+    (testing "Sets provider_id on :Identity owned by player"
+      (clear)
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider})" 
+              {:pid test-player-id :provider test-provider})
+      (db/call iddb/sync-provider-id {:pid test-player-id :provider test-provider :provider_id test-provider-id})
+      (let [updated-identity (:id (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))]
+        (is (= test-provider-id (:provider_id updated-identity))))) ;; Ensure provider_id is updated
 
+    (testing "Does not create a new :Identity"
+        ; uses a MATCH query so should be impossible but test just in case
+      (clear)
+      (is (= 0 (:totalNodes (get-node-count ":Identity"))))
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider})" 
+              {:pid test-player-id :provider test-provider})
+      (is (= 1 (:totalNodes (get-node-count ":Identity"))))
+    (let [og-node (first (neoqu "MATCH (id:Identity {provider: $provider})--(:Avatar {id: $pid}) RETURN elementId(id) as node_id, count(id) as count"
+                    {:provider test-provider :pid test-player-id}))
+            __ (db/call iddb/sync-provider-id {:pid test-player-id :provider test-provider :provider_id test-provider-id})
+            post-node (first (neoqu "MATCH (id:Identity {provider: $provider})--(:Avatar {id: $pid}) RETURN elementId(id) as node_id, count(id) as count"
+                            {:provider test-provider :pid test-player-id}))]
+        (is (= 1 (:totalNodes (get-node-count ":Identity"))))
+        (is (= (:node_id og-node) (:node_id post-node)))
+        (is (= (:count og-node) (:count post-node)))
+        (is (= 1 (:count post-node)))
+    ))
 
+    (testing "Can update existing provider_id"
+      (clear)
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider, provider_id: $existing_provider_id})" 
+              {:pid test-player-id :provider test-provider :existing_provider_id "existing-provider-id"})
+      (let [og-id (:id (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))]
+        (is (= "existing-provider-id" (:provider_id og-id)))
+      (db/call iddb/sync-provider-id {:pid test-player-id :provider test-provider :provider_id "my random provid"})
+      (let [updated-identity (:id (db/call iddb/get-identity {:pid test-player-id :provider test-provider}))]
+        (println "GET ID    " og-id updated-identity)
+        (is (= "my random provid" (:provider_id updated-identity)))
+        (is (not= "existing-provider-id" (:provider_id updated-identity)))
+      (db/call iddb/sync-provider-id {:pid test-player-id :provider test-provider :provider_id "ooooooooooooooo"})
+      (let [new-new-me (iddb/getid test-player-id test-provider)]
+        (is (= "ooooooooooooooo" (:provider_id new-new-me)))
+        (is (not= "my random provid" (:provider_id new-new-me)))
+      ))))
+    
+    (testing "No duplicate :Identities with provider + provider_id combo"
+        ; relies on DB constraint
+      (clear)
+      (is (= 0 (:totalNodes (get-node-count ":Identity"))))
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider, provider_id: $existing_provider_id})" 
+              {:pid test-player-id :provider test-provider :existing_provider_id "existing-provider-id"})
+        ;; cant have same 
+      (is (thrown? Exception (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider, provider_id: $existing_provider_id})" 
+              {:pid "new player" :provider test-provider :existing_provider_id "existing-provider-id"})))
+        ;; diff prov + same provid ir same prov + diff provid is ok tho
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider, provider_id: $existing_provider_id})" 
+              {:pid "new player2" :provider "other_provider" :existing_provider_id "existing-provider-id"})
+      (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider, provider_id: $existing_provider_id})" 
+              {:pid "new player3" :provider test-provider :existing_provider_id "other-provider-id"}))
 
-;; Think these done already 
-;; (jinni-activate)
-;; - if no player :Avatar account already.
-;; - creates 2 avatar nodes and 1 identity node
-;; - increase total node count by 3
-;; - has a :Jinni attached to user
-;; - has an :Identity:Ethereum node
-;; - relation.since set to (now)
-;; - if new player created returns jinni uuid
-;; - if player  already existed, returns original jinni uuid
-
-;; - if player :Avatar account already.
-;;     - creates 0 avatar nodes and 0 identity node
-;;     - increase total node count by 0
-;;     - had :Avatar:NPC before, have :Avatar:Jinni now
-;;     - relation.since set to b
-
-;;   (testing "Activating a new Jinni with no existing Avatar account"
-;;     (clear)
-;;     (let [player-id "new-player-id"
-;;           jinni-id (j/jinni-activate player-id MALEKS_MAJIK_CARD jinni-id)]
-;;       (is (some? jinni-id)) ;; Ensure a Jinni UUID is returned
-;;       (is (some? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid jinni-id}))) ;; Jinni node should exist
-;;       (is (some? (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id}))) ;; Identity node should exist
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})-[relation:BONDS]->(:Human) RETURN relation.since as ts" {:jid jinni-id})))) (iso->unix (now)))) ;; relation.since should be set to now
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.timestamp AS ts" {:jid jinni-id})))) (iso->unix (now)))))) ;; Check SUMMONS timestamp
-
-;;   (testing "Activating a Jinni with existing Avatar account"
-;;     (clear)
-;;     (let [player-id "existing-player-id"
-;;         initial-count (get-node-count)
-;;           jinni-id (j/jinni-activate player-id MALEKS_MAJIK_CARD jinni-id)]
-;;       (is (some? jinni-id)) ;; Ensure a Jinni UUID is returned
-;;       (is (= 0 (get-node-count))) ;; Check total node count remains unchanged
-;;       (is (= jinni-id (:j (first (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j.id as j") {:jid jinni-id}))))) ;; Jinni ID should match
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})-[relation:BONDS]->(:Human) RETURN relation.since as ts" {:jid jinni-id})))) (iso->unix (now - 10000)))) ;; relation.since should be set to before now
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.timestamp as ts" {:jid jinni-id})))) (iso->unix (now - 10000)))))) ;; Check SUMMONS timestamp remains unchanged
-
-;;   (testing "Activating Jinni for player who already has a Jinni"
-;;     (clear)
-;;     (let [player-id "player-with-existing-jinni"
-;;             initial-count (get-node-count)  
-;;           initial-jinni-id (j/jinni-activate player-id MALEKS_MAJIK_CARD jinni-id)
-;;           ;; expect db error from invariant not a new id
-;;           new-jinni-id (j/jinni-activate player-id MALEKS_MAJIK_CARD jinni-id)]
-;;       (is (= initial-jinni-id new-jinni-id)) ;; Ensure the same Jinni ID is returned
-;;       (is (= 0 (get-node-count))) ;; Check total node count remains unchanged
-;;       (is (some? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid initial-jinni-id}))) ;; Jinni node should still exist
-;;       (is (not (nil? (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id})))) ;; Identity node should still exist
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})-[relation:BONDS]->(:Human) RETURN relation.since as ts" {:jid initial-jinni-id})))) (iso->unix (now - 10000)))))) ;; relation.since should remain unchanged
-
-;;   (testing "No duplicate Jinni created for existing player"
-;;     (clear)
-;;     (let [player-id "existing-player-id"
-;;           initial-jinni-id (j/jinni-activate player-id MALEKS_MAJIK_CARD jinni-id)
-;;           duplicate-jinni-id (j/jinni-activate player-id MALEKS_MAJIK_CARD jinni-id)]
-;;       (is (= initial-jinni-id duplicate-jinni-id)) ;; Ensure the same Jinni ID is returned
-;;       (is (= 0 (get-node-count))) ;; Check total node count remains unchanged
-;;       (is (some? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid initial-jinni-id}))) ;; Jinni node should still exist
-;;       (is (not (nil? (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id})))) ;; Identity node should still exist
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})-[relation:BONDS]->(:Human) RETURN relation.since as ts" {:jid initial-jinni-id})))) (iso->unix (now - 10000)))))) ;; relation.since should remain unchanged
-
-;;   (testing "Activating Jinni with invalid player ID"
-;;     (clear)
-;;     (is (thrown? Exception (j/jinni-activate nil MALEKS_MAJIK_CARD jinni-id)))  ;; Ensure exception is thrown for nil player ID
-;;     (is (thrown? Exception (j/jinni-activate "" MALEKS_MAJIK_CARD jinni-id))) ;; MALEKS_MAJIK_CARD jinni-idEnsure exception is thrown for empty player ID
-;;     (is (thrown? Exception (j/jinni-activate 12345 MALEKS_MAJIK_CARD jinni-id)))  ;; Ensure exception is thrown for non-string player ID
-;;     (is (thrown? Exception (j/jinni-activate "0x1234567890123456789012345678901234567890" MALEKS_MAJIK_CARD jinni-id) MALEKS_MAJIK_CARD jinni-id)) ;; Ensure exception is thrown for non-existing player ID
-;;     (is (thrown? Exception (j/jinni-activate "non-ex MALEKS_MAJIK_CARD jinni-idstent-id" MALEKS_MAJIK_CARD jinni-id)))) ;; Ensure exception is thrown for non-existent player ID
-
-;;   (testing "Activating Jinni for existing player without Jinni"
-;;     (clear)
-;;     (let [player-id "player-without-jinni"
-;;           jinni-id (j/jinni-activate player-id MALEKS_MAJIK_CARD jinni-id)]
-;;       (is (some? jinni-id)) ;; Ensure a Jinni UUID is returned
-;;       (is (= 3 (get-node-count))) ;; Check total node count increased by 3
-;;       (is (some? (neoqu (str "MATCH (j:Jinni {id: $jid}) RETURN j") {:jid jinni-id}))) ;; Jinni node should exist
-;;       (is (some? (neoqu (str "MATCH (id:Identity:Ethereum {provider_id: $pid}) RETURN id") {:pid player-id}))) ;; Identity node should exist
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})-[relation:BONDS]->(:Human) RETURN relation.since as ts" {:jid jinni-id})))) (iso->unix (now)))) ;; relation.since should be set to now
-;;       (is (= (iso->unix (:ts (first (neoqu "MATCH (j:Jinni {id: $jid})<-[relation:SUMMONS]-(:Human) RETURN relation.timestamp AS ts" {:jid jinni-id})))) (iso->unix (now)))))) ;; Check SUMMONS timestamp
-
+    (testing "Throws db error if all params not provided"
+      (clear)
+      (is (thrown? Exception (db/call iddb/sync-provider-id {:provider test-provider :provider_id test-provider-id})))
+      (is (thrown? Exception (db/call iddb/sync-provider-id {:pid test-provider :provider_id test-provider-id})))
+      (is (thrown? Exception (db/call iddb/sync-provider-id {:pid test-provider-id :provider test-provider})))
+    )
+))

@@ -1,6 +1,5 @@
 (ns master-djinn.util.db.circles-test
   (:require [clojure.test :refer :all]
-            ;;   [master-djinn.util.types.core :refer [address? avatar->uuid]]
               [clojure.spec.alpha :as s]
 
               [master-djinn.util.db.core :as db]
