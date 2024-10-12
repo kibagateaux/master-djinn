@@ -23,10 +23,10 @@
   CALL apoc.do.when(
     jubCount = 0 and playerCount = 1,
     // Give community jinni the jubmoji identity to take actions directly in game
-    \"MERGE (j:Avatar:Jinni:p2c {id: $jinni.id, uuid: $jinni.uuid})-[:HAS]->(id:Jubmoji:Identity:Ethereum {
-      provider: 'Ethereum',
-      provider_id: $signer})
-      MERGE (p:Avatar:Human {id: $pid})
+    \"MERGE (p:Avatar:Human {id: $pid})
+      MERGE (j:Avatar:Jinni:p2c {id: $jinni.id, uuid: $jinni.uuid})-[:HAS]->(id:Jubmoji:Identity:Ethereum {
+        provider: 'Ethereum',
+        provider_id: $signer})
       // Set summoner as player that initiated call. Has certain controls over p2c jinni
       MERGE (p)<-[rp:BONDS]-(j)
       MERGE (p)-[rj:SUMMONS]->(j)
