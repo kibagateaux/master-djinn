@@ -141,16 +141,22 @@
         jinni-id "test-jinni-id"
         jubmoji-provider-id "test-jubmoji-provider-id"]
     
-    (testing "Returns nil if $pid has no :Avatar in db"
+    (testing "Does not allow creation if $pid has no :Avatar in db"
       (clear)
       (let [ts (now) result (db/call cdb/create-summoning-circle {:pid player-id :jinni {:id jinni-id :uuid jinni-id} :signer jubmoji-provider-id :now ts})]
         (is (nil? (:jinni result)))))
 
-    (testing "Returns nil if $pid is an NPC in db"
+    (testing "Does not allow creation if $pid is an NPC in db"
       (clear)
       (neoqu "CREATE (:Avatar:Human {id: $pid, uuid: $pid})-[:SUMMONS]->(:Avatar:NPC:p2p {id: $jid, uuid: $jid})" {:pid player-id :jid p2p-jinni-id})
       (let [ts (now) result (db/call cdb/create-summoning-circle {:pid player-id :jinni {:id jinni-id :uuid jinni-id} :signer jubmoji-provider-id :now ts})]
         (is (nil? (:jinni result)))))
+    
+    (testing "Official players with p2p :Jinni can create"
+      (clear)
+      (neoqu "CREATE (:Avatar:Human {id: $pid, uuid: $pid})-[:SUMMONS]->(:Avatar:Jinni:p2p {id: $jid, uuid: $jid})" {:pid player-id :jid p2p-jinni-id})
+      (let [ts (now) result (db/call cdb/create-summoning-circle {:pid player-id :jinni {:id jinni-id :uuid jinni-id} :signer jubmoji-provider-id :now ts})]
+        (is (some? (:jinni result)))))
 
     (testing "Requires all expected param variabels to be set"
         (clear)
@@ -187,7 +193,7 @@
             (is (= global-count2 (+ global-count1 2)))
         )))
 
-    (testing "If :Jubmoji already exists, returns nil and does not create new nodes"
+    (testing "Cannot create circle if :Jubmoji identity already exists"
       (clear)
       (neoqu "CREATE (:Avatar:Human {id: $pid, uuid: $pid})-[:SUMMONS]->(:Avatar:Jinni:p2p {id: $jid, uuid: $jid})" {:pid player-id :jid p2p-jinni-id})
       (neoqu "CREATE (:Jubmoji:Identity:Ethereum {provider: 'Ethereum', provider_id: $jmid})" {:jmid jubmoji-provider-id})
@@ -259,3 +265,64 @@
             (is (= 2 jubmoji-t2))
         ))
 ))
+
+(deftest join-summoning-circle-test
+  (let [player-id "test-player-id"
+        new-player "lnacancailac"
+        jinni-id "test-jinni-id"
+        p2c-jinni-id "test-p2c-jinni-id"
+        jubmoji-provider-id "jubmoji-provider-id"
+        create-player-and-jinni (fn []
+            (neoqu "CREATE (:Avatar:Human {id: $pid, uuid: $pid})-[:SUMMONS]->(:Jinni:p2c {id: $jid, uuid: $jid})
+                    CREATE (:Avatar:Human {id: $pid2, uuid: $pid2})" 
+                                           {:pid player-id :pid2 new-player :jid p2c-jinni-id}))]
+
+    (testing "Cannot create new nodes"
+      (clear)
+      (create-player-and-jinni)
+      (let [pre-count (:totalNodes (get-node-count))
+            result (db/call cdb/join-summoning-circle {:pid new-player :jid p2c-jinni-id :now (now)})]
+        (is (some? result))
+        (is (= pre-count (:totalNodes (get-node-count))))))
+
+    (testing "No BONDS created if human doesn't exist"
+      (clear)
+      (let [result (db/call cdb/join-summoning-circle {:pid "non-existent-player" :jid p2c-jinni-id :now (now)})
+            {:keys [relation]} (-> (neoqu "MATCH (p:Avatar:Human {id: $pid})<-[r:BONDS]-(j:Jinni:p2c) RETURN r as relation" {:pid "non-existent-player" }) first)]
+        (is (nil? result))
+        (is (nil? relation))))
+
+    (testing "No BONDS created if jinni doesn't exist"
+      (clear)
+      (neoqu "CREATE (:Avatar:Human {id: $pid, uuid: $pid})" {:pid player-id})
+      (let [result (db/call cdb/join-summoning-circle {:pid new-player :jid "non-existent-jinni" :now (now)})
+            {:keys [relation]} (-> (neoqu "MATCH (p:Avatar:Human {id: $pid})<-[r:BONDS]-(j:Jinni:p2c) RETURN r as relation" {:pid "non-existent-player" }) first)]
+        (is (nil? result))
+        (is (nil? relation))))
+
+    (testing "Adds .since property to BOND relation on success"
+      (clear)
+      (create-player-and-jinni)
+      (let [ts (now)
+            result (db/call cdb/join-summoning-circle {:pid new-player :jid p2c-jinni-id :now ts})]
+        (is (= p2c-jinni-id (:jinni result)))
+        (let [{:keys [relation]} (-> (neoqu "MATCH (p:Avatar:Human {id: $pid})<-[r:BONDS]-(j:Jinni:p2c) RETURN r as relation" {:pid new-player}) first)]
+          (is (some? relation))
+          (is (= (iso->unix ts) (iso->unix (:since relation)))))))
+    
+    (testing "Cannot override initial values set on :Human--:Jinni relationship values"
+      (clear)
+      (create-player-and-jinni)
+      (let [ts (now)
+            result (db/call cdb/join-summoning-circle {:pid new-player :jid p2c-jinni-id :now ts})
+            update (db/call cdb/join-summoning-circle {:pid new-player :jid p2c-jinni-id :now "somefaketime"})
+            result2 (-> (neoqu "MATCH (:Avatar:Human {id: $pid})<-[r:BONDS]-(:Jinni:p2c {id: $jid}) RETURN r as relation" 
+              {:pid new-player :jid p2c-jinni-id}) first)]
+        (is (= ts (:since (:relation result2))))))
+
+    (testing "Can only join circle for :p2c:jinni not :p2p:Jinni"
+      (clear)
+      (neoqu "CREATE (:Avatar:Human {id: $pid, uuid: $pid})-[:SUMMONS]->(:Jinni:p2p {id: $jid, uuid: $jid})" 
+              {:pid player-id :jid jinni-id})
+      (let [result (db/call cdb/join-summoning-circle {:pid new-player :jid jinni-id :now (now)})]
+        (is (nil? result))))))

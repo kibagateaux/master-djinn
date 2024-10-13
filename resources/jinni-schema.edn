@@ -193,11 +193,6 @@
                 :widgets {:type (list :Widget) :description "customized widget configuration for homepage setup"}
                 :last_divi_ts {:type String :description "last time jinni was evolved"}
             }}
-        :HomeConfigMap
-            {:description "All jinni bonded to a player and their config. e.g. {:'asfaf-2sfa-21' {:widgets [] :type 'p2p}}"
-            :fields {
-                
-            }} ; fields dynamically generated from db values of player jinni
 
         :Query {:fields {
             :players {:type (list :Avatar)}
