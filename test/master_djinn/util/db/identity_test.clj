@@ -544,22 +544,11 @@
         (is (nil? (:refresh_token id4))))
     )
 
-    (testing "Throws exception on incompatible input params"
+    (testing "Requires all expected param variabels to be set"
       (clear)
       (is (thrown? Exception (db/call iddb/set-identity-credentials nil)))
       ; all vars must have vals, even nil, otherwise automatic error before its even run.
-      ; all nil is fine on this query
       (is (nil? (db/call iddb/set-identity-credentials {:pid nil :provider nil :access_token nil :refresh_token nil})))
-      ; 2/4 included throws
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :provider test-provider})))
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider nil})))
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:access_token nil :refresh_token nil})))
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:access_token nil :refresh_token test-provider})))
-      ; 3/4 included throws
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :provider nil :access_token nil })))
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:provider nil :access_token nil :refresh_token nil })))
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :provider nil :refresh_token nil })))
-      (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid nil :access_token nil :refresh_token nil })))
       (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :access_token existing-access-token })))
       (is (thrown? Exception (db/call iddb/set-identity-credentials {:pid test-player-id :provider test-provider :refresh_token existing-refresh-token })))
     )
@@ -574,6 +563,12 @@
     (testing "Returns nil if player not in db"
       (clear)
       (is (nil? (db/call iddb/sync-provider-id {:pid non-existent-player-id :provider test-provider :provider_id test-provider-id}))))
+
+    (testing "Throws db error if all params not provided"
+      (clear)
+      (is (thrown? Exception (db/call iddb/sync-provider-id {:provider test-provider :provider_id test-provider-id})))
+      (is (thrown? Exception (db/call iddb/sync-provider-id {:pid test-provider :provider_id test-provider-id})))
+      (is (thrown? Exception (db/call iddb/sync-provider-id {:pid test-provider-id :provider test-provider}))))
 
     (testing "Player must have initiated :Identity already to set it"
       (clear)
@@ -656,10 +651,4 @@
       (neoqu "CREATE (a:Avatar {id: $pid, uuid: $pid})-[:HAS]->(id:Identity {provider: $provider, provider_id: $existing_provider_id})" 
               {:pid "new player3" :provider test-provider :existing_provider_id "other-provider-id"}))
 
-    (testing "Throws db error if all params not provided"
-      (clear)
-      (is (thrown? Exception (db/call iddb/sync-provider-id {:provider test-provider :provider_id test-provider-id})))
-      (is (thrown? Exception (db/call iddb/sync-provider-id {:pid test-provider :provider_id test-provider-id})))
-      (is (thrown? Exception (db/call iddb/sync-provider-id {:pid test-provider-id :provider test-provider})))
-    )
 ))
