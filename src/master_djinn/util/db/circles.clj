@@ -28,11 +28,12 @@
         provider: 'Ethereum',
         provider_id: $signer})
       // Set summoner as player that initiated call. Has certain controls over p2c jinni
-      MERGE (p)<-[rp:BONDS]-(j)
       MERGE (p)-[rj:SUMMONS]->(j)
-      
       SET rj.timestamp = $now
-      SET rp.since =  $now
+      // Also set them as a hocrux of jinni in addition to summoner
+      MERGE (p)<-[rp:BONDS]-(j)
+      SET rp.since = $now
+
 
       RETURN j.id as jid\",
     \"RETURN null as id\",
